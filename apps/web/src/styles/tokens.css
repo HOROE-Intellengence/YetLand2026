@@ -1,0 +1,62 @@
+/* CSS variables — 单一真理源在 packages/design-tokens/src/tokens.ts
+   这里只是把它们镜像为 CSS 变量供 CSS Modules 使用。
+   TODO: 用脚本从 design-tokens 自动生成本文件，不要手动维护。 */
+
+:root {
+  /* 颜色 */
+  --bg: #0a0a0f;
+  --bg-2: #0d0d14;
+  --paper: #c8b8a4;
+  --paper-dim: #8a7e6e;
+  --paper-mute: #5a5248;
+  --gold: #a08060;
+  --gold-light: #c8a878;
+  --gold-glow: rgba(200, 168, 120, 0.45);
+  --ink: rgba(200, 184, 164, 0.05);
+
+  /* 字体 */
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+
+  /* 字号比例 — 单一旋钮（修改 --type-scale 等比放缩全部 UI 字号） */
+  --type-scale: 1.3;
+  --font-scale: var(--user-font-scale, 1);
+  --fs-xxs: calc(11px * var(--type-scale) * var(--font-scale));
+  --fs-xs:  calc(12px * var(--type-scale) * var(--font-scale));
+  --fs-sm:  calc(13px * var(--type-scale) * var(--font-scale));
+  --fs-md:  calc(15px * var(--type-scale) * var(--font-scale));
+  --fs-lg:  calc(17px * var(--type-scale) * var(--font-scale));
+  --fs-xl:  calc(20px * var(--type-scale) * var(--font-scale));
+  --fs-2xl: calc(24px * var(--type-scale) * var(--font-scale));
+  --fs-3xl: calc(32px * var(--type-scale) * var(--font-scale));
+
+  /* 布局（开发文档 §四.2） */
+  --prose-width: 560px;
+  --paragraph-gap: 24px;
+
+  /* 响应式断点 — 镜像 packages/design-tokens/src/tokens.ts 的 breakpoints */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 980px;
+
+  /* 安全区别名 — 消费 index.html 已开的 viewport-fit=cover；旧浏览器兜底 0px */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+
+  /* 软键盘高度 — 由 useViewport 监听 visualViewport 写入；默认 0px 保证 CSS 始终可读 */
+  --keyboard-inset: 0px;
+}
+
+:root[data-theme='light'] {
+  --bg: #f4efe6;
+  --bg-2: #ebe1d3;
+  --paper: #2b2520;
+  --paper-dim: #65594d;
+  --paper-mute: #8a7d6c;
+  --gold: #9a6f38;
+  --gold-light: #7b5426;
+  --gold-glow: rgba(154, 111, 56, 0.32);
+  --ink: rgba(43, 37, 32, 0.06);
+}

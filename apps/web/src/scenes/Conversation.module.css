@@ -1,0 +1,282 @@
+.wrap {
+  /* 内在宽度：阅读栏「尺寸无关」—— 列宽自适应，gutter 随屏流式取代固定 24px padding（移动端方案 Phase 3） */
+  --gutter: clamp(16px, 5vw, 48px);
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* 基线：所有浏览器都认 */
+  width: min(var(--prose-width), 100% - 2 * var(--gutter));
+  margin: 0 auto;
+}
+
+/* 渐进增强为最小视口高，护住底部输入框不被地址栏顶掉（不替换 100vh 基线，移动端方案 Phase 1） */
+@supports (height: 100svh) {
+  .wrap {
+    height: 100svh;
+  }
+}
+
+.backBtn {
+  position: fixed;
+  top: calc(12px + var(--safe-t));
+  left: calc(16px + var(--safe-l));
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  appearance: none;
+  border: 1px solid rgba(200, 168, 120, 0.18);
+  border-radius: 8px;
+  background: rgba(10, 10, 15, 0.46);
+  color: var(--paper-mute);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+/* hover 仅在真有悬停能力的设备生效，触屏改用 :active（移动端方案 Phase 4） */
+@media (hover: hover) {
+  .backBtn:hover:not(:disabled) {
+    border-color: rgba(200, 168, 120, 0.36);
+    background: rgba(20, 18, 24, 0.68);
+    color: var(--paper);
+  }
+}
+
+.backBtn:active:not(:disabled) {
+  border-color: rgba(200, 168, 120, 0.36);
+  background: rgba(20, 18, 24, 0.68);
+  color: var(--paper);
+}
+
+.backBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.messageList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--paragraph-gap);
+}
+
+.userMsg {
+  text-align: right;
+  color: var(--paper-dim);
+  font-size: var(--fs-sm);
+  margin-left: auto;
+  max-width: 80%;
+  animation: fadeUp 0.4s ease;
+}
+
+.assistantMsg {
+  animation: fadeUp 0.5s ease;
+}
+
+.part {
+  display: block;
+  margin-bottom: 4px;
+  animation: partRise 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform, filter;
+}
+
+@keyframes partRise {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(5px);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.dialoguePart {
+  composes: part;
+  color: var(--paper);
+  font-size: var(--fs-md);
+  padding-left: 14px;
+  border-left: 2px solid rgba(200, 168, 120, 0.45);
+}
+
+.actionPart {
+  composes: part;
+  color: var(--paper-mute);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}
+
+.envPart {
+  composes: part;
+  color: var(--paper-mute);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}
+
+.narrationPart {
+  composes: part;
+  color: var(--paper-mute);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}
+
+.plainText {
+  color: var(--paper);
+  font-size: var(--fs-md);
+}
+
+.liveArea {
+  min-height: 48px;
+  padding: 8px 0;
+}
+
+.liveChunk {
+  color: var(--paper);
+  animation: fadeUp 0.2s ease;
+}
+
+.liveGlow {
+  composes: liveChunk;
+  color: var(--gold-light);
+}
+
+.tempBadge {
+  position: fixed;
+  top: calc(12px + var(--safe-t));
+  right: calc(16px + var(--safe-r));
+  font-family: var(--font-ui);
+  font-size: var(--fs-xxs);
+  color: var(--paper-mute);
+  padding: 2px 8px;
+  z-index: 10;
+}
+
+.inputBar {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  /* 键盘弹出时 --keyboard-inset 把输入框抬到键盘之上；收起时退化为安全区（移动端方案 Phase 2） */
+  padding: 8px 0 calc(28px + max(var(--safe-b), var(--keyboard-inset)));
+}
+
+.inputField {
+  composes: horizonField from '../styles/horizon.module.css';
+  flex: 1;
+  display: flex;
+  min-height: 54px;
+  padding: 4px 0 12px;
+  background:
+    radial-gradient(ellipse 72% 120% at 50% 100%, rgba(200, 168, 120, 0.08), transparent 68%),
+    linear-gradient(to bottom, transparent, rgba(10, 10, 15, 0.28));
+}
+
+.input {
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  font-family: var(--font-serif);
+  /* ≥16px 结构性地板：iOS 聚焦不触发自动缩放（移动端方案 Phase 2） */
+  font-size: max(16px, var(--fs-md));
+  padding: 10px 4px 4px;
+  outline: none;
+  resize: none;
+  min-height: 42px;
+  line-height: 1.5;
+  box-shadow: none;
+  overflow: hidden;
+  caret-color: var(--gold-light);
+}
+
+.input::placeholder {
+  color: rgba(138, 126, 110, 0.58);
+  font-style: italic;
+}
+
+.sendBtn {
+  composes: horizonField from '../styles/horizon.module.css';
+  appearance: none;
+  align-self: stretch;
+  min-width: 58px;
+  background: transparent;
+  border: none;
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+  padding: 0 8px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.25s ease, opacity 0.25s ease, text-shadow 0.25s ease;
+}
+
+@media (hover: hover) {
+  .sendBtn:hover:not(:disabled) {
+    color: var(--paper);
+    text-shadow: 0 0 14px rgba(200, 168, 120, 0.36);
+  }
+}
+
+.sendBtn:active:not(:disabled) {
+  color: var(--paper);
+  text-shadow: 0 0 14px rgba(200, 168, 120, 0.36);
+}
+
+.sendBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 触屏命中区 ≥44×44（移动端方案 Phase 2） */
+@media (pointer: coarse) {
+  .backBtn {
+    width: 44px;
+    height: 44px;
+  }
+  .sendBtn {
+    min-height: 44px;
+  }
+}
+
+/* 动效降级（移动端方案 Phase 5）：系统「减少动态效果」或低端机（<html data-motion=reduced）下，
+   对话流退化为纯 opacity 淡入，去掉 partRise 的 blur + will-change（低端机掉帧主因）。
+   .dialoguePart 等 composes .part、.liveGlow composes .liveChunk，故选 .part/.liveChunk 即覆盖。 */
+@keyframes convFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .part,
+  .userMsg,
+  .assistantMsg,
+  .liveChunk {
+    animation: convFade 0.3s ease both;
+  }
+  .part {
+    will-change: auto;
+  }
+}
+
+:global(html[data-motion='reduced']) .part,
+:global(html[data-motion='reduced']) .userMsg,
+:global(html[data-motion='reduced']) .assistantMsg,
+:global(html[data-motion='reduced']) .liveChunk {
+  animation: convFade 0.3s ease both;
+}
+:global(html[data-motion='reduced']) .part {
+  will-change: auto;
+}

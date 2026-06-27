@@ -1,0 +1,61 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+.output/
+.vercel/
+.wrangler/
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+.dev.vars
+*.secret
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# eslint
+.eslintcache
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# local agent / runtime state
+.claude/settings.local.json
+.codex/
+.server/
+.workbuddy/
+
+# testing
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# local data (mock-server in-memory snapshots, dev DB dumps)
+.local/
+.local-test/
+.local-sim/
+*.sqlite
+*.db
+
+# 部署产物（本地打的 ECS tar 包等，不进主仓库）
+_deploy_artifacts/
+*.tar.gz
+
+# 独立 webui 快照（本地参考用，不进主仓库）
+yelan-webui/
+
+# 注: packages/prompts/src/generated.ts 是自动生成但 *会* 进 git
+# 这样新人 clone 后无需先 build 就能 typecheck 通过；改 yaml 时一并提交重新生成的文件

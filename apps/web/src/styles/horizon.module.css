@@ -1,0 +1,78 @@
+/* 日出地平线 — 文本容器的发光下框线。
+ * 文本容器不再用 border 方框,只保留一条底部地平线 + 从中央升起的暖光。
+ * 用法:场景 .module.css 里 composes: horizonField from '../styles/horizon.module.css';
+ * 注意:<input>/<textarea> 不渲染 ::before/::after,必须套一层 <div> 包裹后应用。 */
+
+@keyframes horizonBreathe {
+  0%, 100% { opacity: 0.38; }
+  50%      { opacity: 0.6; }
+}
+
+.horizonField {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+/* 地平线 — 两端虚化的渐变线,不是硬直线 */
+.horizonField::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(160, 128, 96, 0.45) 22%,
+    var(--gold-light) 50%,
+    rgba(160, 128, 96, 0.45) 78%,
+    transparent 100%
+  );
+  transition: background 0.45s ease;
+  pointer-events: none;
+}
+
+/* 日出光晕 — 从地平线中央升起的椭圆暖光,托住上方文字 */
+.horizonField::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 32px;
+  background: radial-gradient(
+    ellipse 58% 100% at 50% 100%,
+    var(--gold-glow) 0%,
+    rgba(200, 168, 120, 0.14) 40%,
+    transparent 74%
+  );
+  opacity: 0.42;
+  animation: horizonBreathe 8s ease-in-out infinite;
+  transition: opacity 0.45s ease, height 0.45s ease;
+  pointer-events: none;
+}
+
+/* hover / focus — 日出渐强 */
+.horizonField:hover::before,
+.horizonField:focus-within::before,
+.horizonField:focus-visible::before {
+  opacity: 0.95;
+  height: 42px;
+  animation: none;
+}
+
+.horizonField:hover::after,
+.horizonField:focus-within::after,
+.horizonField:focus-visible::after {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(200, 168, 120, 0.65) 16%,
+    rgba(245, 232, 208, 1) 50%,
+    rgba(200, 168, 120, 0.65) 84%,
+    transparent 100%
+  );
+}

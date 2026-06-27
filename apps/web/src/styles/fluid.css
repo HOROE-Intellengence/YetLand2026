@@ -1,0 +1,18 @@
+/* web 专属流式层 —— 移动端适配长期方案 §4.2 / Phase 0
+ *
+ * 职责：消费 token 的 px 值作为上/下界，做连续自适应，但【不修改】token 本身。
+ * 护栏：fluid 只在 web 注入；packages/design-tokens 的 sizes / proseWidth 保持纯数字，
+ *       未来的长图导出与 share（无视口的渲染环境）不会被流式波及。
+ *
+ * 仅大号字（xl/2xl/3xl）流式：mobile 下不至于撑爆，desktop 保持原值（见决策 D4）。
+ * 桌面宽度（≥~438px）下 clamp 命中上界，等于原 token 值 → 桌面端视觉零变化。
+ * 正文 md/sm 不进流式：叙事可读性优先。
+ *
+ * 在 main.tsx 中【接在 tokens.css 之后】引入，覆盖同名 --fs-* 变量。
+ */
+:root {
+  --fs-xl:  calc(clamp(17px, 14px + 1.4vw, 20px) * var(--type-scale) * var(--font-scale));
+  --fs-2xl: calc(clamp(20px, 16px + 2.0vw, 24px) * var(--type-scale) * var(--font-scale));
+  --fs-3xl: calc(clamp(24px, 18px + 3.2vw, 32px) * var(--type-scale) * var(--font-scale));
+  /* 正文 md/sm 不进流式：叙事可读性优先（见 D4） */
+}

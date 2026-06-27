@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>夜阑 · 快速启动</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens (mirror of packages/design-tokens + apps/web/tokens.css) ─── */
+:root {
+  --bg: #0a0a0f; --bg-2: #0d0d14;
+  --paper: #c8b8a4; --paper-dim: #8a7e6e; --paper-mute: #5a5248;
+  --gold: #a08060; --gold-light: #c8a878; --gold-glow: rgba(200, 168, 120, 0.45);
+  --ink: rgba(200, 184, 164, 0.05);
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --type-scale: 1.3;
+  --fs-xxs: calc(11px * var(--type-scale)); --fs-xs: calc(12px * var(--type-scale));
+  --fs-sm: calc(13px * var(--type-scale)); --fs-md: calc(15px * var(--type-scale));
+  --fs-lg: calc(17px * var(--type-scale)); --fs-xl: calc(20px * var(--type-scale));
+  --fs-2xl: calc(24px * var(--type-scale)); --fs-3xl: calc(32px * var(--type-scale));
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; }
+body {
+  background: var(--bg); color: var(--paper);
+  font-family: var(--font-serif); font-weight: 300;
+  font-size: var(--fs-md); overflow: hidden; -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 0; height: 0; }
+textarea::placeholder, input::placeholder { color: rgba(138, 126, 110, 0.4); }
+
+/* ─── Animations ─── */
+@keyframes breathe {
+  0%, 100% { text-shadow: 0 0 18px rgba(220,188,130,.32), 0 0 4px rgba(220,188,130,.22); }
+  50%      { text-shadow: 0 0 28px rgba(220,188,130,.55), 0 0 10px rgba(220,188,130,.4); }
+}
+@keyframes fadeUp {
+  0%   { opacity: 0; transform: translateY(14px); filter: blur(3px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+@keyframes emberBeat {
+  0%, 100% { transform: translate(-50%,-50%) scale(.85); }
+  20%      { transform: translate(-50%,-50%) scale(1.15); }
+  50%      { transform: translate(-50%,-50%) scale(.9); }
+  75%      { transform: translate(-50%,-50%) scale(1.1); }
+}
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1) translateY(0); opacity: .95; }
+  25%      { transform: scale(1.15) translateY(-1px); opacity: 1; }
+  55%      { transform: scale(.92) translateY(1px); opacity: .85; }
+  80%      { transform: scale(1.08) translateY(0); opacity: 1; }
+}
+@keyframes ripple {
+  0%   { width: 60px; height: 60px; opacity: .6; border-color: rgba(220,188,130,.5); }
+  100% { width: 520px; height: 520px; opacity: 0; border-color: rgba(220,188,130,0); }
+}
+@keyframes sigilSpinCW  { from { transform: rotate(0deg); }    to { transform: rotate(360deg); } }
+@keyframes sigilSpinCCW { from { transform: rotate(0deg); }    to { transform: rotate(-360deg); } }
+@keyframes starTwinkle {
+  0%, 100% { opacity: .3; transform: scale(.8); }
+  50%      { opacity: 1;  transform: scale(1.1); }
+}
+@keyframes titleBreathe {
+  0%, 100% { filter: url(#titleGlow) drop-shadow(0 0 12px rgba(232,168,84,.4)); }
+  50%      { filter: url(#titleGlow) drop-shadow(0 0 22px rgba(232,168,84,.7)) drop-shadow(0 0 6px rgba(245,232,208,.5)); }
+}
+@keyframes petalBurst {
+  0%   { opacity: 0; transform: scaleY(.1) translateY(60px); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleY(1.6) translateY(-40px); }
+}
+@keyframes sealPulse {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: .6; }
+  50%      { transform: rotate(45deg) scale(1.08); opacity: .85; }
+}
+@keyframes typingDot {
+  0%, 100% { opacity: .2; transform: translateY(0); }
+  50%      { opacity: 1;  transform: translateY(-3px); }
+}
+@keyframes achFlash {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.92); filter: blur(8px); }
+  18%  { opacity: 1; transform: translate(-50%,-50%) scale(1);    filter: blur(0); }
+  78%  { opacity: 1; transform: translate(-50%,-50%) scale(1);    filter: blur(0); }
+  100% { opacity: 0; transform: translate(-50%,-52%) scale(1.02); filter: blur(3px); }
+}
+@keyframes inkBloom {
+  0%   { transform: translate(-50%,-50%) scale(.4); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(1.4); opacity: 0; }
+}
+
+/* ─── Scene Styles ─── */
+.app-root { width: 100vw; height: 100vh; position: relative; }
+.scene-intro {
+  position: absolute; inset: 0; z-index: 20;
+  background: #000; cursor: pointer;
+}
+.scene-opening {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: default;
+}
+.scene-select {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.scene-chat {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 60px 20px 100px;
+}
+.scene-end {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+
+/* Opening scene */
+.greeting-option {
+  display: block; margin: 12px 0; padding: 14px 32px;
+  background: transparent; border: 1px solid var(--paper-mute);
+  color: var(--paper); font-family: var(--font-serif); font-size: var(--fs-lg);
+  cursor: pointer; border-radius: 2px; transition: all .4s ease;
+  letter-spacing: 2px; opacity: 0; animation: fadeUp .8s ease forwards;
+}
+.greeting-option:hover {
+  border-color: var(--gold-light); color: var(--gold-light);
+  box-shadow: 0 0 20px rgba(200,168,120,.15);
+}
+
+/* Character select */
+.char-door {
+  width: 140px; height: 200px; margin: 0 20px;
+  border: 1px solid var(--paper-mute); border-radius: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  padding-bottom: 20px; cursor: pointer; transition: all .5s ease;
+  opacity: 0; animation: fadeUp .8s ease forwards; position: relative;
+  overflow: hidden;
+}
+.char-door::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 80%, rgba(200,168,120,.08), transparent 70%);
+  opacity: 0; transition: opacity .5s ease;
+}
+.char-door:hover::before { opacity: 1; }
+.char-door:hover { border-color: var(--gold); transform: translateY(-4px);
+  box-shadow: 0 4px 30px rgba(200,168,120,.12); }
+.char-door .name { font-size: var(--fs-xl); letter-spacing: 4px; color: var(--paper); }
+.char-door .sub  { font-size: var(--fs-xxs); color: var(--paper-dim); margin-top: 6px; letter-spacing: 2px; }
+.char-door .glow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,220,170,.9);
+  box-shadow: 0 0 12px 3px rgba(232,168,84,.6);
+  margin-bottom: 14px;
+}
+
+/* Chat */
+.chat-prose {
+  max-width: var(--prose-width, 560px); width: 100%;
+  margin: 0 auto; flex: 1; overflow-y: auto; padding: 20px 0;
+}
+.msg { margin-bottom: 20px; opacity: 0; animation: fadeUp .6s ease forwards; }
+.msg-narration { color: var(--paper-dim); font-style: italic; font-size: var(--fs-sm); }
+.msg-char { color: var(--paper); font-size: var(--fs-lg); }
+.msg-glow { color: var(--gold-light); animation: breathe 3s ease-in-out infinite; }
+.msg-user { color: var(--paper-dim); font-size: var(--fs-sm); text-align: right; }
+
+.chat-input-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 16px 20px 24px; display: flex; gap: 10px;
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+}
+.chat-input {
+  flex: 1; background: rgba(200,184,164,.06); border: 1px solid var(--paper-mute);
+  color: var(--paper); font-family: var(--font-serif); font-size: var(--fs-md);
+  padding: 10px 16px; border-radius: 2px; outline: none; resize: none;
+  transition: border-color .3s;
+}
+.chat-input:focus { border-color: var(--gold); }
+.chat-send {
+  background: rgba(200,168,120,.12); border: 1px solid var(--gold);
+  color: var(--gold-light); font-family: var(--font-serif); font-size: var(--fs-sm);
+  padding: 10px 24px; border-radius: 2px; cursor: pointer;
+  transition: all .3s; letter-spacing: 2px;
+}
+.chat-send:hover { background: rgba(200,168,120,.2); }
+
+/* End scene */
+.end-text { font-size: var(--fs-xl); letter-spacing: 4px; animation: fadeUp 1.2s ease forwards; }
+.end-sub   { font-size: var(--fs-sm); color: var(--paper-dim); margin-top: 20px; animation: fadeUp 1.2s ease .4s forwards; opacity: 0; letter-spacing: 2px; }
+.end-btn {
+  margin-top: 36px; padding: 12px 36px; background: transparent;
+  border: 1px solid var(--gold); color: var(--gold-light);
+  font-family: var(--font-serif); font-size: var(--fs-md); cursor: pointer;
+  border-radius: 2px; transition: all .3s; letter-spacing: 3px;
+  animation: fadeUp 1.2s ease .8s forwards; opacity: 0;
+}
+.end-btn:hover { background: rgba(200,168,120,.12); box-shadow: 0 0 20px rgba(200,168,120,.15); }
+
+/* Achievement overlay */
+.ach-overlay {
+  position: fixed; top: 18%; left: 50%; z-index: 50;
+  transform: translate(-50%,-50%);
+  text-align: center; pointer-events: none;
+}
+.ach-name { font-size: var(--fs-2xl); color: var(--gold-light); animation: achFlash 3s ease forwards; letter-spacing: 6px; }
+.ach-desc { font-size: var(--fs-sm); color: var(--paper-dim); animation: achFlash 3s ease .2s forwards; margin-top: 8px; letter-spacing: 2px; }
+
+/* Particles canvas */
+.particles { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+
+/* Stage background gradient */
+.stage-bg {
+  position: absolute; inset: 0; z-index: 0;
+  transition: background 3s ease;
+}
+
+/* Sigil SVG */
+.sigil-wrap {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  transition: opacity 2.2s cubic-bezier(.2,.6,.2,1), transform 2.4s cubic-bezier(.2,.6,.2,1), filter 1.6s ease;
+}
+
+/* Quick-start panel */
+.qs-panel {
+  position: fixed; bottom: 12px; right: 12px; z-index: 100;
+  background: rgba(13,13,20,.92); border: 1px solid var(--paper-mute);
+  border-radius: 4px; padding: 12px 16px; max-width: 320px;
+  backdrop-filter: blur(8px); font-family: var(--font-ui); font-size: 12px;
+  color: var(--paper-dim); line-height: 1.6;
+}
+.qs-panel h4 { color: var(--gold-light); font-size: 13px; margin-bottom: 6px; font-weight: 400; letter-spacing: 1px; }
+.qs-panel code {
+  background: rgba(200,168,120,.1); color: var(--gold-light);
+  padding: 1px 5px; border-radius: 2px; font-size: 11px;
+}
+.qs-panel .qs-close { position: absolute; top: 6px; right: 8px; cursor: pointer; color: var(--paper-mute); }
+.qs-panel a { color: var(--gold-light); text-decoration: none; }
+</style>
+</head>
+<body>
+<div id="root" class="app-root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+const { useState: useS, useEffect: useE, useRef: useR, useMemo: useM, useCallback: useCb } = React;
+
+/* ──────────────────────────────────────────────
+   Palette (from prototype/intro.jsx)
+   ────────────────────────────────────────────── */
+const PAL = {
+  ink: 'rgba(8,10,18,1)', indigo: 'rgba(78,92,168,1)', indigoSoft: 'rgba(78,92,168,.55)',
+  cyan: 'rgba(110,188,210,1)', vermilion: 'rgba(208,76,60,1)', vermilionSoft: 'rgba(208,76,60,.5)',
+  amber: 'rgba(232,168,84,1)', gold: 'rgba(220,188,130,1)', goldSoft: 'rgba(220,188,130,.6)',
+  pearl: 'rgba(245,232,208,1)', plum: 'rgba(132,70,110,1)',
+};
+
+/* ──────────────────────────────────────────────
+   ParticleField — simplified candle sparks
+   ────────────────────────────────────────────── */
+function ParticleField({ stage = 'daily', intensity = 1 }) {
+  const ref = useR(null);
+  useE(() => {
+    const cvs = ref.current; if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let raf;
+    const resize = () => { cvs.width = cvs.clientWidth * dpr; cvs.height = cvs.clientHeight * dpr; ctx.scale(dpr, dpr); };
+    resize();
+    const W = () => cvs.clientWidth, H = () => cvs.clientHeight;
+    const count = Math.round(40 * intensity);
+    const ps = Array.from({ length: count }, () => ({
+      x: Math.random() * W(), y: Math.random() * H(),
+      vx: (Math.random() - .5) * .3, vy: -(Math.random() * .6 + .15),
+      r: .4 + Math.random() * 1.4, life: Math.random(), decay: .001 + Math.random() * .003,
+      c: [220 + Math.random()*35|0, 168 + Math.random()*52|0, 100 + Math.random()*60|0],
+    }));
+    const draw = () => {
+      ctx.clearRect(0, 0, W(), H());
+      for (const p of ps) {
+        p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+        if (p.life <= 0 || p.y < -10) { p.x = Math.random() * W(); p.y = H() + 10; p.life = 1; }
+        const a = Math.max(0, p.life) * intensity;
+        ctx.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${a * .6})`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(${Math.min(255,p.c[0]+30)},${Math.min(255,p.c[1]+40)},${Math.min(255,p.c[2]+50)},${a})`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [intensity]);
+  return <canvas ref={ref} className="particles" style={{ width: '100%', height: '100%' }} />;
+}
+
+/* ──────────────────────────────────────────────
+   IntroScene — cinematic ignition
+   ────────────────────────────────────────────── */
+function IntroScene({ onDone }) {
+  const [phase, setPhase] = useS(0);
+  const inkRef = useR(null);
+  const sparksRef = useR(null);
+
+  const stars = useM(() => Array.from({ length: 60 }, () => ({
+    x: 50 + (Math.random() - .5) * 80, y: 50 + (Math.random() - .5) * 70,
+    size: .4 + Math.random() * 1.4, delay: Math.random() * 1.2,
+    hue: Math.random() < .15 ? 'v' : Math.random() < .4 ? 'c' : 'p',
+  })), []);
+
+  useE(() => {
+    const ts = [
+      setTimeout(() => setPhase(1), 120),
+      setTimeout(() => setPhase(2), 1700),
+      setTimeout(() => setPhase(3), 3300),
+      setTimeout(() => setPhase(4), 5600),
+      setTimeout(() => setPhase(5), 7400),
+      setTimeout(() => setPhase(6), 9800),
+      setTimeout(onDone, 10400),
+    ];
+    return () => ts.forEach(clearTimeout);
+  }, []);
+
+  const skip = () => { setPhase(6); setTimeout(onDone, 500); };
+
+  // Ink wash canvas
+  useE(() => {
+    if (phase < 1) return;
+    const cvs = inkRef.current; if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cvs.width = cvs.clientWidth * dpr; cvs.height = cvs.clientHeight * dpr; ctx.scale(dpr, dpr);
+    const W = cvs.clientWidth, H = cvs.clientHeight, cx = W/2, cy = H/2;
+    let t0 = performance.now(), raf;
+    const draw = (now) => {
+      const t = (now - t0) / 1000;
+      ctx.clearRect(0, 0, W, H);
+      const layers = [
+        { r: 220 + Math.sin(t*.7)*30, alpha: .10, color: '78,92,168' },
+        { r: 360 + Math.cos(t*.5)*40, alpha: .06, color: '132,70,110' },
+        { r: 480 + Math.sin(t*.4+1)*50, alpha: .04, color: '208,76,60' },
+      ];
+      for (const L of layers) {
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, L.r);
+        g.addColorStop(0, `rgba(${L.color},${L.alpha})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
+  // Sparks canvas (ignition)
+  useE(() => {
+    if (phase !== 4) return;
+    const cvs = sparksRef.current; if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cvs.width = cvs.clientWidth * dpr; cvs.height = cvs.clientHeight * dpr; ctx.scale(dpr, dpr);
+    const W = cvs.clientWidth, H = cvs.clientHeight, cx = W/2, cy = H/2;
+    const colors = [[255,220,160],[232,168,84],[208,110,80],[245,232,208],[180,200,230]];
+    const sparks = Array.from({ length: 120 }, () => {
+      const angle = Math.random() * Math.PI * 2, speed = 1.2 + Math.random() * 5;
+      return { x: cx, y: cy, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed-.5,
+        life: 1, decay: .006+Math.random()*.012, r: .6+Math.random()*1.8,
+        c: colors[Math.random()*colors.length|0] };
+    });
+    let raf;
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H); let alive = 0;
+      for (const s of sparks) { if (s.life <= 0) continue; alive++;
+        s.x += s.vx; s.y += s.vy; s.vy += .035; s.vx *= .992; s.life -= s.decay;
+        const a = Math.max(0, s.life), hr = s.r * 6;
+        const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, hr);
+        g.addColorStop(0, `rgba(${s.c[0]},${s.c[1]},${s.c[2]},${a*.85})`);
+        g.addColorStop(.4, `rgba(${s.c[0]},${s.c[1]},${s.c[2]},${a*.3})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x, s.y, hr, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = `rgba(${Math.min(255,s.c[0]+30)},${Math.min(255,s.c[1]+40)},${Math.min(255,s.c[2]+50)},${a})`;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+      }
+      if (alive > 0) raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
+  const sigilOpacity = phase >= 3 ? (phase >= 5 ? 0 : 1) : 0;
+  const sigilScale = phase >= 3 ? 1 : .55;
+  const sigilBlur = phase >= 5 ? 'blur(10px)' : 'blur(0)';
+
+  return (
+    <div className="scene-intro" onClick={skip} style={{ opacity: phase === 6 ? 0 : 1, transition: 'opacity .6s ease', overflow: 'hidden' }}>
+      {/* base radial wash */}
+      <div style={{ position: 'absolute', inset: 0,
+        background: phase >= 4 ? 'radial-gradient(ellipse at 50% 50%, rgba(48,28,18,.85), rgba(8,4,12,1) 70%)'
+                 : phase >= 3 ? 'radial-gradient(ellipse at 50% 50%, rgba(20,16,32,.7), rgba(4,4,10,1) 75%)'
+                 : phase >= 2 ? 'radial-gradient(ellipse at 50% 50%, rgba(14,12,22,.6), rgba(2,2,6,1) 80%)'
+                 : 'radial-gradient(ellipse at 50% 50%, rgba(8,6,12,.4), rgba(0,0,0,1) 85%)',
+        transition: 'background 1.8s ease' }} />
+
+      {/* ink wash */}
+      <canvas ref={inkRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
+        opacity: phase >= 1 && phase < 6 ? 1 : 0, transition: 'opacity 1.2s ease', pointerEvents: 'none', mixBlendMode: 'screen' }} />
+
+      {/* star map */}
+      <div style={{ position: 'absolute', inset: 0, opacity: phase >= 2 && phase < 5 ? 1 : (phase >= 5 ? .3 : 0), transition: 'opacity 1.4s ease', pointerEvents: 'none' }}>
+        {stars.map((s, i) => {
+          const color = s.hue === 'v' ? 'rgba(232,168,84,.9)' : s.hue === 'c' ? 'rgba(180,220,240,.85)' : 'rgba(245,232,208,.85)';
+          return <div key={i} style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`,
+            width: s.size*2, height: s.size*2, borderRadius: '50%', background: color,
+            boxShadow: `0 0 ${s.size*6}px ${s.size*1.5}px ${color}`,
+            animation: `starTwinkle ${2.4+Math.random()*2}s ease-in-out ${s.delay}s infinite` }} />;
+        })}
+      </div>
+
+      {/* ember */}
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+        width: 16, height: 16, borderRadius: 8, background: 'rgba(255,220,170,.95)',
+        boxShadow: '0 0 30px 8px rgba(232,168,84,.7), 0 0 80px 22px rgba(208,76,60,.35), 0 0 160px 50px rgba(78,92,168,.18)',
+        opacity: phase === 1 ? 1 : phase === 2 ? .5 : phase === 3 ? .2 : 0,
+        animation: phase === 1 ? 'emberBeat 1.5s ease-in-out' : 'none', transition: 'opacity 1.5s ease', pointerEvents: 'none' }} />
+
+      {/* ripples */}
+      {phase >= 2 && phase < 5 && [
+        { d: 0, c: 'rgba(220,188,130,.55)' }, { d: .7, c: 'rgba(110,188,210,.4)' },
+        { d: 1.4, c: 'rgba(208,76,60,.35)' }, { d: 2.1, c: 'rgba(245,232,208,.3)' },
+      ].map((r, i) => (
+        <div key={i} style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+          width: 60, height: 60, borderRadius: '50%', border: `.6px solid ${r.c}`,
+          animation: `ripple 3.6s ${r.d}s ease-out infinite`, pointerEvents: 'none' }} />
+      ))}
+
+      {/* sigil */}
+      <div className="sigil-wrap" style={{ opacity: sigilOpacity, transform: `translate(-50%,-50%) scale(${sigilScale})`, filter: sigilBlur }}>
+        <svg width="640" height="640" viewBox="0 0 640 640" style={{ pointerEvents: 'none' }}>
+          <defs>
+            <linearGradient id="ringGold" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(245,232,208,.9)" /><stop offset="100%" stopColor="rgba(160,110,70,.7)" />
+            </linearGradient>
+            <linearGradient id="ringIndigo" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(110,188,210,.8)" /><stop offset="100%" stopColor="rgba(78,92,168,.7)" />
+            </linearGradient>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <circle cx="320" cy="320" r="300" fill="url(#halo1)" />
+          <g style={{ transformOrigin: '320px 320px', animation: 'sigilSpinCW 28s linear infinite' }}>
+            <circle cx="320" cy="320" r="270" fill="none" stroke="url(#ringGold)" strokeWidth=".6" opacity=".7" />
+            {Array.from({ length: 36 }).map((_, i) => {
+              const a = (i/36)*Math.PI*2, long = i%3===0, r1=270, r2=long?245:256;
+              return <line key={i} x1={320+Math.cos(a)*r1} y1={320+Math.sin(a)*r1} x2={320+Math.cos(a)*r2} y2={320+Math.sin(a)*r2}
+                stroke={long?"rgba(245,232,208,.85)":"rgba(220,188,130,.55)"} strokeWidth={long?.8:.5} />;
+            })}
+          </g>
+          <g style={{ transformOrigin: '320px 320px', animation: 'sigilSpinCCW 22s linear infinite' }}>
+            <circle cx="320" cy="320" r="200" fill="none" stroke="url(#ringIndigo)" strokeWidth=".5" opacity=".65" />
+            {Array.from({ length: 8 }).map((_, i) => {
+              const a = (i/8)*Math.PI*2-Math.PI/2, x=320+Math.cos(a)*200, y=320+Math.sin(a)*200;
+              return <g key={i} transform={`translate(${x},${y}) rotate(${a*180/Math.PI+90})`}>
+                <polygon points="0,-4 3.5,3 -3.5,3" fill="rgba(180,220,240,.85)" /></g>;
+            })}
+          </g>
+          <g style={{ transformOrigin: '320px 320px', animation: 'sigilSpinCW 18s linear infinite' }}>
+            <circle cx="320" cy="320" r="140" fill="none" stroke="rgba(232,168,84,.7)" strokeWidth=".5" opacity=".7" />
+            <polygon points={Array.from({length:7}).map((_,i)=>{const a=(i*3/7)*Math.PI*2-Math.PI/2;return`${320+Math.cos(a)*130},${320+Math.sin(a)*130}`}).join(' ')}
+              fill="none" stroke="rgba(232,168,84,.7)" strokeWidth=".6" filter="url(#glow)" />
+            {Array.from({ length: 7 }).map((_, i) => {
+              const a = (i/7)*Math.PI*2-Math.PI/2, x=320+Math.cos(a)*130, y=320+Math.sin(a)*130;
+              return <g key={i}><circle cx={x} cy={y} r="3" fill="rgba(255,220,160,.95)" filter="url(#glow)" /></g>;
+            })}
+          </g>
+          <g style={{ opacity: phase >= 4 ? 0 : 1, transition: 'opacity .8s ease' }}>
+            <circle cx="320" cy="320" r="68" fill="none" stroke="rgba(220,188,130,.4)" strokeWidth=".6" />
+            <rect x="290" y="290" width="60" height="60" fill="none" stroke="rgba(208,76,60,.6)" strokeWidth=".5"
+              style={{ transformOrigin: '320px 320px', animation: 'sealPulse 4s ease-in-out infinite' }} />
+            <circle cx="320" cy="320" r="3.5" fill="rgba(255,220,160,.95)" filter="url(#glow)" />
+          </g>
+        </svg>
+      </div>
+
+      {/* sparks */}
+      <canvas ref={sparksRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: phase >= 4 ? 1 : 0, transition: 'opacity .4s ease' }} />
+
+      {/* petal bursts */}
+      {phase >= 4 && phase < 5 && Array.from({ length: 12 }).map((_, i) => {
+        const angle = (i/12)*360, colors = ['rgba(220,188,130,.7)','rgba(232,168,84,.65)','rgba(208,76,60,.5)','rgba(110,188,210,.45)'];
+        return <div key={i} style={{ position: 'absolute', left: '50%', top: '50%', transform: `rotate(${angle}deg)`, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', width: 4, height: 180, left: -2, top: -180,
+            background: `linear-gradient(to top, transparent, ${colors[i%4]} 60%, transparent)`,
+            animation: 'petalBurst 1.6s cubic-bezier(.2,.7,.3,1) forwards', animationDelay: `${i*.04}s`, opacity: 0, transformOrigin: '50% 100%' }} />
+        </div>;
+      })}
+
+      {/* candle flame */}
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
+        opacity: phase >= 4 && phase < 6 ? 1 : 0, transition: 'opacity 1.2s ease', pointerEvents: 'none' }}>
+        <div style={{ width: 10, height: 10, borderRadius: 5, background: 'rgba(255,240,200,1)',
+          boxShadow: '0 0 22px 5px rgba(255,200,130,.9), 0 0 70px 22px rgba(232,130,70,.55), 0 0 160px 60px rgba(132,70,110,.35), 0 0 280px 100px rgba(78,92,168,.18)',
+          animation: 'flameFlicker 2.4s ease-in-out infinite' }} />
+      </div>
+
+      {/* TITLE */}
+      <div style={{ position: 'absolute', left: '50%', top: '50%',
+        transform: phase >= 5 ? 'translate(-50%,-50%) translateY(0)' : 'translate(-50%,-50%) translateY(24px)',
+        opacity: phase >= 5 ? 1 : 0, filter: phase >= 5 ? 'blur(0)' : 'blur(10px)',
+        transition: 'opacity 2s ease, transform 2.2s cubic-bezier(.2,.6,.2,1), filter 2s ease', textAlign: 'center', pointerEvents: 'none' }}>
+        <svg width="380" height="160" viewBox="0 0 380 160" style={{ display: 'block', margin: '0 auto', overflow: 'visible' }}>
+          <defs>
+            <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(245,232,208,1)" /><stop offset="40%" stopColor="rgba(232,168,84,1)" />
+              <stop offset="80%" stopColor="rgba(208,76,60,1)" /><stop offset="100%" stopColor="rgba(132,70,110,1)" />
+            </linearGradient>
+            <filter id="titleGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <text x="190" y="100" textAnchor="middle" fill="url(#titleGrad)" fontFamily="Noto Serif SC, Georgia, serif"
+            fontSize="84" fontWeight="500" letterSpacing="20"
+            style={{ filter: 'url(#titleGlow)', animation: phase >= 5 ? 'titleBreathe 4s ease-in-out infinite 1.5s' : 'none' }}>
+            夜阑</text>
+          <line x1="80" y1="128" x2="300" y2="128" stroke="url(#titleGrad)" strokeWidth=".8"
+            style={{ strokeDasharray: 220, strokeDashoffset: phase >= 5 ? 0 : 220, transition: 'stroke-dashoffset 2s ease .8s', opacity: .7 }} />
+        </svg>
+        <div style={{ marginTop: -8, fontSize: 'var(--fs-xxs)', letterSpacing: 12, color: 'rgba(180,200,230,.65)',
+          fontFamily: 'Inter, sans-serif', opacity: phase >= 5 ? 1 : 0, transition: 'opacity 1.6s ease 1s', paddingLeft: 12 }}>
+          Y　E　L　A　N</div>
+        <div style={{ marginTop: 22, fontSize: 'calc(10px * var(--type-scale))', letterSpacing: 6, color: 'rgba(220,188,130,.45)',
+          fontFamily: 'Noto Serif SC, serif', opacity: phase >= 5 ? 1 : 0, transition: 'opacity 1.6s ease 1.6s', fontStyle: 'italic' }}>
+          ·　夜　未　央　·</div>
+      </div>
+
+      {/* skip hint */}
+      <div style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)',
+        fontSize: 'var(--fs-xxs)', letterSpacing: 4, color: 'rgba(140,126,110,.45)',
+        opacity: phase >= 2 && phase < 6 ? 1 : 0, transition: 'opacity 2s ease', pointerEvents: 'none' }}>
+        点击跳过</div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   OpeningScene — greeting selection
+   ────────────────────────────────────────────── */
+function OpeningScene({ onEnter }) {
+  const greetings = [
+    { text: '今夜月色很好', mood: '月下独酌' },
+    { text: '我有些话想说', mood: '心事如潮' },
+    { text: '只是路过', mood: '漫不经心' },
+  ];
+  return (
+    <div className="scene-opening">
+      <div style={{ fontSize: 'var(--fs-xl)', marginBottom: 40, letterSpacing: 6, animation: 'fadeUp 1s ease forwards', opacity: 0 }}>
+        今夜，你想以何种心境入梦？
+      </div>
+      {greetings.map((g, i) => (
+        <button key={i} className="greeting-option" style={{ animationDelay: `${.3 + i * .2}s` }}
+          onClick={() => onEnter(g.mood)}>
+          {g.text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   CharacterSelect — door metaphor
+   ────────────────────────────────────────────── */
+function CharacterSelect({ onPick }) {
+  const chars = [
+    { id: 'shen-yan-zhi', name: '沈言之', sub: '执笔之人' },
+    { id: 'jiang-bai', name: '江白', sub: '观潮之人' },
+  ];
+  return (
+    <div className="scene-select">
+      <div style={{ fontSize: 'var(--fs-lg)', marginBottom: 40, letterSpacing: 4, animation: 'fadeUp .8s ease forwards', opacity: 0, color: 'var(--paper-dim)' }}>
+        推开一扇门
+      </div>
+      <div style={{ display: 'flex', gap: 0 }}>
+        {chars.map((c, i) => (
+          <div key={c.id} className="char-door" style={{ animationDelay: `${.3 + i * .25}s` }}
+            onClick={() => onPick(c)}>
+            <div className="glow-dot" />
+            <div className="name">{c.name}</div>
+            <div className="sub">{c.sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Conversation — mock dialogue flow
+   ────────────────────────────────────────────── */
+const MOCK_SCRIPT = [
+  { role: 'narration', text: '烛火微微摇曳，空气中弥漫着旧书的味道。' },
+  { role: 'char', text: '你来了。', glow: false },
+  { role: 'narration', text: '沉默了一瞬，对方似乎在等你开口。' },
+  { role: 'char', text: '今夜的风，比昨日更冷了些。', glow: true },
+  { role: 'narration', text: '窗外的月光洒在案上，纸页翻动。' },
+  { role: 'char', text: '有些故事，只在夜里才会醒来。', glow: true },
+];
+
+function Conversation({ character, onCutoff }) {
+  const [msgs, setMsgs] = useS([]);
+  const [typing, setTyping] = useS(false);
+  const [inputVal, setInputVal] = useS('');
+  const proseRef = useR(null);
+  const scriptIdx = useR(0);
+
+  const addScriptLine = useCb(() => {
+    if (scriptIdx.current >= MOCK_SCRIPT.length) { setTyping(false); return; }
+    const line = MOCK_SCRIPT[scriptIdx.current];
+    setTyping(true);
+    setTimeout(() => {
+      setMsgs(prev => [...prev, line]);
+      setTyping(false);
+      scriptIdx.current++;
+    }, 800 + Math.random() * 1200);
+  }, []);
+
+  useE(() => { const t = setTimeout(addScriptLine, 600); return () => clearTimeout(t); }, []);
+
+  useE(() => {
+    if (proseRef.current) proseRef.current.scrollTop = proseRef.current.scrollHeight;
+  }, [msgs, typing]);
+
+  const handleSend = () => {
+    if (!inputVal.trim()) return;
+    setMsgs(prev => [...prev, { role: 'user', text: inputVal }]);
+    setInputVal('');
+    if (scriptIdx.current < MOCK_SCRIPT.length) setTimeout(addScriptLine, 400);
+    else setTimeout(onCutoff, 1500);
+  };
+
+  return (
+    <div className="scene-chat">
+      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--paper-mute)', marginBottom: 10, letterSpacing: 2 }}>
+        {character?.name ?? '未知'}
+      </div>
+      <div className="chat-prose" ref={proseRef}>
+        {msgs.map((m, i) => (
+          <div key={i} className={`msg msg-${m.role}${m.glow ? ' msg-glow' : ''}`} style={{ animationDelay: '0s' }}>
+            {m.text}
+          </div>
+        ))}
+        {typing && <div style={{ color: 'var(--paper-dim)', fontSize: 'var(--fs-sm)', letterSpacing: 2 }}>
+          <span style={{ animation: 'typingDot 1s ease-in-out infinite', display: 'inline-block' }}>·</span>
+          <span style={{ animation: 'typingDot 1s ease-in-out .2s infinite', display: 'inline-block' }}>·</span>
+          <span style={{ animation: 'typingDot 1s ease-in-out .4s infinite', display: 'inline-block' }}>·</span>
+        </div>}
+      </div>
+      <div className="chat-input-bar">
+        <input className="chat-input" value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          placeholder="说些什么…" />
+        <button className="chat-send" onClick={handleSend}>发送</button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   NarrativeCutoff — natural ending
+   ────────────────────────────────────────────── */
+function NarrativeCutoff({ onRestart }) {
+  return (
+    <div className="scene-end">
+      <div className="end-text">夜已深</div>
+      <div className="end-sub">故事会在下一夜继续。</div>
+      <button className="end-btn" onClick={onRestart}>再点一盏灯</button>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   AchievementFlash
+   ────────────────────────────────────────────── */
+function AchievementFlash({ ach, onDone }) {
+  useE(() => { if (ach) { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); } }, [ach]);
+  if (!ach) return null;
+  return (
+    <div className="ach-overlay">
+      <div className="ach-name">{ach.name}</div>
+      <div className="ach-desc">{ach.desc}</div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   QuickStartPanel — dev guide
+   ────────────────────────────────────────────── */
+function QuickStartPanel() {
+  const [show, setShow] = useS(true);
+  if (!show) return null;
+  return (
+    <div className="qs-panel">
+      <span className="qs-close" onClick={() => setShow(false)}>✕</span>
+      <h4>快速启动指南</h4>
+      <div style={{ marginBottom: 6 }}>1. 安装依赖：<code>pnpm install</code></div>
+      <div style={{ marginBottom: 6 }}>2. 启动开发：<code>pnpm dev</code></div>
+      <div style={{ marginBottom: 6 }}>3. 单独前端：<code>pnpm dev:web</code></div>
+      <div style={{ marginBottom: 6 }}>4. 单独模拟后端：<code>pnpm dev:mock</code></div>
+      <div style={{ borderTop: '1px solid var(--paper-mute)', paddingTop: 6, marginTop: 6 }}>
+        完整原型：<a href="prototype/夜阑.html">prototype/夜阑.html</a><br/>
+        结构文档：<a href="docs/structure.md">structure.md</a>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   App — scene orchestration
+   ────────────────────────────────────────────── */
+function App() {
+  const [scene, setScene] = useS('intro');
+  const [character, setCharacter] = useS(null);
+  const [achievement, setAchievement] = useS(null);
+  const [stage, setStage] = useS('daily');
+
+  const stageBg = stage === 'climax'
+    ? 'radial-gradient(ellipse at 50% 60%, #1a1410 0%, #0a0a0f 60%)'
+    : stage === 'rise'
+    ? 'radial-gradient(ellipse at 50% 55%, #14110d 0%, #0a0a0f 65%)'
+    : stage === 'after'
+    ? 'radial-gradient(ellipse at 50% 50%, #0e0d10 0%, #0a0a0f 70%)'
+    : 'radial-gradient(ellipse at 50% 50%, #0d0c10 0%, #0a0a0f 80%)';
+
+  const goChat = (c) => { setCharacter(c); setScene('chat'); setStage('rise'); };
+  const restart = () => { setScene('intro'); setCharacter(null); setStage('daily'); };
+
+  return (
+    <div className="app-root">
+      <div className="stage-bg" style={{ background: stageBg }} />
+      <ParticleField stage={stage} intensity={1} />
+
+      {scene === 'intro' && <IntroScene onDone={() => setScene('opening')} />}
+      {scene === 'opening' && <OpeningScene onEnter={() => setScene('select')} />}
+      {scene === 'select' && <CharacterSelect onPick={goChat} />}
+      {scene === 'chat' && <Conversation character={character} onCutoff={() => { setScene('end'); setStage('after'); }} />}
+      {scene === 'end' && <NarrativeCutoff onRestart={restart} />}
+
+      <AchievementFlash ach={achievement} onDone={() => setAchievement(null)} />
+      <QuickStartPanel />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<!--
+  夜阑 · 运营后台可视化控制台
+  LEGACY FROZEN: this file is kept only for local DevOps fallback.
+  Do not add new panels or product behavior here. New admin work belongs in
+  apps/admin/src and apps/api/src/routes/admin.
+  ────────────────────────────────────────────────
+  单文件 HTML（含 CSS + 原生 JS，零构建）。
+  访问入口：http://localhost:8787/admin（apps/api 静态服务）
+  或直接 file:// 打开本文件 — 由于 apps/api CORS 全开，本地都能跑通。
+
+  代码组织（搜对应章节锚点 § 编号）：
+   §1  设计 token + 全局样式
+   §2  顶部条 + 侧栏 + 主区骨架
+   §3  辅助：API / 状态 / Toast / 表单元素 / 表格
+   §4  视图（views）— 每个 hash 一个函数：
+       #overview / #config / #llm / #users / #candle / #quota
+       #surveys / #prompts / #costs / #if-codes / #characters
+       #audit / #policy / #pay-test / #sessions / #db-tools
+   §5  路由 + 初始化
+
+  扩展指南：
+   - 加一个新面板：在 §4 加一个 views.xxx 函数 + 在 §2 侧栏 NAV 数组加一项即可。
+   - 加一个新 admin API：在 §3 api() 上层加一行 export 即可，所有调用自动带 ADMIN_TOKEN。
+   - 修改主题：改 §1 的 CSS 变量。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>夜阑 · 运营后台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+/* ─── §1  设计 token + 全局样式 ────────────────────────────────────────────── */
+:root {
+  --bg: #0a0a0f;
+  --bg-2: #14141c;
+  --bg-3: #1c1c26;
+  --paper: #c8b8a4;
+  --paper-dim: #8a7e6e;
+  --paper-mute: #5a5248;
+  --gold: #a08060;
+  --gold-light: #c8a878;
+  --gold-glow: rgba(200, 168, 120, 0.45);
+  --danger: #c87878;
+  --ok: #88b888;
+  --warn: #d4a45a;
+  --border: rgba(200, 168, 120, 0.2);
+  --border-strong: rgba(200, 168, 120, 0.4);
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--paper-mute); }
+
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; color: var(--gold-light); }
+h1 { font-size: 18px; }
+h2 { font-size: 16px; margin-bottom: 16px; }
+h3 { font-size: 14px; margin-bottom: 10px; }
+a { color: var(--gold-light); text-decoration: none; }
+a:hover { color: var(--gold); }
+
+/* ─── §2 layout 骨架 ─────────────────────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+}
+.topbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.topbar .brand {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--gold-light);
+  letter-spacing: 0.05em;
+}
+.topbar .brand small {
+  font-family: var(--font-ui);
+  color: var(--paper-mute);
+  font-size: 11px;
+  margin-left: 8px;
+  letter-spacing: 0;
+}
+.topbar .spacer { flex: 1; }
+.topbar .conn { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.topbar #mode-pill { cursor: pointer; user-select: none; }
+.topbar #mode-pill:hover { filter: brightness(1.2); }
+.topbar .conn .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--paper-mute);
+}
+.topbar .conn.ok .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.topbar .conn.err .dot { background: var(--danger); }
+.topbar input.token-input {
+  width: 220px;
+  background: var(--bg);
+  color: var(--paper);
+  border: 1px solid var(--border);
+  padding: 6px 10px; border-radius: 4px;
+  font-family: var(--font-mono); font-size: 12px;
+}
+.topbar input.token-input:focus { outline: none; border-color: var(--gold); }
+.topbar button.token-save {
+  background: var(--gold); color: var(--bg);
+  border: none; padding: 6px 14px; border-radius: 4px;
+  font-family: var(--font-ui); font-size: 12px; cursor: pointer;
+}
+.topbar button.token-save:hover { background: var(--gold-light); }
+
+.sidebar {
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  overflow-y: auto;
+}
+.sidebar .nav-group { margin-bottom: 20px; }
+.sidebar .nav-group .label {
+  font-size: 10px;
+  color: var(--paper-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0 24px 8px;
+}
+.sidebar a.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 24px;
+  color: var(--paper-dim);
+  border-left: 2px solid transparent;
+  font-size: 13px;
+}
+.sidebar a.nav-link:hover { background: var(--bg-3); color: var(--paper); }
+.sidebar a.nav-link.active {
+  color: var(--gold-light);
+  border-left-color: var(--gold);
+  background: var(--bg-3);
+}
+.sidebar .icon { font-family: var(--font-mono); width: 18px; text-align: center; opacity: 0.6; }
+
+.main {
+  overflow-y: auto;
+  padding: 24px 32px 64px;
+}
+.main .page-title {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 24px;
+}
+.main .page-title h1 {
+  font-size: 22px;
+  color: var(--gold-light);
+}
+.main .page-title .subtitle {
+  color: var(--paper-mute);
+  font-size: 12px;
+}
+
+/* ─── §2.1 通用控件 ──────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.card h2 { margin-bottom: 12px; }
+.card .card-hint { font-size: 11px; color: var(--paper-mute); margin-bottom: 12px; }
+.grid { display: grid; gap: 16px; }
+.grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1100px) {
+  .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr 1fr; }
+}
+
+button.btn, input.btn[type="submit"] {
+  background: transparent; color: var(--gold-light);
+  border: 1px solid var(--gold);
+  padding: 7px 14px; border-radius: 4px;
+  font-family: var(--font-ui); font-size: 13px; cursor: pointer;
+  transition: all .12s;
+}
+button.btn:hover { background: var(--gold); color: var(--bg); }
+button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+button.btn.primary { background: var(--gold); color: var(--bg); }
+button.btn.primary:hover { background: var(--gold-light); }
+button.btn.danger { border-color: var(--danger); color: var(--danger); }
+button.btn.danger:hover { background: var(--danger); color: var(--bg); }
+button.btn.small { padding: 4px 10px; font-size: 11px; }
+
+input, textarea, select {
+  background: var(--bg); color: var(--paper);
+  border: 1px solid var(--border);
+  padding: 7px 10px; border-radius: 4px;
+  font-family: var(--font-ui); font-size: 13px;
+  width: 100%;
+}
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--gold); }
+input[type="number"] { font-family: var(--font-mono); }
+textarea { font-family: var(--font-mono); min-height: 80px; resize: vertical; }
+.field { margin-bottom: 12px; }
+.field label {
+  display: block; font-size: 11px; color: var(--paper-mute);
+  margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px;
+}
+table th, table td {
+  text-align: left; padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+table th {
+  color: var(--paper-mute); font-weight: 400;
+  font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(0,0,0,0.15);
+}
+table td.mono { font-family: var(--font-mono); font-size: 11px; color: var(--paper-dim); }
+table tr:hover td { background: rgba(200,168,120,0.04); }
+
+.pill {
+  display: inline-block; padding: 2px 10px;
+  border-radius: 999px; font-size: 11px; font-family: var(--font-mono);
+  background: var(--bg-3); color: var(--paper-dim);
+}
+.pill.ok    { background: rgba(136,184,136,.14); color: var(--ok); }
+.pill.warn  { background: rgba(212,164,90,.14); color: var(--warn); }
+.pill.err   { background: rgba(200,120,120,.14); color: var(--danger); }
+.pill.muted { background: var(--bg-3); color: var(--paper-mute); }
+
+.metric { padding: 16px; background: var(--bg-3); border-radius: 4px; border: 1px solid var(--border); }
+.metric .label { font-size: 11px; color: var(--paper-mute); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+.metric .value { font-family: var(--font-serif); font-size: 28px; color: var(--gold-light); }
+.metric .sub { font-size: 11px; color: var(--paper-mute); margin-top: 4px; }
+
+pre.json {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 12px; border-radius: 4px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--paper-dim); overflow: auto;
+  max-height: 300px;
+}
+
+/* ─── §2.2 toast 全局浮层 ─────────────────────────────────────────────────── */
+#toast-root {
+  position: fixed; right: 24px; bottom: 24px; z-index: 1000;
+  display: flex; flex-direction: column-reverse; gap: 8px;
+}
+.toast {
+  background: var(--bg-3); border: 1px solid var(--border-strong);
+  padding: 10px 16px; border-radius: 4px;
+  font-size: 12px; color: var(--paper);
+  min-width: 240px;
+  animation: slideIn .2s ease-out;
+}
+.toast.ok    { border-color: var(--ok);    color: var(--ok); }
+.toast.err   { border-color: var(--danger); color: var(--danger); }
+.toast.warn  { border-color: var(--warn);  color: var(--warn); }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── §2.3 弹窗 ─────────────────────────────────────────────────────────── */
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 900;
+}
+.modal {
+  background: var(--bg-2); border: 1px solid var(--border-strong);
+  border-radius: 6px; padding: 24px;
+  min-width: 480px; max-width: 720px; max-height: 80vh; overflow-y: auto;
+}
+.modal h2 { margin-bottom: 16px; }
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 16px;
+}
+
+/* ─── §2.4 杂项 ─────────────────────────────────────────────────────────── */
+.muted { color: var(--paper-mute); }
+.row-flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row-flex > * { flex-shrink: 0; }
+hr.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+</style>
+</head>
+
+<body>
+<div class="app">
+  <!-- ─── §2  顶部条 ─────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">夜阑 <small>· 运营后台 v0.2</small></div>
+
+    <!-- 部署模式徽章 + API 端点切换（流程：点徽章 → 弹窗改 base → 自动 ping） -->
+    <span class="pill" id="mode-pill" title="点击切换 API 端点（本机/服务器）">未知</span>
+
+    <div class="spacer"></div>
+    <div class="conn" id="conn">
+      <span class="dot"></span>
+      <span id="conn-label">未连接</span>
+    </div>
+    <input
+      id="token-input"
+      class="token-input"
+      placeholder="ADMIN_TOKEN（默认 admin-dev-token）"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button class="token-save" id="token-save">保存并测试</button>
+  </header>
+
+  <!-- ─── §2  侧栏导航 ──────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <!-- 由 JS 渲染 NAV 数组 -->
+  </aside>
+
+  <!-- ─── §2  主内容区（视图渲染目标） ──────────────────────────────────────── -->
+  <main class="main" id="main">
+    <div class="muted" style="text-align:center;padding:80px 0;">加载中…</div>
+  </main>
+</div>
+
+<!-- toast / modal 渲染目标 -->
+<div id="toast-root"></div>
+<div id="modal-root"></div>
+
+<!-- ─── §3 / §4 / §5  逻辑层 ─────────────────────────────────────────────── -->
+<script type="module">
+'use strict';
+
+// ─── §3.1  全局状态 ─────────────────────────────────────────────────────
+// 单一全局对象 — 没有响应式框架，view 每次切换重渲染
+//
+// apiBase 决定逻辑：
+//   1. 同源（本页就是 apps/api 服务的）→ 直接用 location.origin（无 CORS、零问题）
+//   2. file:// 或其它协议 → fallback 到 localStorage 或 http://localhost:8787
+// 同源访问是首选 — 避免浏览器 Private Network Access 拦截 https → http://localhost。
+const isSameOriginMock = /:(\d+)$/.test(location.host) && location.host.endsWith(':8787');
+const state = {
+  apiBase: isSameOriginMock
+    ? location.origin
+    : (localStorage.getItem('yelan.apiBase') || 'http://localhost:8787'),
+  token: localStorage.getItem('yelan.adminToken') || '',
+  health: null,
+  lastFetch: 0,
+  // 标记：本页面是从 apps/api 直接拉的吗？不是的话首屏要给"建议同源访问"提示
+  servedByMock: isSameOriginMock,
+};
+
+// ─── §3.2  Hash 路由配置 ─────────────────────────────────────────────────
+// 改这个数组就能加面板；views[name] 必须存在同名函数
+const NAV = [
+  { group: '入门',
+    items: [
+      { name: 'setup',     icon: '✓', label: '一键向导' },
+    ],
+  },
+  { group: '查看',
+    items: [
+      { name: 'overview',  icon: '◎', label: '概览' },
+      { name: 'audit',     icon: '◇', label: '审计日志' },
+      { name: 'costs',     icon: '$', label: '成本看板' },
+    ],
+  },
+  { group: '配置',
+    items: [
+      { name: 'config',   icon: '⚙', label: '服务配置' },
+      { name: 'llm',      icon: '✦', label: 'LLM 配置' },
+      { name: 'prompts',  icon: '✎', label: 'Prompt 灰度' },
+      { name: 'policy',   icon: '▣', label: '用量规则' },
+      { name: 'sidecar-prompts', icon: '◈', label: '侧袋 AI' },
+    ],
+  },
+  { group: '运营',
+    items: [
+      { name: 'users',    icon: '◉', label: '用户' },
+      { name: 'candle',   icon: '🔥', label: '烛账' },
+      { name: 'quota',    icon: '◷', label: '配额' },
+      { name: 'surveys',  icon: '?', label: '问卷' },
+      { name: 'if-codes', icon: '※', label: 'IF 暗号' },
+      { name: 'characters', icon: '☾', label: '角色卡' },
+      { name: 'sessions', icon: '⌬', label: '会话' },
+    ],
+  },
+  { group: '工具',
+    items: [
+      { name: 'pay-test', icon: '¤', label: '支付测试' },
+      { name: 'db-tools', icon: '⛁', label: '数据库 GUI' },
+    ],
+  },
+];
+
+// ─── §3.3  最小 DOM helpers ──────────────────────────────────────────────
+// 用 template literal 拼 HTML；避免引 React/lit。所有 view 输出 string，由 mount() 注入。
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const escapeHtml = (s) =>
+  String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+
+// ─── §3.4  API 客户端 ────────────────────────────────────────────────────
+// 所有 admin 请求都自动带 Authorization Bearer ${state.token}
+//
+// 错误体系（throw 出 Error，message 形如）：
+//   "NETWORK"       → fetch 抛 TypeError（服务没起 / 跨源被拦 / 网络断）
+//   "401 ..."       → token 错或缺失
+//   "403 ..."       → token 对但权限不足
+//   "5xx ..."       → 服务端崩
+async function api(method, path, body) {
+  const url = state.apiBase + path;
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${state.token}`,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    // TypeError: Failed to fetch — 这里抛上去，由调用方决定怎么提示
+    const err = new Error('NETWORK');
+    err.cause = e;
+    err.url = url;
+    throw err;
+  }
+  if (!res.ok) {
+    let detail = '';
+    try { detail = JSON.stringify(await res.json()); } catch { detail = res.statusText; }
+    throw new Error(`${res.status} ${detail}`);
+  }
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return res.json();
+  return res.text();
+}
+
+// 公共健康检查（不需要 token）— 用来分辨"服务没起"还是"token 错"
+async function probePublicHealth() {
+  try {
+    const res = await fetch(state.apiBase + '/health', { method: 'GET' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// shortcut wrappers
+const adminGet  = (path)        => api('GET',    '/api/admin' + path);
+const adminPost = (path, body)  => api('POST',   '/api/admin' + path, body);
+const adminPatch= (path, body)  => api('PATCH',  '/api/admin' + path, body);
+const adminDel  = (path)        => api('DELETE', '/api/admin' + path);
+
+// ─── §3.5  Toast / 弹窗 ──────────────────────────────────────────────────
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  $('#toast-root').appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity .3s';
+    setTimeout(() => el.remove(), 300);
+  }, kind === 'err' ? 4500 : 2500);
+}
+
+function modal(htmlStr, opts = {}) {
+  return new Promise((resolve) => {
+    const root = $('#modal-root');
+    root.innerHTML = `
+      <div class="modal-mask" data-mask>
+        <div class="modal">${htmlStr}</div>
+      </div>`;
+    function close(value) { root.innerHTML = ''; resolve(value); }
+    root.addEventListener('click', (e) => {
+      if (e.target.dataset.mask !== undefined && opts.dismissOnMask !== false) close(null);
+      if (e.target.dataset.modalAction === 'cancel') close(null);
+      if (e.target.dataset.modalAction === 'ok') close(true);
+    });
+    if (opts.onMount) opts.onMount(root, close);
+  });
+}
+
+async function prompt(message, defaultValue = '') {
+  return modal(`
+    <h2>需要确认</h2>
+    <p style="margin-bottom:12px;color:var(--paper-dim);">${escapeHtml(message)}</p>
+    <input id="modal-input" value="${escapeHtml(defaultValue)}" />
+    <div class="modal-actions">
+      <button class="btn" data-modal-action="cancel">取消</button>
+      <button class="btn primary" id="modal-ok">确定</button>
+    </div>
+  `, {
+    onMount: (root, close) => {
+      const input = $('#modal-input', root);
+      input.focus();
+      $('#modal-ok', root).addEventListener('click', () => close(input.value));
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') close(input.value); });
+    },
+  });
+}
+
+async function confirm(message) {
+  return modal(`
+    <h2>需要确认</h2>
+    <p style="color:var(--paper-dim);">${escapeHtml(message)}</p>
+    <div class="modal-actions">
+      <button class="btn" data-modal-action="cancel">取消</button>
+      <button class="btn danger" data-modal-action="ok">确定</button>
+    </div>
+  `).then((v) => v === true);
+}
+
+// ─── §3.6  连接状态指示 + 部署模式徽章 ────────────────────────────────────
+// 返回值：'ok' | 'no-server' | 'unauthorized' | 'cors' | 'unknown'
+//
+// 副作用：成功时同步把 #mode-pill 设成 server/local 徽章；失败时显示 "未连接"
+async function pingHealth() {
+  const conn = $('#conn');
+  const label = $('#conn-label');
+  const pill = $('#mode-pill');
+  try {
+    state.health = await adminGet('/health');
+    state.lastFetch = Date.now();
+    conn.classList.remove('err'); conn.classList.add('ok');
+    label.textContent = `已连接 · ${state.health.counts.users} 用户`;
+
+    // 模式徽章 — 公共 /health 也带这个字段，但 admin/health 更全
+    const mode = state.health.server?.mode
+      ?? (await probePublicHealthMode());
+    setModeBadge(mode);
+    return 'ok';
+  } catch (e) {
+    conn.classList.remove('ok'); conn.classList.add('err');
+    setModeBadge(null);
+
+    if (e.message === 'NETWORK') {
+      const publicOk = await probePublicHealth();
+      if (publicOk) {
+        label.textContent = '跨源被浏览器拦截';
+        return 'cors';
+      }
+      label.textContent = '服务未启动 / 不可达';
+      return 'no-server';
+    }
+    if (e.message.startsWith('401')) {
+      label.textContent = 'token 错误（401）';
+      return 'unauthorized';
+    }
+    label.textContent = '连接失败：' + (e.message || '未知');
+    return 'unknown';
+  }
+}
+
+/** 用 /health 公开接口拿 deploy.mode（不需要 token） */
+async function probePublicHealthMode() {
+  try {
+    const r = await fetch(state.apiBase + '/health');
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.deploy?.mode ?? null;
+  } catch { return null; }
+}
+
+/** 把模式渲到顶栏徽章 */
+function setModeBadge(mode) {
+  const pill = $('#mode-pill');
+  if (!pill) return;
+  pill.classList.remove('ok', 'warn', 'err', 'muted');
+  if (mode === 'server') {
+    pill.classList.add('warn');
+    pill.textContent = '🌐 SERVER · ' + shortBase(state.apiBase);
+  } else if (mode === 'local') {
+    pill.classList.add('ok');
+    pill.textContent = '💻 LOCAL · ' + shortBase(state.apiBase);
+  } else {
+    pill.classList.add('muted');
+    pill.textContent = '? ' + shortBase(state.apiBase);
+  }
+}
+function shortBase(url) {
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+}
+
+/**
+ * §3.6.1  API 端点切换弹窗 — 一键切本机 / 服务器
+ * 三个预设按钮：本机 / 当前页同源 / 自定义；保存到 localStorage 后刷新页面。
+ */
+async function openEndpointPicker() {
+  const cur = state.apiBase;
+  const presets = [
+    { label: '本机 apps/api', url: 'http://localhost:8787' },
+    { label: '当前页同源',         url: location.origin },
+  ];
+
+  await modal(`
+    <h2>切换 API 端点</h2>
+    <p class="muted" style="margin-bottom:12px;">
+      当前：<code class="mono" style="color:var(--gold-light);">${escapeHtml(cur)}</code>
+    </p>
+
+    <div class="card-hint" style="margin-bottom:8px;">预设</div>
+    <div class="row-flex" style="margin-bottom:16px;">
+      ${presets.map((p) => `
+        <button class="btn" data-preset="${escapeHtml(p.url)}">
+          ${escapeHtml(p.label)}<br><span class="muted" style="font-size:11px;">${escapeHtml(p.url)}</span>
+        </button>
+      `).join('')}
+    </div>
+
+    <div class="field">
+      <label>自定义（含 https:// 前缀）</label>
+      <input id="ep-input" placeholder="https://api.example.com" value="${escapeHtml(cur)}" />
+    </div>
+
+    <div class="card-hint" style="margin-top:12px;">
+      切换后会立即 ping 健康检查。本机 / 服务器模式由 <code class="mono">/health</code> 自动识别。
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" data-modal-action="cancel">取消</button>
+      <button class="btn primary" id="ep-save">保存并切换</button>
+    </div>
+  `, {
+    onMount: (root, close) => {
+      const input = $('#ep-input', root);
+      for (const btn of $$('button[data-preset]', root)) {
+        btn.addEventListener('click', () => { input.value = btn.dataset.preset; });
+      }
+      $('#ep-save', root).addEventListener('click', async () => {
+        const url = input.value.trim().replace(/\/$/, '');
+        if (!/^https?:\/\//.test(url)) { toast('URL 必须含 http:// 或 https://', 'warn'); return; }
+        localStorage.setItem('yelan.apiBase', url);
+        state.apiBase = url;
+        toast('已切换到 ' + url, 'ok');
+        close(true);
+        // 重 ping + 重渲染
+        const status = await pingHealth();
+        if (status === 'ok') render(currentRoute());
+        else $('#main').innerHTML = diagnoseHtml(status);
+      });
+    },
+  });
+}
+
+// ─── §3.7  渲染 helpers ─────────────────────────────────────────────────
+function pageTitle(title, subtitle = '') {
+  return `
+    <div class="page-title">
+      <h1>${escapeHtml(title)}</h1>
+      ${subtitle ? `<span class="subtitle">${escapeHtml(subtitle)}</span>` : ''}
+    </div>`;
+}
+
+function tableHtml(headers, rows) {
+  return `
+    <table>
+      <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.length === 0
+          ? `<tr><td colspan="${headers.length}" class="muted" style="text-align:center;padding:24px;">无数据</td></tr>`
+          : rows.map((r) => `<tr>${r.map((c) => typeof c === 'string' ? `<td>${c}</td>` : `<td class="${c.cls || ''}">${c.html ?? escapeHtml(c.text ?? '')}</td>`).join('')}</tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function jsonBlock(obj) {
+  return `<pre class="json">${escapeHtml(JSON.stringify(obj, null, 2))}</pre>`;
+}
+
+function metric(label, value, sub = '') {
+  return `<div class="metric"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div>${sub ? `<div class="sub">${escapeHtml(sub)}</div>` : ''}</div>`;
+}
+
+// 让一个函数延迟到 DOM 注入后再绑事件 — 只是 setTimeout(0) 包装
+function afterMount(fn) { setTimeout(fn, 0); }
+
+// ─── §4  Views ──────────────────────────────────────────────────────────
+// 每个 view 是 async 函数，返回 HTML 字符串；afterMount 内绑事件。
+const views = {};
+
+// §4.0 一键向导（Setup Wizard）── 流程化首屏 ──────────────────────────────
+// 拉 /api/admin/diagnostics 渲染检查清单；每项有 fixHint 和（如果有）"修复"按钮。
+// 顶部三个一键操作：测试 LLM / 灌示例数据 / 清空+重灌。
+views.setup = async () => {
+  const d = await adminGet('/diagnostics');
+
+  // 状态徽标 → emoji + 颜色（保持 13 行 view，不引外部图标库）
+  const badge = (s) => s === 'pass'
+    ? '<span class="pill ok">通过</span>'
+    : s === 'warn' ? '<span class="pill warn">建议</span>'
+    : '<span class="pill err">失败</span>';
+
+  // 检查清单行
+  const rows = d.checks.map((c, i) => `
+    <tr>
+      <td style="width:80px;">${badge(c.status)}</td>
+      <td style="width:200px;font-family:var(--font-serif);color:var(--gold-light);">${escapeHtml(c.label)}</td>
+      <td>
+        <div>${escapeHtml(c.hint)}</div>
+        ${c.fixHint ? `<div class="muted" style="font-size:11px;margin-top:4px;">修复：${escapeHtml(c.fixHint)}</div>` : ''}
+      </td>
+      <td style="width:120px;text-align:right;">
+        ${c.fix ? `<button class="btn small primary" data-fix-idx="${i}">一键修复</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+
+  // 一键操作按钮（来自 quickActions）
+  const quickButtons = d.quickActions.map((a) => `
+    <button class="btn primary" data-quick="${escapeHtml(a.id)}">${escapeHtml(a.label)}</button>
+  `).join('');
+
+  afterMount(() => {
+    // 一键修复（每个 check 自带的 fix）
+    for (const btn of $$('button[data-fix-idx]')) {
+      btn.addEventListener('click', async () => {
+        const c = d.checks[Number(btn.dataset.fixIdx)];
+        if (!c?.fix) return;
+        btn.disabled = true; btn.textContent = '执行中…';
+        try {
+          // c.fix.path 是完整 /api/admin/...，但 api() 期望相对路径；改用 fetch 直发
+          const res = await fetch(state.apiBase + c.fix.path, {
+            method: c.fix.method,
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+            body: c.fix.body ? JSON.stringify(c.fix.body) : undefined,
+          });
+          if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+          toast('已修复', 'ok');
+          await render('setup');
+        } catch (e) {
+          toast('修复失败：' + e.message, 'err');
+          btn.disabled = false; btn.textContent = '一键修复';
+        }
+      });
+    }
+
+    // 顶部 quickActions
+    for (const btn of $$('button[data-quick]')) {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.quick;
+        const action = d.quickActions.find((a) => a.id === id);
+        if (!action) return;
+        btn.disabled = true; const orig = btn.textContent; btn.textContent = '执行中…';
+
+        try {
+          if (id === 'test-all-llm') {
+            const r = await fetch(state.apiBase + action.path, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+            });
+            const j = await r.json();
+            await modal(`
+              <h2>LLM 全量测试</h2>
+              ${tableHtml(['provider', '就绪', '结果', '延迟', 'sample / error'],
+                j.results.map((x) => [
+                  { cls: 'mono', text: x.name },
+                  { html: x.ready ? '<span class="pill ok">ready</span>' : '<span class="pill muted">absent</span>' },
+                  { html: x.ok === true ? '<span class="pill ok">ok</span>'
+                        : x.ok === false ? '<span class="pill err">fail</span>'
+                        : '<span class="pill muted">skipped</span>' },
+                  { cls: 'mono', text: x.latencyMs ? x.latencyMs + 'ms' : '' },
+                  { cls: 'mono', text: x.sample ?? x.error ?? '' },
+                ]))}
+              <div class="modal-actions">
+                <button class="btn" data-modal-action="cancel">关闭</button>
+              </div>
+            `);
+          } else {
+            const res = await fetch(state.apiBase + action.path, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+              body: action.body ? JSON.stringify(action.body) : undefined,
+            });
+            if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+            const j = await res.json();
+            toast(`完成：${JSON.stringify(j.created ?? j).slice(0, 60)}`, 'ok');
+          }
+          await render('setup');
+        } catch (e) {
+          toast('失败：' + e.message, 'err');
+        } finally {
+          btn.disabled = false; btn.textContent = orig;
+        }
+      });
+    }
+  });
+
+  return `
+    ${pageTitle('一键向导', '流程化的环境体检 + 一键修复 + 示例数据')}
+
+    <div class="card">
+      <h2>体检结果 <span class="muted" style="font-size:12px;font-weight:normal;">${d.summary.pass}/${d.summary.total} 通过 · ${d.summary.warn} 建议 · ${d.summary.fail} 失败</span></h2>
+      <div class="card-hint">
+        与 <code class="mono">pnpm doctor</code> 同 schema；每行状态可点"一键修复"自动调对应 admin 接口。
+      </div>
+      <table>
+        <thead><tr><th>状态</th><th>检查项</th><th>当前情况</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>快速操作</h2>
+      <div class="card-hint">本地开发常用流程的可视化按钮 — 等价于 <code class="mono">pnpm seed</code> / <code class="mono">pnpm doctor</code>。</div>
+      <div class="row-flex">${quickButtons}</div>
+    </div>
+
+    <div class="card">
+      <h2>新人首跑流程（30 秒）</h2>
+      <ol style="color:var(--paper-dim);padding-left:20px;line-height:1.9;">
+        <li>终端跑 <code class="mono" style="color:var(--gold-light);">pnpm setup</code> — 拷 .env、问 API key、装依赖</li>
+        <li>跑 <code class="mono" style="color:var(--gold-light);">pnpm dev</code> — 同时起 apps/api + web</li>
+        <li>打开 <a href="http://localhost:8787/admin" target="_blank">http://localhost:8787/admin</a>（本页 / 同源）</li>
+        <li>点上面的 "灌示例数据" — 用户 / 暗号 / 支付样例就有了</li>
+        <li>打开 <a href="http://localhost:5173" target="_blank">http://localhost:5173</a> 直接对话</li>
+      </ol>
+    </div>`;
+};
+
+// §4.1 概览 ────────────────────────────────────────────────────────────────
+views.overview = async () => {
+  const h = await adminGet('/health');
+  state.health = h;
+  return `
+    ${pageTitle('概览', '系统状态、LLM 就绪、计数器、今日成本')}
+    <div class="grid cols-4">
+      ${metric('用户数',     h.counts.users)}
+      ${metric('会话数',     h.counts.sessions)}
+      ${metric('消息数',     h.counts.messages)}
+      ${metric('支付记录',   h.counts.payments)}
+    </div>
+    <hr class="divider" />
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>LLM 就绪</h2>
+        ${tableHtml(
+          ['provider', '状态'],
+          h.llm.providers.map((p) => [
+            { cls: 'mono', text: p.name },
+            { html: p.ready ? '<span class="pill ok">ready</span>' : '<span class="pill muted">absent</span>' },
+          ]),
+        )}
+        <div class="card-hint" style="margin-top:8px;">无任何就绪 provider 时 chat 路由回落到脚本化 SCRIPT 流。</div>
+      </div>
+      <div class="card">
+        <h2>今日成本</h2>
+        <div class="grid cols-3" style="grid-template-columns:1fr 1fr 1fr;">
+          ${metric('调用',  h.costsToday.calls)}
+          ${metric('Tokens', h.costsToday.tokens)}
+          ${metric('USD',    h.costsToday.cost.toFixed(4))}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>策略 / 运行期</h2>
+      <div class="grid cols-3">
+        ${metric('全局边界',     h.server.narrativeBoundaryGlobal, '1=纯净 5=直白')}
+        ${metric('免费上限覆盖', h.server.freeLimitOverride ?? '默认 20')}
+        ${metric('当前时间',     new Date(h.server.now).toLocaleTimeString())}
+      </div>
+    </div>
+    <div class="card">
+      <h2>所有计数器</h2>
+      ${jsonBlock(h.counts)}
+    </div>`;
+};
+
+// §4.2 服务配置 ────────────────────────────────────────────────────────────
+views.config = async () => {
+  const [cfg, characterResp] = await Promise.all([
+    adminGet('/config'),
+    adminGet('/characters'),
+  ]);
+  const characters = characterResp.characters || [];
+  const groupTitle = {
+    llm: 'LLM Keys / Models', policy: '策略 & 鉴权',
+    storage: '存储', pay: '支付', observability: '监控', mock: 'Mock 控制',
+  };
+  // 渲染一组 env field
+  const envFields = (group, items) => `
+    <div class="card">
+      <h2>${escapeHtml(groupTitle[group] ?? group)}</h2>
+      <div class="grid cols-2">
+        ${items.map((it) => `
+          <div class="field">
+            <label>${escapeHtml(it.key)} ${it.present ? '<span class="pill ok" style="margin-left:6px;">已配置</span>' : '<span class="pill muted" style="margin-left:6px;">空</span>'}</label>
+            <input
+              data-env-key="${escapeHtml(it.key)}"
+              ${it.secret ? 'type="password"' : ''}
+              placeholder="${escapeHtml(it.secret ? (it.value || '未设置') : '')}"
+              value="${escapeHtml(it.secret ? '' : it.value)}"
+            />
+            ${it.secret ? '<div class="card-hint">敏感 key — 只显示脱敏占位；填新值后保存即覆盖。留空即跳过。</div>' : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+
+  const groups = Object.entries(cfg.env)
+    .map(([g, items]) => envFields(g, items))
+    .join('');
+
+  afterMount(() => {
+    $('#btn-save-env').addEventListener('click', async () => {
+      const reason = await prompt('修改原因（必填）', '本地开发');
+      if (!reason) return;
+      const patch = {};
+      for (const input of $$('input[data-env-key]')) {
+        const v = input.value.trim();
+        if (v !== '') patch[input.dataset.envKey] = v;
+      }
+      if (Object.keys(patch).length === 0) { toast('未填写任何字段', 'warn'); return; }
+      try {
+        await adminPost('/config/env', { patch, reason });
+        toast(`已写入 ${Object.keys(patch).length} 个 key 到 .env`, 'ok');
+        await render(currentRoute());
+      } catch (e) { toast(e.message, 'err'); }
+    });
+
+    $('#btn-save-runtime').addEventListener('click', async () => {
+      const reason = await prompt('修改原因（必填）', '本地试参');
+      if (!reason) return;
+      const body = {
+        narrativeBoundaryGlobal: Number($('#runtime-boundary').value),
+        mockLatencyMs: Number($('#runtime-latency').value),
+        freeLimitOverride: $('#runtime-free').value === '' ? null : Number($('#runtime-free').value),
+        reason,
+      };
+      try {
+        await adminPost('/config/runtime', body);
+        toast('已应用运行期覆盖', 'ok');
+        await render(currentRoute());
+      } catch (e) { toast(e.message, 'err'); }
+    });
+
+    $('#btn-chat-test').addEventListener('click', async () => {
+      const btn = $('#btn-chat-test');
+      const out = $('#chat-test-output');
+      const text = $('#chat-test-text').value.trim();
+      if (!text) { toast('先写一句测试输入', 'warn'); return; }
+
+      btn.disabled = true;
+      out.textContent = '创建测试会话...\n';
+      try {
+        const characterId = $('#chat-test-character').value;
+        const sessionRes = await fetch(state.apiBase + '/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify({ characterId, mode: 'main' }),
+        });
+        if (!sessionRes.ok) throw new Error(`session ${sessionRes.status}`);
+        const session = await sessionRes.json();
+
+        const payload = {
+          characterId,
+          sessionId: session.id,
+          round: Number($('#chat-test-round').value || 1),
+          prevStage: $('#chat-test-stage').value,
+          userBoundary: Number($('#chat-test-boundary').value),
+          text,
+          history: [],
+        };
+
+        out.textContent = `session: ${session.id}\n等待响应...\n\n`;
+        const res = await fetch(state.apiBase + '/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok || !res.body) throw new Error(`chat ${res.status}`);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let raw = '';
+        let meta = [];
+        const renderOutput = () => {
+          out.textContent = [
+            `session: ${session.id}`,
+            meta.join('\n'),
+            '',
+            raw || '(尚无文本)',
+          ].filter(Boolean).join('\n');
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split(/\n\n/);
+          buffer = blocks.pop() || '';
+          for (const block of blocks) {
+            const data = block.split('\n')
+              .filter((line) => line.startsWith('data:'))
+              .map((line) => line.slice(5).trim())
+              .join('');
+            if (!data) continue;
+            const ev = JSON.parse(data);
+            if (ev.kind === 'meta') meta.push(`meta: stage=${ev.stage} boundary=${ev.boundary}`);
+            else if (ev.kind === 'atmosphere') meta.push(`temperature: ${ev.temperature}`);
+            else if (ev.kind === 'chunk') raw += ev.text;
+            else if (ev.kind === 'structured' && !raw) raw = ev.rawText;
+            else if (ev.kind === 'cutoff') meta.push(`cutoff: ${ev.reason}`);
+            else if (ev.kind === 'error') meta.push(`error: ${ev.code} ${ev.message}`);
+            renderOutput();
+          }
+        }
+        toast('对话测试完成', 'ok');
+      } catch (e) {
+        out.textContent += `\nERROR: ${e.message}`;
+        toast(e.message, 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  return `
+    ${pageTitle('服务配置', '.env 写入 + 运行期覆盖（boundary / 免费上限 / latency）')}
+    ${groups}
+    <div class="row-flex" style="margin-bottom:16px;">
+      <button class="btn primary" id="btn-save-env">保存 .env（重置 LLM 路由）</button>
+      <span class="muted">写入 apps/api/.env；下次启动自动加载，本次进程立即生效</span>
+    </div>
+
+    <div class="card">
+      <h2>运行期覆盖</h2>
+      <div class="card-hint">不写盘，进程内立即生效；重启后失效（除 freeLimitOverride 落到 state.json）。</div>
+      <div class="grid cols-3">
+        <div class="field">
+          <label>NARRATIVE_BOUNDARY_GLOBAL（1-5）</label>
+          <select id="runtime-boundary">
+            ${[1,2,3,4,5].map((n) => `<option value="${n}" ${n === cfg.runtime.narrativeBoundaryGlobal ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>MOCK_LATENCY_MS（脚本化流单 chunk 延迟）</label>
+          <input type="number" id="runtime-latency" value="${cfg.runtime.mockLatencyMs}" />
+        </div>
+        <div class="field">
+          <label>免费上限覆盖（空=用默认 20）</label>
+          <input type="number" id="runtime-free" value="${cfg.runtime.freeLimitOverride ?? ''}" placeholder="默认 20" />
+        </div>
+      </div>
+      <button class="btn primary" id="btn-save-runtime">应用运行期覆盖</button>
+    </div>
+
+    <div class="card">
+      <h2>对话测试</h2>
+      <div class="card-hint">走完整 /api/chat 链路：角色卡、boundary、阶段判断、主 LLM/脚本化 fallback、侧袋结构化都会经过。</div>
+      <div class="grid cols-4" style="margin-top:12px;">
+        <div class="field">
+          <label>角色</label>
+          <select id="chat-test-character">
+            ${characters.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} · ${escapeHtml(c.id)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>boundary</label>
+          <select id="chat-test-boundary">
+            ${[1,2,3,4,5].map((n) => `<option value="${n}" ${n === cfg.runtime.narrativeBoundaryGlobal ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>prevStage</label>
+          <select id="chat-test-stage">
+            ${['daily','rise','climax','after','end'].map((s) => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>round</label>
+          <input id="chat-test-round" type="number" value="1" min="0" />
+        </div>
+      </div>
+      <div class="field">
+        <label>测试输入</label>
+        <textarea id="chat-test-text" rows="4">今晚你在想什么？</textarea>
+      </div>
+      <button class="btn primary" id="btn-chat-test">发送测试对话</button>
+      <pre id="chat-test-output" class="mono" style="margin-top:12px;white-space:pre-wrap;background:var(--c-bg2);border:1px solid var(--c-border);border-radius:8px;padding:12px;min-height:160px;color:var(--c-text);"></pre>
+    </div>`;
+};
+
+// §4.3 LLM 配置 ────────────────────────────────────────────────────────────
+views.llm = async () => {
+  const cfg = await adminGet('/config');
+  const providers = cfg.llm.providers; // [{ name, ready }]
+  const rows = providers.map((p) => {
+    const keyMap = { anthropic: 'ANTHROPIC_API_KEY', openai: 'OPENAI_API_KEY', deepseek: 'DEEPSEEK_API_KEY' };
+    const modelMap = { anthropic: 'ANTHROPIC_MODEL', openai: 'OPENAI_MODEL', deepseek: 'DEEPSEEK_MODEL' };
+    const key = keyMap[p.name];
+    const m = modelMap[p.name];
+    const llmGroup = cfg.env.llm.find((x) => x.key === key);
+    const modelGroup = cfg.env.llm.find((x) => x.key === m);
+    return [
+      { cls: 'mono', text: p.name },
+      { html: p.ready ? '<span class="pill ok">ready</span>' : '<span class="pill muted">absent</span>' },
+      { cls: 'mono', text: llmGroup?.value ?? '' },
+      { cls: 'mono', text: modelGroup?.value ?? '' },
+      { html: `<button class="btn small" data-test="${p.name}" ${p.ready ? '' : 'disabled'}>测试</button>` },
+    ];
+  });
+
+  afterMount(() => {
+    for (const btn of $$('button[data-test]')) {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.test;
+        btn.textContent = '测试中…'; btn.disabled = true;
+        try {
+          const r = await adminPost('/config/test-llm', { provider: name });
+          toast(`${name}: ${r.latencyMs}ms — ${r.sample.slice(0, 30)}…`, 'ok');
+        } catch (e) {
+          toast(`${name} 失败: ${e.message}`, 'err');
+        } finally {
+          btn.textContent = '测试'; btn.disabled = false;
+        }
+      });
+    }
+  });
+
+  return `
+    ${pageTitle('LLM 配置', '查看 provider 就绪状态 + 一键测试连接')}
+    <div class="card">
+      <h2>主 LLM Providers（侧袋 unlim-worker 不在此列）</h2>
+      ${tableHtml(['Provider', '状态', 'API Key', 'Model', '测试'], rows)}
+    </div>
+    <div class="card">
+      <h2>路由策略（写死在 LocalLLMRouter.pickChain）</h2>
+      <pre class="json">stage in {climax, after}  → [anthropic, openai, deepseek]
+stage in {daily, rise}    → [deepseek, openai, anthropic]
+任一 5xx / 抛错 → 自动按链路 fallback；全部失败回落脚本化 SCRIPT</pre>
+      <div class="card-hint">改链路顺序需改源码：apps/api/src/llm/router.ts</div>
+    </div>`;
+};
+
+// §4.4 用户 ────────────────────────────────────────────────────────────────
+views.users = async () => {
+  const list = await adminGet('/users?limit=200');
+  afterMount(() => {
+    for (const btn of $$('button[data-edit-user]')) {
+      btn.addEventListener('click', () => editUser(btn.dataset.editUser));
+    }
+  });
+  return `
+    ${pageTitle('用户', '编辑标记 / 调整边界 / 查看烛账')}
+    <div class="card">
+      ${tableHtml(
+        ['ID', '手机', '边界', 'IF', '烛', '注册时间', ''],
+        list.map((u) => [
+          { cls: 'mono', text: u.id },
+          { cls: 'mono', text: u.phone },
+          { html: `<span class="pill">${u.narrativeBoundary}</span>` },
+          { html: u.ifUnlocked ? '<span class="pill ok">已解锁</span>' : '<span class="pill muted">否</span>' },
+          String(u.candle),
+          { cls: 'mono', text: new Date(u.createdAt).toLocaleString() },
+          { html: `<button class="btn small" data-edit-user="${escapeHtml(u.id)}">编辑</button>` },
+        ]),
+      )}
+    </div>`;
+};
+
+async function editUser(id) {
+  const u = await adminGet('/users/' + id);
+  await modal(`
+    <h2>编辑用户 · ${escapeHtml(u.id)}</h2>
+    <pre class="json">${escapeHtml(JSON.stringify(u, null, 2))}</pre>
+    <div class="grid cols-3" style="margin-top:12px;">
+      <div class="field">
+        <label>narrativeBoundary</label>
+        <select id="m-boundary">
+          ${[1,2,3,4,5].map((n) => `<option value="${n}" ${n === u.narrativeBoundary ? 'selected' : ''}>${n}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>ifUnlocked</label>
+        <select id="m-if">
+          <option value="false" ${!u.ifUnlocked ? 'selected' : ''}>否</option>
+          <option value="true"  ${u.ifUnlocked ? 'selected' : ''}>是</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ageVerified</label>
+        <select id="m-age">
+          <option value="false" ${!u.ageVerified ? 'selected' : ''}>否</option>
+          <option value="true"  ${u.ageVerified ? 'selected' : ''}>是</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>修改原因</label><input id="m-reason" placeholder="必填" /></div>
+    <div class="modal-actions">
+      <button class="btn" data-modal-action="cancel">取消</button>
+      <button class="btn primary" id="m-save">保存</button>
+    </div>
+  `, {
+    onMount: (root, close) => {
+      $('#m-save', root).addEventListener('click', async () => {
+        const reason = $('#m-reason', root).value.trim();
+        if (!reason) { toast('原因必填', 'warn'); return; }
+        const body = {
+          narrativeBoundary: Number($('#m-boundary', root).value),
+          ifUnlocked: $('#m-if', root).value === 'true',
+          ageVerified: $('#m-age', root).value === 'true',
+          reason,
+        };
+        try {
+          await adminPatch('/users/' + id + '/flags', body);
+          toast('已保存', 'ok');
+          close(true);
+          await render(currentRoute());
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    },
+  });
+}
+
+// §4.5 烛账 ────────────────────────────────────────────────────────────────
+views.candle = async () => {
+  const userId = new URLSearchParams(location.hash.split('?')[1] ?? '').get('userId') || '';
+  const ledger = await adminGet('/candle/ledger' + (userId ? `?userId=${encodeURIComponent(userId)}` : ''));
+
+  afterMount(() => {
+    $('#btn-grant').addEventListener('click', async () => {
+      const body = {
+        userId: $('#g-uid').value.trim(),
+        delta: Number($('#g-delta').value),
+        reason: $('#g-reason').value.trim(),
+      };
+      if (!body.userId || !body.reason || isNaN(body.delta)) {
+        toast('userId / delta / reason 都必填', 'warn'); return;
+      }
+      try {
+        const r = await adminPost('/candle/grant', body);
+        toast(`新余额 ${r.balance}`, 'ok');
+        await render(currentRoute());
+      } catch (e) { toast(e.message, 'err'); }
+    });
+    $('#filter-uid').addEventListener('change', (e) => {
+      location.hash = '#candle?userId=' + encodeURIComponent(e.target.value);
+    });
+  });
+
+  return `
+    ${pageTitle('烛账', '发烛 / 补偿 / 流水（reason+refId 幂等键）')}
+    <div class="card">
+      <h2>发烛 / 补偿（admin_grant）</h2>
+      <div class="grid cols-3">
+        <div class="field"><label>userId</label><input id="g-uid" /></div>
+        <div class="field"><label>delta（正发负扣）</label><input id="g-delta" type="number" /></div>
+        <div class="field"><label>reason</label><input id="g-reason" placeholder="如 '开发回归补偿'" /></div>
+      </div>
+      <button class="btn primary" id="btn-grant">入账</button>
+    </div>
+
+    <div class="card">
+      <div class="row-flex" style="margin-bottom:12px;">
+        <h2 style="margin:0;">流水</h2>
+        <input id="filter-uid" placeholder="按 userId 过滤" value="${escapeHtml(userId)}" style="max-width:280px;" />
+      </div>
+      ${tableHtml(
+        ['时间', 'userId', 'delta', 'reason', 'refId'],
+        ledger.map((r) => [
+          { cls: 'mono', text: new Date(r.createdAt).toLocaleString() },
+          { cls: 'mono', text: r.userId },
+          { html: r.delta > 0 ? `<span class="pill ok">+${r.delta}</span>` : `<span class="pill err">${r.delta}</span>` },
+          { cls: 'mono', text: r.reason },
+          { cls: 'mono', text: r.refId ?? '' },
+        ]),
+      )}
+    </div>`;
+};
+
+// §4.6 配额 ────────────────────────────────────────────────────────────────
+views.quota = async () => {
+  afterMount(() => {
+    $('#btn-grant').addEventListener('click', async () => {
+      const body = {
+        userId: $('#q-uid').value.trim(),
+        bonusDelta: Number($('#q-delta').value),
+        reason: $('#q-reason').value.trim(),
+      };
+      if (!body.userId || !body.reason) { toast('userId / reason 必填', 'warn'); return; }
+      try { await adminPost('/quota/grant', body); toast('已发额度', 'ok'); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+
+    $('#btn-free-limit').addEventListener('click', async () => {
+      const body = {
+        freeLimit: Number($('#fl-limit').value),
+        reason: $('#fl-reason').value.trim(),
+      };
+      if (!body.reason) { toast('reason 必填', 'warn'); return; }
+      try { await adminPost('/quota/free-limit', body); toast(`新上限 ${body.freeLimit}`, 'ok'); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+  });
+
+  return `
+    ${pageTitle('配额', 'bonus 额度发放 / 免费上限调整')}
+    <div class="card">
+      <h2>给某用户加 bonus（不影响 freeLimit）</h2>
+      <div class="grid cols-3">
+        <div class="field"><label>userId</label><input id="q-uid" /></div>
+        <div class="field"><label>bonusDelta</label><input id="q-delta" type="number" value="20" /></div>
+        <div class="field"><label>reason</label><input id="q-reason" /></div>
+      </div>
+      <button class="btn primary" id="btn-grant">发额度</button>
+    </div>
+
+    <div class="card">
+      <h2>调整全局免费上限</h2>
+      <div class="grid cols-3">
+        <div class="field"><label>新上限</label><input id="fl-limit" type="number" value="20" /></div>
+        <div class="field" style="grid-column:span 2;"><label>reason</label><input id="fl-reason" /></div>
+      </div>
+      <button class="btn primary" id="btn-free-limit">应用</button>
+      <div class="card-hint">直接覆盖 store.state.freeLimitOverride，所有用户即时生效。</div>
+    </div>`;
+};
+
+// §4.7 问卷 ────────────────────────────────────────────────────────────────
+views.surveys = async () => {
+  afterMount(() => {
+    $('#btn-create').addEventListener('click', async () => {
+      const body = {
+        title: $('#s-title').value.trim(),
+        rewardCandle: Number($('#s-reward').value),
+        reason: $('#s-reason').value.trim(),
+      };
+      if (!body.title || !body.reason) { toast('title / reason 必填', 'warn'); return; }
+      try {
+        const r = await adminPost('/surveys', body);
+        toast(`已创建 ${r.id}`, 'ok');
+      } catch (e) { toast(e.message, 'err'); }
+    });
+    $('#btn-export').addEventListener('click', async () => {
+      const id = $('#exp-id').value.trim();
+      if (!id) { toast('id 必填', 'warn'); return; }
+      try {
+        const csv = await adminGet('/surveys/' + id + '/export');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `survey-${id}.csv`; a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (e) { toast(e.message, 'err'); }
+    });
+    $('#btn-toggle').addEventListener('click', async () => {
+      const id = $('#tg-id').value.trim();
+      if (!id) { toast('id 必填', 'warn'); return; }
+      try { await adminPost('/surveys/' + id + '/toggle'); toast('已切换', 'ok'); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+  });
+
+  return `
+    ${pageTitle('问卷「一问」', '创建 / 上下线 / 导出 CSV')}
+    <div class="card">
+      <h2>新建问卷</h2>
+      <div class="grid cols-3">
+        <div class="field"><label>title</label><input id="s-title" /></div>
+        <div class="field"><label>奖励烛</label><input id="s-reward" type="number" value="30" /></div>
+        <div class="field"><label>reason</label><input id="s-reason" /></div>
+      </div>
+      <button class="btn primary" id="btn-create">创建</button>
+    </div>
+
+    <div class="card">
+      <h2>上下线 / 导出</h2>
+      <div class="grid cols-2">
+        <div>
+          <div class="field"><label>切换上下线 · 问卷 id</label><input id="tg-id" /></div>
+          <button class="btn" id="btn-toggle">toggle</button>
+        </div>
+        <div>
+          <div class="field"><label>导出 CSV · 问卷 id</label><input id="exp-id" /></div>
+          <button class="btn" id="btn-export">导出</button>
+        </div>
+      </div>
+    </div>`;
+};
+
+// §4.8 Prompt 灰度 ─────────────────────────────────────────────────────────
+views.prompts = async () => {
+  const [list, sourceResp] = await Promise.all([
+    adminGet('/prompts/versions'),
+    adminGet('/prompts/sources'),
+  ]);
+  const sources = sourceResp.sources || [];
+  const firstSource = sources.find((s) => s.kind === 'boundary') || sources[0] || null;
+  afterMount(() => {
+    const syncSource = (key) => {
+      const source = sources.find((s) => s.key === key);
+      if (!source) return;
+      $('#p-key').value = source.key;
+      $('#p-value').value = source.activeValue || source.value;
+      $('#p-original').value = source.value;
+      const badge = $('#p-active-badge');
+      if (badge) badge.textContent = source.activeVersionId ? `生效版本：${source.activeVersionId}` : '生效版本：原始内容';
+    };
+    const sourceSelect = $('#p-source');
+    if (sourceSelect && firstSource) {
+      sourceSelect.addEventListener('change', () => syncSource(sourceSelect.value));
+      syncSource(firstSource.key);
+    }
+    const useOriginal = $('#btn-use-original');
+    if (useOriginal) {
+      useOriginal.addEventListener('click', () => {
+        const source = sources.find((s) => s.key === $('#p-source').value);
+        if (source) $('#p-value').value = source.value;
+      });
+    }
+    $('#btn-release').addEventListener('click', async () => {
+      const body = {
+        key: $('#p-key').value.trim(),
+        value: $('#p-value').value,
+        reason: $('#p-reason').value.trim(),
+      };
+      if (!body.key || !body.value || !body.reason) { toast('全部必填', 'warn'); return; }
+      try { await adminPost('/prompts/release', body); toast('已发布新版', 'ok'); await render(currentRoute()); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+    for (const btn of $$('button[data-rb]')) {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.rb; const key = btn.dataset.key;
+        const reason = await prompt(`回滚到 ${id} 的原因（必填）`, '');
+        if (!reason) return;
+        try { await adminPost('/prompts/rollback', { key, versionId: id, reason }); toast('已回滚', 'ok'); await render(currentRoute()); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+    }
+  });
+
+  return `
+    ${pageTitle('Prompt 灰度', '发布新版本 / 回滚 — 落 state.json，运行期覆盖 packages/prompts')}
+    <div class="card">
+      <h2>发布新版本</h2>
+      <div class="field">
+        <label>Prompt 源（含破甲 boundaries 原始内容）</label>
+        <select id="p-source">
+          ${sources.map((s) => `<option value="${escapeHtml(s.key)}">${escapeHtml(s.kind)} · ${escapeHtml(s.label)} · ${escapeHtml(s.key)}</option>`).join('')}
+        </select>
+        <div class="card-hint" id="p-active-badge">${firstSource?.activeVersionId ? `生效版本：${escapeHtml(firstSource.activeVersionId)}` : '生效版本：原始内容'}</div>
+      </div>
+      <div class="grid cols-2">
+        <div class="field">
+          <label>key（如 character:shen-yan-zhi / strategy:stage_climax）</label>
+          <input id="p-key" value="${escapeHtml(firstSource?.key || '')}" />
+        </div>
+        <div class="field"><label>reason</label><input id="p-reason" /></div>
+      </div>
+      <div class="grid cols-2">
+        <div class="field">
+          <label>原始内容（从 packages/prompts 读取）</label>
+          <textarea id="p-original" rows="12" readonly>${escapeHtml(firstSource?.value || '')}</textarea>
+        </div>
+        <div class="field">
+          <label>value（完整 prompt 文本）</label>
+          <textarea id="p-value" rows="12" placeholder="贴入新 prompt...">${escapeHtml(firstSource?.activeValue || firstSource?.value || '')}</textarea>
+        </div>
+      </div>
+      <button class="btn" id="btn-use-original" type="button">用原始内容覆盖</button>
+      <button class="btn primary" id="btn-release">发布</button>
+      <div class="card-hint">注：apps/api 的 chat 路由直接读 packages/prompts，未消费 KV/state 的 prompt 版本。这是占位 — 给前端 UI 调试用。</div>
+    </div>
+
+    <div class="card">
+      <h2>历史版本</h2>
+      ${tableHtml(
+        ['id', 'key', '生效时间', '创建时间', ''],
+        list.map((v) => [
+          { cls: 'mono', text: v.id },
+          { cls: 'mono', text: v.key },
+          v.activeAt ? `<span class="pill ok">${new Date(v.activeAt).toLocaleString()}</span>` : '<span class="pill muted">非激活</span>',
+          { cls: 'mono', text: new Date(v.createdAt).toLocaleString() },
+          { html: v.activeAt ? '' : `<button class="btn small" data-rb="${escapeHtml(v.id)}" data-key="${escapeHtml(v.key)}">激活</button>` },
+        ]),
+      )}
+    </div>`;
+};
+
+// §4.9 成本 ────────────────────────────────────────────────────────────────
+views.costs = async () => {
+  const [daily, perUser, cache] = await Promise.all([
+    adminGet('/costs/daily'),
+    adminGet('/costs/per-user'),
+    adminGet('/costs/cache-hit'),
+  ]);
+  return `
+    ${pageTitle('成本看板', '日成本 / 每用户 / cache hit')}
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>每日</h2>
+        ${tableHtml(['日期', 'calls', 'tokens', 'USD'],
+          daily.map((d) => [
+            { cls: 'mono', text: d.date },
+            String(d.calls),
+            String(d.tokens),
+            { cls: 'mono', text: d.cost.toFixed(4) },
+          ]))}
+      </div>
+      <div class="card">
+        <h2>每用户（聚合自 conversationLogs，估算）</h2>
+        ${tableHtml(['userId', 'calls', 'tokens'],
+          perUser.map((p) => [
+            { cls: 'mono', text: p.userId },
+            String(p.calls),
+            String(p.tokens),
+          ]))}
+      </div>
+    </div>
+    <div class="card">
+      <h2>Prompt Cache 命中率</h2>
+      ${metric('hit rate', (cache.rate * 100).toFixed(0) + '%')}
+      <div class="card-hint">mock 占位；生产由 apps/server/src/llm/prompt-cache.ts 上报。</div>
+    </div>`;
+};
+
+// §4.10 IF 暗号 ───────────────────────────────────────────────────────────
+views['if-codes'] = async () => {
+  const data = await adminGet('/if-codes');
+  afterMount(() => {
+    $('#btn-add-if').addEventListener('click', async () => {
+      const body = {
+        code: $('#if-code').value.trim().toUpperCase(),
+        boundary: Number($('#if-boundary').value),
+        source: $('#if-source').value.trim(),
+        reason: $('#if-reason').value.trim(),
+      };
+      if (!body.code || !body.source || !body.reason) { toast('全部必填', 'warn'); return; }
+      try { await adminPost('/if-codes', body); toast('已添加', 'ok'); await render(currentRoute()); }
+      catch (e) { toast(e.message, 'err'); }
+    });
+    for (const btn of $$('button[data-toggle-if]')) {
+      btn.addEventListener('click', async () => {
+        const code = btn.dataset.toggleIf;
+        const next = btn.dataset.next === 'true';
+        const reason = await prompt(`${next ? '启用' : '停用'} ${code} 的原因`, 'admin');
+        if (!reason) return;
+        try { await adminPatch('/if-codes/' + code, { active: next, reason }); toast('已切换', 'ok'); await render(currentRoute()); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+    }
+    for (const btn of $$('button[data-del-if]')) {
+      btn.addEventListener('click', async () => {
+        const code = btn.dataset.delIf;
+        if (!await confirm(`删除暗号 ${code}？`)) return;
+        try { await adminDel('/if-codes/' + code + '?reason=admin'); toast('已删除', 'ok'); await render(currentRoute()); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+    }
+  });
+
+  return `
+    ${pageTitle('IF 暗号', '主线提升 boundary 的隐藏入口 — 不显式提示命中')}
+    <div class="card">
+      <h2>新建暗号</h2>
+      <div class="grid cols-4">
+        <div class="field"><label>code</label><input id="if-code" placeholder="YELAN-..." /></div>
+        <div class="field">
+          <label>boundary</label>
+          <select id="if-boundary">${[1,2,3,4,5].map((n) => `<option value="${n}" ${n===3?'selected':''}>${n}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>source</label><input id="if-source" placeholder="koc / promo / ..." /></div>
+        <div class="field"><label>reason</label><input id="if-reason" /></div>
+      </div>
+      <button class="btn primary" id="btn-add-if">添加</button>
+    </div>
+
+    <div class="card">
+      <h2>暗号列表（${data.codes.length}）</h2>
+      ${tableHtml(['code', 'boundary', 'source', '状态', ''],
+        data.codes.map((c) => [
+          { cls: 'mono', text: c.code },
+          { html: `<span class="pill">${c.boundary}</span>` },
+          { cls: 'mono', text: c.source },
+          { html: c.active ? '<span class="pill ok">active</span>' : '<span class="pill muted">stopped</span>' },
+          {
+            html: `<button class="btn small" data-toggle-if="${escapeHtml(c.code)}" data-next="${!c.active}">${c.active ? '停用' : '启用'}</button>
+                   <button class="btn small danger" data-del-if="${escapeHtml(c.code)}" style="margin-left:6px;">删除</button>`,
+          },
+        ]))}
+    </div>
+
+    <div class="card">
+      <h2>兑换记录（${data.redemptions.length}）</h2>
+      ${tableHtml(['时间', 'userId', 'code'],
+        data.redemptions.slice(-50).reverse().map((r) => [
+          { cls: 'mono', text: new Date(r.ts).toLocaleString() },
+          { cls: 'mono', text: r.userId },
+          { cls: 'mono', text: r.code },
+        ]))}
+    </div>`;
+};
+
+// §4.11 审计日志 ──────────────────────────────────────────────────────────
+views.audit = async () => {
+  const filter = new URLSearchParams(location.hash.split('?')[1] ?? '').get('action') || '';
+  const rows = await adminGet('/audit?limit=300' + (filter ? `&action=${encodeURIComponent(filter)}` : ''));
+  afterMount(() => {
+    $('#audit-filter').addEventListener('change', (e) => {
+      location.hash = '#audit?action=' + encodeURIComponent(e.target.value);
+    });
+    for (const btn of $$('button[data-show-payload]')) {
+      btn.addEventListener('click', async () => {
+        const idx = Number(btn.dataset.showPayload);
+        await modal(`
+          <h2>${escapeHtml(rows[idx].action)}</h2>
+          ${jsonBlock(rows[idx])}
+          <div class="modal-actions"><button class="btn" data-modal-action="cancel">关闭</button></div>
+        `);
+      });
+    }
+  });
+  return `
+    ${pageTitle('审计日志', '所有 admin 写动作（reason 必填）')}
+    <div class="card">
+      <div class="row-flex" style="margin-bottom:12px;">
+        <input id="audit-filter" placeholder="按 action 过滤（如 candle.grant）" value="${escapeHtml(filter)}" style="max-width:340px;" />
+        <span class="muted">共 ${rows.length} 条</span>
+      </div>
+      ${tableHtml(['时间', 'action', 'target', 'reason', ''],
+        rows.map((r, i) => [
+          { cls: 'mono', text: new Date(r.ts).toLocaleString() },
+          { cls: 'mono', text: r.action },
+          { cls: 'mono', text: r.target ?? '' },
+          r.reason ?? '',
+          { html: `<button class="btn small" data-show-payload="${i}">详情</button>` },
+        ]))}
+    </div>`;
+};
+
+// §4.12 会话调试 ──────────────────────────────────────────────────────────
+views.sessions = async () => {
+  const userId = new URLSearchParams(location.hash.split('?')[1] ?? '').get('userId') || '';
+  const rows = await adminGet('/sessions' + (userId ? `?userId=${encodeURIComponent(userId)}` : ''));
+  afterMount(() => {
+    $('#sess-filter').addEventListener('change', (e) => {
+      location.hash = '#sessions?userId=' + encodeURIComponent(e.target.value);
+    });
+    for (const btn of $$('button[data-msgs]')) {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.msgs;
+        const msgs = await adminGet('/sessions/' + id + '/messages');
+        await modal(`
+          <h2>会话 ${escapeHtml(id)} · ${msgs.length} 条消息</h2>
+          <pre class="json" style="max-height:60vh;">${escapeHtml(msgs.map((m) => `[${m.role}] ${m.content}`).join('\n\n'))}</pre>
+          <div class="modal-actions"><button class="btn" data-modal-action="cancel">关闭</button></div>
+        `);
+      });
+    }
+  });
+  return `
+    ${pageTitle('会话', '调试用 — 查看持久化中的 session + 消息')}
+    <div class="card">
+      <div class="row-flex" style="margin-bottom:12px;">
+        <input id="sess-filter" placeholder="按 userId 过滤" value="${escapeHtml(userId)}" style="max-width:340px;" />
+      </div>
+      ${tableHtml(['id', 'userId', '角色', 'round', 'stage', '更新时间', ''],
+        rows.map((s) => [
+          { cls: 'mono', text: s.id },
+          { cls: 'mono', text: s.userId },
+          { cls: 'mono', text: s.characterId },
+          String(s.round),
+          { html: `<span class="pill">${s.prevStage}</span>` },
+          { cls: 'mono', text: new Date(s.updatedAt).toLocaleString() },
+          { html: `<button class="btn small" data-msgs="${escapeHtml(s.id)}">消息</button>` },
+        ]))}
+    </div>`;
+};
+
+// §4.12b 角色卡（BE-101 / AD-101）─────────────────────────────────────────
+// 列出全部 → 顶部表单可新建 / 编辑（点行的"编辑"把字段回填到表单）
+// 改 forbidden / description 后下一轮对话立即生效（loader 走 service）
+views.characters = async () => {
+  const editId = new URLSearchParams(location.hash.split('?')[1] ?? '').get('edit') || '';
+  const { characters } = await adminGet('/characters');
+  const editing = editId ? characters.find((c) => c.id === editId) : null;
+
+  const splitList = (s) => String(s || '').split(/[,，、\n]/).map((x) => x.trim()).filter(Boolean);
+
+  afterMount(() => {
+    $('#btn-char-save').addEventListener('click', async () => {
+      const slug = $('#c-slug').value.trim();
+      const name = $('#c-name').value.trim();
+      const reason = $('#c-reason').value.trim();
+      if (!slug || !name || !reason) { toast('slug / name / reason 必填', 'warn'); return; }
+      if (!/^[a-z0-9-]+$/.test(slug)) { toast('slug 只允许小写字母 / 数字 / 短横线', 'warn'); return; }
+      const body = {
+        slug,
+        name,
+        rarity: $('#c-rarity').value,
+        priceCandle: Number($('#c-price').value) || 0,
+        boundaryDefault: Number($('#c-boundary').value),
+        styleTags: splitList($('#c-tags').value),
+        forbiddenPhrases: splitList($('#c-forbidden').value),
+        openingFirstVisit: $('#c-open-first').value.trim(),
+        openingReturnVisit: $('#c-open-return').value.trim(),
+        description: $('#c-desc').value.trim(),
+        isActive: $('#c-active').checked,
+        reason,
+      };
+      try {
+        if (editing) await adminPatch('/characters/' + encodeURIComponent(editing.id), body);
+        else         await adminPost('/characters', { id: slug, ...body });
+        toast(editing ? '已更新' : '已创建', 'ok');
+        location.hash = '#characters';
+      } catch (e) { toast(e.message, 'err'); }
+    });
+
+    $('#btn-char-cancel')?.addEventListener('click', () => { location.hash = '#characters'; });
+
+    for (const btn of $$('button[data-edit-char]')) {
+      btn.addEventListener('click', () => { location.hash = '#characters?edit=' + encodeURIComponent(btn.dataset.editChar); });
+    }
+    for (const btn of $$('button[data-toggle-char]')) {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.toggleChar;
+        const next = btn.dataset.next === 'true';
+        const reason = await prompt(`${next ? '启用' : '停用'} ${id} 的原因`, 'admin');
+        if (!reason) return;
+        try {
+          if (next) await adminPost('/characters/' + encodeURIComponent(id) + '/_enable?reason=' + encodeURIComponent(reason));
+          else      await adminDel('/characters/' + encodeURIComponent(id) + '?reason=' + encodeURIComponent(reason));
+          toast('已切换', 'ok');
+          await render(currentRoute());
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    }
+    $('#btn-char-reset').addEventListener('click', async () => {
+      if (!await confirm('从 packages/prompts yaml 重置 seed？运营改过的字段会被覆盖。')) return;
+      try {
+        const r = await adminPost('/characters/_reset?reason=' + encodeURIComponent('reset to yaml seed'));
+        toast(`已重置（${r.count} 张）`, 'ok');
+        await render(currentRoute());
+      } catch (e) { toast(e.message, 'err'); }
+    });
+  });
+
+  const e = editing || {};
+  const olines = e.openingLines || {};
+  const formTitle = editing ? `编辑 · ${escapeHtml(editing.name)} <span class="mono" style="color:var(--paper-dim);font-size:0.85em;">(${escapeHtml(editing.id)})</span>` : '新建角色卡';
+
+  return `
+    ${pageTitle('角色卡', '运营改字段无需重启 — 装 system prompt 时实时读 service')}
+
+    <div class="card">
+      <h2>${formTitle}</h2>
+      <div class="grid cols-3">
+        <div class="field"><label>slug</label><input id="c-slug" value="${escapeHtml(e.slug || '')}" ${editing ? 'disabled' : 'placeholder="kebab-case，如 li-zhao"'} /></div>
+        <div class="field"><label>name</label><input id="c-name" value="${escapeHtml(e.name || '')}" /></div>
+        <div class="field">
+          <label>rarity</label>
+          <select id="c-rarity">
+            ${['free', 'paid', 'hidden'].map((r) => `<option value="${r}" ${(e.rarity || 'free') === r ? 'selected' : ''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>priceCandle</label><input id="c-price" type="number" min="0" value="${e.priceCandle ?? 0}" /></div>
+        <div class="field">
+          <label>boundaryDefault</label>
+          <select id="c-boundary">
+            ${[1,2,3,4,5].map((n) => `<option value="${n}" ${(e.boundaryDefault || 2) === n ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <label style="margin:0;"><input id="c-active" type="checkbox" ${e.isActive !== false ? 'checked' : ''} /> isActive</label>
+        </div>
+      </div>
+      <div class="grid cols-2">
+        <div class="field"><label>开场白 · 首次到访</label><input id="c-open-first" value="${escapeHtml(olines.firstVisit || '')}" /></div>
+        <div class="field"><label>开场白 · 再次到访</label><input id="c-open-return" value="${escapeHtml(olines.returnVisit || '')}" /></div>
+      </div>
+      <div class="field"><label>styleTags（逗号分隔）</label><input id="c-tags" value="${escapeHtml((e.styleTags || []).join(', '))}" /></div>
+      <div class="field"><label>forbiddenPhrases（禁用语，逗号或换行分隔；改后下一轮对话立即生效）</label>
+        <textarea id="c-forbidden" rows="2">${escapeHtml((e.forbiddenPhrases || []).join('、'))}</textarea>
+      </div>
+      <div class="field"><label>description（角色背景，进 system prompt 的 # 角色 块）</label>
+        <textarea id="c-desc" rows="5">${escapeHtml(e.description || '')}</textarea>
+      </div>
+      <div class="field"><label>reason（必填，落审计）</label><input id="c-reason" placeholder="为什么改" /></div>
+      <div class="row-flex">
+        <button class="btn primary" id="btn-char-save">${editing ? '保存修改' : '创建'}</button>
+        ${editing ? `<button class="btn" id="btn-char-cancel">取消</button>` : ''}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>角色列表（${characters.length}）</h2>
+      ${tableHtml(['id', 'name', 'rarity', '价(烛)', 'b默认', '状态', 'updated', ''],
+        characters.map((c) => [
+          { cls: 'mono', text: c.id },
+          c.name,
+          { html: `<span class="pill">${escapeHtml(c.rarity)}</span>` },
+          String(c.priceCandle),
+          { html: `<span class="pill">${c.boundaryDefault}</span>` },
+          { html: c.isActive ? '<span class="pill ok">active</span>' : '<span class="pill muted">stopped</span>' },
+          { cls: 'mono', text: c.updatedAt ? new Date(c.updatedAt).toLocaleString() : '—' },
+          {
+            html: `<button class="btn small" data-edit-char="${escapeHtml(c.id)}">编辑</button>
+                   <button class="btn small ${c.isActive ? 'danger' : ''}" data-toggle-char="${escapeHtml(c.id)}" data-next="${!c.isActive}" style="margin-left:6px;">${c.isActive ? '停用' : '启用'}</button>`,
+          },
+        ]))}
+    </div>
+
+    <div class="card">
+      <h2>危险区</h2>
+      <p class="muted">从 packages/prompts/characters/*.yaml 重新 seed — 会覆盖 state 里所有运营改过的字段。仅在 state 数据出错或本地重置时使用。</p>
+      <button class="btn danger" id="btn-char-reset">从 yaml 重置 seed</button>
+    </div>`;
+};
+
+// §4.13 用量规则 ──────────────────────────────────────────────────────────
+views.policy = async () => {
+  const { policies } = await adminGet('/policy');
+  const { groups } = await adminGet('/policy?grouped=1');
+
+  afterMount(() => {
+    for (const btn of $$('button[data-policy-save]')) {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.policySave;
+        const valStr = $('#pv-' + key)?.value;
+        const reason = $('#pr-' + key)?.value?.trim();
+        if (!reason) { toast('原因必填', 'warn'); return; }
+        let value;
+        if (valStr === 'true') value = true;
+        else if (valStr === 'false') value = false;
+        else if (/^-?\d+(\.\d+)?$/.test(valStr)) value = Number(valStr);
+        else value = valStr;
+        try {
+          await adminPatch('/policy/' + encodeURIComponent(key), { value, reason });
+          toast(key + ' 已更新', 'ok');
+          await render(currentRoute());
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    }
+  });
+
+  const groupLabels = { '配额': '配额', '成本': '成本', '内容策略': '内容策略', '杂项': '杂项' };
+  const policyInput = (r) => {
+    const id = 'pv-' + r.key;
+    if (r.type === 'boolean') {
+      return `<select id="${escapeHtml(id)}">
+        <option value="true" ${r.value === true ? 'selected' : ''}>true</option>
+        <option value="false" ${r.value === false ? 'selected' : ''}>false</option>
+      </select>`;
+    }
+    const attrs = r.type === 'number'
+      ? `type="number" ${r.min !== undefined ? `min="${escapeHtml(String(r.min))}"` : ''} ${r.max !== undefined ? `max="${escapeHtml(String(r.max))}"` : ''}`
+      : 'type="text"';
+    return `<input id="${escapeHtml(id)}" ${attrs} value="${escapeHtml(String(r.value))}" />`;
+  };
+  const groupCards = Object.entries(groups).map(([g, rows]) => {
+    if (!rows || rows.length === 0) return '';
+    return `
+      <div class="card">
+        <h2>${escapeHtml(groupLabels[g] || g)}</h2>
+        ${tableHtml(['key', '说明', '值', '原因（必填）', '操作人', '修改时间', ''],
+          rows.map((r) => [
+            { html: `<div class="mono">${escapeHtml(r.key)}</div><div class="muted">${escapeHtml(r.label || '')}</div>` },
+            { text: r.description || '' },
+            { html: policyInput(r) },
+            { html: `<input id="pr-${escapeHtml(r.key)}" placeholder="为什么改" />` },
+            { cls: 'mono muted', text: r.updatedBy },
+            { cls: 'mono muted', text: r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—' },
+            { html: `<button class="btn small primary" data-policy-save="${escapeHtml(r.key)}">保存</button>` },
+          ]))}
+      </div>`;
+  }).join('');
+
+  return `
+    ${pageTitle('用量规则', '运营面板实时改策略 — 下一轮对话立即生效，改后落审计日志。等价于旧 constants.ts 硬编码值的线上版。')}
+    ${groupCards}
+    <div class="card">
+      <h2>全部规则（原始表）</h2>
+      ${tableHtml(['key', 'value', 'updatedBy', 'updatedAt'],
+        policies.map((r) => [
+          { cls: 'mono', text: r.key },
+          { cls: 'mono', text: typeof r.value === 'boolean' ? String(r.value) : String(r.value) },
+          { cls: 'mono muted', text: r.updatedBy },
+          { cls: 'mono muted', text: r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—' },
+        ]))}
+    </div>`;
+};
+
+// §4.14 侧袋 AI ────────────────────────────────────────────────────────────
+views['sidecar-prompts'] = async () => {
+  const { prompts } = await adminGet('/sidecar-prompts');
+  const keyLabels = {
+    preferenceRecorder: '偏好记录 AI',
+    outputStructurer: '结构拆句 AI',
+    atmosphereJudge: '氛围判断 AI',
+    quotaEnding: '额度结束 AI',
+    contextCompressor: '上下文压缩 AI',
+  };
+
+  afterMount(() => {
+    for (const btn of $$('button[data-sp-save]')) {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.spSave;
+        const value = $('#spv-' + key)?.value;
+        const reason = $('#spr-' + key)?.value?.trim();
+        if (!reason) { toast('原因必填', 'warn'); return; }
+        try {
+          await adminPatch('/sidecar-prompts/' + encodeURIComponent(key), { value, reason });
+          toast(key + ' 已更新', 'ok');
+          await render(currentRoute());
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    }
+    for (const btn of $$('button[data-sp-reset]')) {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.spReset;
+        const defaultValue = $('#spd-' + key)?.textContent;
+        if (!defaultValue) { toast('无默认值', 'warn'); return; }
+        const reason = '重置为默认';
+        try {
+          await adminPatch('/sidecar-prompts/' + encodeURIComponent(key), { value: defaultValue, reason });
+          toast(key + ' 已重置', 'ok');
+          await render(currentRoute());
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    }
+  });
+
+  const cards = prompts.map((p) => {
+    const currentLen = p.currentValue ? p.currentValue.length : 0;
+    return `
+    <div class="card">
+      <h2>${escapeHtml(keyLabels[p.key] || p.key)} <span class="muted mono">${escapeHtml(p.key)}</span></h2>
+      <div style="margin-bottom:8px">
+        <textarea id="spv-${escapeHtml(p.key)}" rows="8" style="width:100%;font-family:monospace;font-size:12px;background:var(--c-bg2);color:var(--c-text);border:1px solid var(--c-border);border-radius:4px;padding:8px">${escapeHtml(p.currentValue)}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+        <input id="spr-${escapeHtml(p.key)}" placeholder="修改原因（必填）" style="flex:1" />
+        <button class="btn small primary" data-sp-save="${escapeHtml(p.key)}">保存</button>
+        <button class="btn small" data-sp-reset="${escapeHtml(p.key)}">重置默认</button>
+      </div>
+      <div class="muted" style="font-size:11px">当前值 ${currentLen} 字符 · 默认值 <span id="spd-${escapeHtml(p.key)}" style="display:none">${escapeHtml(p.defaultValue)}</span>
+        <a href="javascript:void(0)" onclick="this.previousElementSibling.style.display='inline';this.remove()">查看</a>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    ${pageTitle('侧袋 AI Prompt 配置', '修改后下一次调用立即生效。所有修改记录审计日志。暂不做版本管理和灰度发布。')}
+    ${cards}
+  `;
+};
+
+// §4.15 支付测试 ──────────────────────────────────────────────────────────
+views['pay-test'] = async () => {
+  afterMount(() => {
+    for (const btn of $$('button[data-pay-fire]')) {
+      btn.addEventListener('click', async () => {
+        const provider = btn.dataset.payFire;
+        const path = provider === 'stripe' ? '/api/pay/stripe/webhook' : `/api/pay/${provider}/callback`;
+        const body = {
+          userId: $('#pt-user').value.trim(),
+          planId: $('#pt-plan').value.trim() || 'moonlight',
+          cycle: $('#pt-cycle').value.trim() || 'month',
+          amount: Number($('#pt-amount').value || 28),
+          candleTopup: Number($('#pt-candle').value || 0),
+          gatewayEventId: $('#pt-eventid').value.trim() || undefined,
+        };
+        try {
+          const res = await fetch(state.apiBase + path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const j = await res.json();
+          toast(`${provider}: ${JSON.stringify(j)}`, 'ok');
+        } catch (e) { toast(e.message, 'err'); }
+      });
+    }
+  });
+  return `
+    ${pageTitle('支付测试', '触发 mock 支付回调 — 不验签，便于联调订阅成功后的分支')}
+    <div class="card">
+      <h2>构造 mock 支付</h2>
+      <div class="grid cols-3">
+        <div class="field"><label>userId</label><input id="pt-user" /></div>
+        <div class="field"><label>planId</label><input id="pt-plan" placeholder="moonlight" /></div>
+        <div class="field"><label>cycle</label><input id="pt-cycle" placeholder="month" /></div>
+        <div class="field"><label>amount(元)</label><input id="pt-amount" type="number" value="28" /></div>
+        <div class="field"><label>candleTopup（同时给烛）</label><input id="pt-candle" type="number" value="0" /></div>
+        <div class="field"><label>gatewayEventId（重复发证幂等）</label><input id="pt-eventid" /></div>
+      </div>
+      <div class="row-flex">
+        <button class="btn primary" data-pay-fire="wechat">微信 callback</button>
+        <button class="btn primary" data-pay-fire="alipay">支付宝 callback</button>
+        <button class="btn primary" data-pay-fire="stripe">Stripe webhook</button>
+      </div>
+      <div class="card-hint" style="margin-top:8px;">所有 callback 走 processMockPay：唯一 gatewayEventId 入账，重复则幂等返回。</div>
+    </div>`;
+};
+
+// §4.15 DB 工具 ──────────────────────────────────────────────────────────
+views['db-tools'] = async () => `
+  ${pageTitle('数据库 GUI', '迁移 + 查询（独立 Hono 服务，端口 5174）')}
+  <div class="card">
+    <h2>启动方式</h2>
+    <pre class="json">pnpm db:gui    # 起在 http://localhost:5174
+pnpm db:status # 查看迁移状态
+pnpm db:up     # 应用 pending 迁移</pre>
+    <p style="margin-top:12px;"><a href="http://localhost:5174" target="_blank">打开 DB GUI →</a></p>
+  </div>
+  <div class="card">
+    <h2>说明</h2>
+    <p class="muted">DB GUI 来自 infra/db/src/gui，Phase 1 用 Postgres + 自建 SQL runner。本地 api 不接 PG，只用 JSON 文件持久化（apps/api/.local/state.json）。如需测真 PG，先 db:up 应用迁移再起 server。</p>
+  </div>`;
+
+// ─── §5  路由 + 初始化 ──────────────────────────────────────────────────
+function currentRoute() {
+  const raw = location.hash.replace(/^#/, '').split('?')[0];
+  // 默认进 setup 向导：流程化首屏 — 检查清单 + 一键修复 + 快速操作
+  return raw || 'setup';
+}
+
+function renderSidebar() {
+  const cur = currentRoute();
+  $('#sidebar').innerHTML = NAV.map((g) => `
+    <div class="nav-group">
+      <div class="label">${escapeHtml(g.group)}</div>
+      ${g.items.map((it) => `
+        <a class="nav-link ${it.name === cur ? 'active' : ''}" href="#${it.name}">
+          <span class="icon">${it.icon}</span>
+          <span>${escapeHtml(it.label)}</span>
+        </a>`).join('')}
+    </div>`).join('');
+}
+
+// 根据 pingHealth() 返回值生成对应的"为什么连不上"诊断卡
+function diagnoseHtml(status) {
+  const where = state.servedByMock
+    ? '此页是 apps/api 直接服务的（同源访问，最稳）'
+    : `此页通过 <code class="mono">${escapeHtml(location.origin || 'file://')}</code> 打开 — 跨源访问 <code class="mono">${escapeHtml(state.apiBase)}</code>`;
+
+  const recipe = `
+    <h3 style="color:var(--gold-light);margin-top:16px;">推荐排查顺序</h3>
+    <ol style="color:var(--paper-dim);padding-left:20px;line-height:1.9;">
+      <li>另开终端跑 <code class="mono" style="color:var(--gold-light);">pnpm dev:mock</code>，确认日志里有 <code class="mono">[mock] http://localhost:8787</code>。</li>
+      <li>浏览器访问 <a href="http://localhost:8787/health" target="_blank">http://localhost:8787/health</a>，能看到 JSON 即服务正常。</li>
+      <li>用 <strong>同源</strong> 入口打开本控制台：<a href="http://localhost:8787/admin" target="_blank">http://localhost:8787/admin</a>（避开浏览器的跨源拦截）。</li>
+      <li>token 用本地默认 <code class="mono">admin-dev-token</code>；如改过 <code class="mono">ADMIN_TOKEN</code> env 就用对应值。</li>
+    </ol>`;
+
+  switch (status) {
+    case 'no-server':
+      return `
+        <div class="card">
+          <h2 style="color:var(--danger);">连接失败 — 服务未启动</h2>
+          <p class="muted">浏览器无法连到 <code class="mono">${escapeHtml(state.apiBase)}</code>。</p>
+          <p class="muted" style="margin-top:8px;">${where}。</p>
+          ${recipe}
+        </div>`;
+    case 'cors':
+      return `
+        <div class="card">
+          <h2 style="color:var(--warn);">连接被浏览器拦截（跨源 / Private Network Access）</h2>
+          <p class="muted">公共 <code class="mono">/health</code> 可达，但带 Authorization 的请求被预检拒绝。</p>
+          <p class="muted" style="margin-top:8px;">${where}。</p>
+          <p style="color:var(--gold-light);margin-top:12px;">最简单的修法：直接打开 <a href="http://localhost:8787/admin" target="_blank">http://localhost:8787/admin</a>（同源 = 无 CORS）。</p>
+          ${recipe}
+        </div>`;
+    case 'unauthorized':
+      return `
+        <div class="card">
+          <h2 style="color:var(--warn);">token 错误（401）</h2>
+          <p class="muted">服务在跑，但提供的 token 不是 apps/api 的 <code class="mono">ADMIN_TOKEN</code>。</p>
+          <p class="muted" style="margin-top:8px;">本地默认值 <code class="mono">admin-dev-token</code>。如果改过 env，请用新值。</p>
+        </div>`;
+    default:
+      return `
+        <div class="card">
+          <h2 style="color:var(--danger);">连接失败</h2>
+          <p class="muted">原因未知；打开浏览器 DevTools Network 看具体错误。</p>
+        </div>`;
+  }
+}
+
+async function render(name) {
+  if (!views[name]) {
+    $('#main').innerHTML = `<div class="card muted">未知面板：${escapeHtml(name)}</div>`;
+    return;
+  }
+  if (!state.token) {
+    $('#main').innerHTML = `
+      <div class="card">
+        <h2>需要 ADMIN_TOKEN</h2>
+        <p class="muted">在顶部输入 token 并点"保存并测试"。本地默认值 <code class="mono">admin-dev-token</code>。</p>
+      </div>`;
+    return;
+  }
+  $('#main').innerHTML = '<div class="muted" style="text-align:center;padding:80px 0;">加载中…</div>';
+  try {
+    const html = await views[name]();
+    $('#main').innerHTML = html;
+  } catch (e) {
+    // view 内部 fetch 出错 — 大概率仍是连接问题；用诊断卡而不是干巴巴的 stack
+    if (e.message === 'NETWORK') {
+      $('#main').innerHTML = diagnoseHtml(await probePublicHealth() ? 'cors' : 'no-server');
+      return;
+    }
+    if (e.message.startsWith('401')) {
+      $('#main').innerHTML = diagnoseHtml('unauthorized');
+      return;
+    }
+    $('#main').innerHTML = `
+      <div class="card">
+        <h2 style="color:var(--danger);">加载失败</h2>
+        <pre class="json">${escapeHtml(e.message)}</pre>
+      </div>`;
+  }
+}
+
+async function init() {
+  // 部署模式徽章可点击 — 弹端点切换器（一键切本机/服务器/自定义）
+  const pill = $('#mode-pill');
+  if (pill) pill.addEventListener('click', openEndpointPicker);
+
+  // 顶部 token 输入框
+  const tokenInput = $('#token-input');
+  tokenInput.value = state.token;
+  $('#token-save').addEventListener('click', async () => {
+    state.token = tokenInput.value.trim();
+    localStorage.setItem('yelan.adminToken', state.token);
+    const status = await pingHealth();
+    if (status === 'ok') {
+      toast('已连接', 'ok');
+      renderSidebar();
+      render(currentRoute());
+    } else {
+      const hint = {
+        'no-server': '服务未启动 — 跑 pnpm dev:mock',
+        'cors': '跨源被拦 — 改用 http://localhost:8787/admin 打开',
+        'unauthorized': 'token 错误（默认 admin-dev-token）',
+        'unknown': '连接失败 — 打开 DevTools Network 看详情',
+      }[status] || '连接失败';
+      toast(hint, 'err');
+      $('#main').innerHTML = diagnoseHtml(status);
+    }
+  });
+
+  // hash 路由
+  window.addEventListener('hashchange', () => {
+    renderSidebar();
+    render(currentRoute());
+  });
+
+  // 首屏：先尝试 ping，能通就直接渲染；不通就出诊断卡
+  renderSidebar();
+  if (state.token) {
+    const status = await pingHealth();
+    if (status === 'ok') {
+      render(currentRoute());
+    } else {
+      $('#main').innerHTML = diagnoseHtml(status);
+    }
+  } else {
+    $('#main').innerHTML = `
+      <div class="card">
+        <h2>欢迎使用夜阑运营后台</h2>
+        <p class="muted" style="margin-bottom:12px;">在顶部输入 ADMIN_TOKEN（本地默认 <code class="mono">admin-dev-token</code>）并点"保存并测试"开始。</p>
+        <ol style="color:var(--paper-dim);padding-left:20px;line-height:1.8;">
+          <li>本控制台所有写动作必须填 <strong>reason</strong>，会落到 <code class="mono">/api/admin/audit</code>。</li>
+          <li>不动 .env 也能改运行期参数（boundary / 免费上限 / latency）。</li>
+          <li>所有 secret 字段返回时仅显示脱敏；要写新值就直接输入，留空跳过。</li>
+        </ol>
+        ${state.servedByMock
+          ? ''
+          : `<p style="margin-top:12px;color:var(--warn);">检测到本页不是从 apps/api 同源加载。如点"保存并测试"失败，请改从 <a href="http://localhost:8787/admin" target="_blank">http://localhost:8787/admin</a> 打开。</p>`}
+      </div>`;
+  }
+
+  // 周期 ping，让连接状态实时
+  setInterval(pingHealth, 15_000);
+}
+
+init();
+</script>
+</body>
+</html>

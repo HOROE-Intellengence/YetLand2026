@@ -1,0 +1,18 @@
+.root {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: #000;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.sigilWrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 2.2s cubic-bezier(.2, .6, .2, 1),
+              transform 2.4s cubic-bezier(.2, .6, .2, 1),
+              filter 1.6s ease;
+}

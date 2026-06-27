@@ -1,0 +1,82 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  animation: fadeIn 0.2s ease;
+}
+
+.shell {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  max-width: 90vw;
+  background: var(--bg);
+  border-left: 1px solid rgba(200, 184, 164, 0.08);
+  z-index: 31;
+  /* 安全区：刘海/灵动岛与 Home 指示条 + 横屏右侧凹口（移动端方案 Phase 1） */
+  padding: calc(32px + var(--safe-t)) calc(24px + var(--safe-r)) calc(32px + var(--safe-b)) 24px;
+  overflow-y: auto;
+  /* 容器查询锚点：面板按抽屉自身宽度 reflow，而非屏幕断点（移动端方案 Phase 3） */
+  container-type: inline-size;
+  animation: slideIn 0.25s ease;
+}
+
+.closeBtn {
+  position: absolute;
+  top: calc(16px + var(--safe-t));
+  right: calc(16px + var(--safe-r));
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(200, 184, 164, 0.1);
+  border-radius: 8px;
+  color: var(--paper-dim);
+  font-size: var(--fs-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* hover 仅在真有悬停能力的设备生效，避免触屏粘连（移动端方案 Phase 4） */
+@media (hover: hover) {
+  .closeBtn:hover {
+    color: var(--paper);
+    border-color: rgba(200, 184, 164, 0.2);
+  }
+}
+
+.closeBtn:active {
+  color: var(--paper);
+  border-color: rgba(200, 184, 164, 0.3);
+}
+
+/* 触屏命中区 ≥44×44（移动端方案 Phase 2） */
+@media (pointer: coarse) {
+  .closeBtn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* 移动端：抽屉转全宽 sheet（安全区已在 Phase 1 接好）（移动端方案 Phase 4） */
+@media (max-width: 480px) {
+  .shell {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

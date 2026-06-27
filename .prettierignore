@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.output/
+.vercel/
+.wrangler/
+coverage/
+.local/
+pnpm-lock.yaml
+*.sqlite
+*.db
+packages/prompts/src/generated.ts

@@ -1,0 +1,53 @@
+.flash {
+  position: fixed;
+  top: calc(24px + var(--safe-t));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: rgba(20, 18, 10, 0.92);
+  border: 1px solid rgba(200, 168, 120, 0.3);
+  border-radius: 12px;
+  padding: 16px 28px;
+  text-align: center;
+  animation: flashIn 0.5s ease, flashOut 0.5s ease 3.5s forwards;
+  pointer-events: none;
+}
+
+.icon {
+  font-size: var(--fs-xl);
+  margin-bottom: 6px;
+}
+
+.name {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--gold-light);
+  text-shadow: 0 0 12px rgba(200, 168, 120, 0.3);
+}
+
+.desc {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--paper-dim);
+  margin-top: 4px;
+}
+
+@keyframes flashIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes flashOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

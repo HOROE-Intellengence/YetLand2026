@@ -1,0 +1,88 @@
+# ============================================================================
+#  夜阑 · Caddy 反向代理配置
+#  ----------------------------------------------------------------------------
+#  Caddy 自动给 ${DOMAIN} 申请 Let's Encrypt 证书 — 你只要确保 DNS A 记录已指向
+#  本服务器，且 80/443 端口开放。
+#
+#  改它后：docker compose restart caddy
+#
+#  ── 控制台「秘密入口」（降低被扫描发现的概率） ─────────────────────────────
+#  控制台不再挂在众所周知的 /admin，而是挂在 .env 里的 {$ADMIN_PATH}（例：/KSHHT）。
+#  · 访问 {$ADMIN_PATH} → 内部改写成 /admin 转发给后端，控制台照常打开。
+#  · 直接访问 /admin（及 /admin-legacy 等）→ 一律返回与「路径不存在」逐字节相同的
+#    landing，扫描器无法区分「被藏了」和「根本没有」。
+#  · /admin/assets/* 必须放行：dist 是按 base=/admin/ 构建的，首页里引用的是绝对路径
+#    /admin/assets/<带 hash 文件名>.js；文件名带构建 hash，没进过控制台的人枚举不出来。
+#  注意：真正的认证仍是 ADMIN_TOKEN。改路径只降噪、不替代鉴权，且 ADMIN_PATH 是「路径
+#  式秘密」，会出现在浏览器历史和 Caddy 访问日志里——它定位是「少被扫到」，不是加密。
+#  轮换路径：改 .env 的 ADMIN_PATH，docker compose restart caddy 即可，无需改代码/重构建。
+#
+#  详见：https://caddyserver.com/docs/caddyfile
+# ============================================================================
+
+{$DOMAIN} {
+	# 可选：HSTS / 安全头
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# 删掉 Server 头别让对方猜版本
+		-Server
+	}
+
+	# /api/* → apps/api
+	# 这块包含 SSE 流（/api/chat），关 buffer 让 chunk 实时下发
+	handle /api/* {
+		reverse_proxy api:8787 {
+			flush_interval -1
+			transport http {
+				keepalive 30s
+			}
+		}
+	}
+
+	# /health → apps/api（外部探活用，无需鉴权）
+	handle /health {
+		reverse_proxy api:8787
+	}
+
+	# 秘密入口：{$ADMIN_PATH}（例 /KSHHT）→ 改写成 /admin 转发。
+	# 后端对带尾斜杠的 /admin/ 会 302 到 /admin，这里把响应 Location 头里的 /admin
+	# 反向改写回 {$ADMIN_PATH}，否则浏览器会被弹回被封的 /admin。
+	handle {$ADMIN_PATH:/__console_change_me__}* {
+		uri replace {$ADMIN_PATH:/__console_change_me__} /admin
+		reverse_proxy api:8787 {
+			header_down Location /admin {$ADMIN_PATH:/__console_change_me__}
+		}
+	}
+
+	# 控制台静态资源放行（哈希文件名不可枚举）。Caddy 的 handle 按 matcher 特异性自动
+	# 排序，/admin/assets/* 比 /admin* 更具体故先匹配——与源码顺序无关，这里靠前仅为可读。
+	handle /admin/assets/* {
+		reverse_proxy api:8787
+	}
+
+	# 原 /admin 入口（含 /admin-legacy 等）装死：返回与「未知 SPA 路由」逐字节相同的
+	# 前端首页。同域托管后兜底已不是纯文本而是 index.html，这里必须跟着返回同一个
+	# index.html，否则 /admin 的响应会和正常路由不一致，反而暴露「这里藏了东西」。
+	handle /admin* {
+		root * /srv
+		rewrite * /index.html
+		file_server
+	}
+
+	# 兜底：同域托管 web 前端（SPA）。任何未被上面命中的路径都回前端，
+	# 由前端路由自己决定渲染哪个页面或 404。
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Caddy 自动选择最佳证书
+	encode gzip zstd
+	log {
+		output stdout
+		format console
+	}
+}

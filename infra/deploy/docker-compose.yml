@@ -1,0 +1,109 @@
+# ============================================================================
+#  夜阑 · 服务器一键部署
+#  ----------------------------------------------------------------------------
+#  起两个容器：
+#    1. apps/api     — 后台 API（端口 8787，对外不直接暴露）
+#    2. caddy        — 反代 + 自动 HTTPS（端口 80/443）
+#
+#  用法：
+#    cd infra/deploy
+#    cp .env.example .env       # 改 DOMAIN / ADMIN_TOKEN / API key
+#    docker compose up -d --build
+#
+#  状态：
+#    docker compose ps
+#    docker compose logs -f api
+#  停止：
+#    docker compose down
+#  备份：
+#    cp -r ./_data ./backup-$(date +%F)
+#
+#  state.json 持久化在 ./_data/state.json，gitignore 已忽略。
+# ============================================================================
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ../..             # 仓库根
+      dockerfile: infra/deploy/Dockerfile
+    image: yelan-api:latest
+    container_name: yelan-api
+    restart: unless-stopped
+    environment:
+      DEPLOY_MODE: server
+      MOCK_HOST: 0.0.0.0
+      MOCK_PORT: 8787
+
+      # 生产必填 ↓
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN 必填，且不能是 admin-dev-token}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://${DOMAIN}}
+
+      # LLM API key（任填一个）
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+
+      # 模型名（可选覆盖）
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      NVIDIA_MODEL: ${NVIDIA_MODEL:-z-ai/glm-5.1}
+
+      # Caddy 直连部署不需要内部 token；Worker edge 转发时再改成 true 并设置 token
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+      INTERNAL_TOKEN_REQUIRED: ${INTERNAL_TOKEN_REQUIRED:-false}
+
+      # 策略
+      NARRATIVE_BOUNDARY_GLOBAL: ${NARRATIVE_BOUNDARY_GLOBAL:-2}
+
+      # 控制台是否开放（生产建议 false 改用独立 admin 前端；为了一键体验默认 true）
+      ENABLE_ADMIN_CONSOLE: ${ENABLE_ADMIN_CONSOLE:-true}
+
+      # 信任反向代理
+      TRUST_PROXY: "true"
+    volumes:
+      - ./_data:/app/apps/api/.local
+    networks:
+      - web
+    expose:
+      - "8787"
+
+  caddy:
+    # 多阶段镜像：构建 apps/web → 烘进 /srv，再由 Caddyfile 的 file_server 同域托管。
+    # WEB_API_BASE 在构建期注入成 https://<DOMAIN>，让前端同源调 /api（见 web.Dockerfile）。
+    build:
+      context: ../..                       # 仓库根
+      dockerfile: infra/deploy/web.Dockerfile
+      args:
+        WEB_API_BASE: https://${DOMAIN}
+    image: yelan-web-caddy:latest
+    container_name: yelan-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN 必填，例如 api.example.com}
+      # 控制台秘密入口路径（例 /KSHHT）。不设则退回占位默认，强烈建议在 .env 里改成
+      # 你自己的随机串。直接访问 /admin 会被装死成 landing，详见 Caddyfile。
+      ADMIN_PATH: ${ADMIN_PATH:-/__console_change_me__}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+    depends_on:
+      - api
+
+networks:
+  web:
+
+volumes:
+  caddy_data:
+  caddy_config:

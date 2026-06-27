@@ -1,0 +1,16 @@
+/* 自动生成 — 不要手动改。改 src/tokens.ts 后跑同步脚本。
+   apps/web/src/styles/tokens.css 在迁移期是手写镜像；后续改为 import 本文件。 */
+:root {
+  --bg: #0a0a0f;
+  --bg-2: #0d0d14;
+  --paper: #c8b8a4;
+  --paper-dim: #8a7e6e;
+  --paper-mute: #5a5248;
+  --gold: #a08060;
+  --gold-light: #c8a878;
+  --gold-glow: rgba(200, 168, 120, 0.45);
+  --ink: rgba(200, 184, 164, 0.05);
+
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+}

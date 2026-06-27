@@ -1,0 +1,28 @@
+name = "yelan-server"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV: prompts + rate-limit
+# kv_namespaces = [
+#   { binding = "PROMPTS_KV", id = "TODO" },
+#   { binding = "RATE_LIMIT_KV", id = "TODO" }
+# ]
+
+# 真正的 secrets 用 `wrangler secret put`，不写在这里
+# vars: 仅放可公开的非敏感配置
+[vars]
+# 公开变量（非 secret），敏感值用 wrangler secret put 注入
+NARRATIVE_BOUNDARY_GLOBAL = "3"
+UNLIM_WORKER_URL = "https://unlim.yelan.workers.dev"
+ENV = "production"
+ENABLE_MOCK_FALLBACK = "true"
+MOCK_SERVER_BASE = "https://api.example.com"  # 改成真实生产域名
+
+# Secrets（用 wrangler secret put 或 Dashboard 注入，不写在 toml 里）：
+#   INTERNAL_TOKEN  — ADR-0009，与 apps/api 的 INTERNAL_TOKEN 完全一致
+#   ADMIN_TOKEN     — admin 后台鉴权
+#   ANTHROPIC_API_KEY / OPENAI_API_KEY / DEEPSEEK_API_KEY — LLM
+
+# [env.production]
+# routes = [{ pattern = "api.yelan.app/*", zone_name = "yelan.app" }]

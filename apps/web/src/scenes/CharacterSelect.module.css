@@ -1,0 +1,376 @@
+.root {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px 24px;
+  overflow: hidden; /* Avoid scrolls on select page */
+}
+
+.heading {
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  color: var(--paper);
+  text-align: center;
+  animation: fadeUp 0.6s ease;
+  margin: 0;
+}
+
+/* 5槽位舞台视口 */
+.viewport {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  height: 550px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible; /* 允许星座以及发光溢出 */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeUp 0.6s ease both;
+}
+
+/* 呼吸振幅由 CSS 变量驱动 → 同一套关键帧按槽位分级（中心强 / 两侧中 / 远端弱）。
+   var 在用值期解析为具体数字，opacity 仍在两个数字间正常插值。 */
+@keyframes cardAuraBreathe {
+  0%, 100% {
+    opacity: var(--aura-min, 0.38);
+    transform: scale(0.985);
+  }
+  50% {
+    opacity: var(--aura-max, 0.58);
+    transform: scale(1.018);
+  }
+}
+
+@keyframes cardFloorBreathe {
+  0%, 100% {
+    opacity: var(--floor-min, 0.28);
+    transform: translateY(0) scaleX(0.94);
+  }
+  50% {
+    opacity: var(--floor-max, 0.52);
+    transform: translateY(3px) scaleX(1.04);
+  }
+}
+
+/* 槽位模型 CSS 动画配置 */
+:root, .viewport {
+  --cf-ease: cubic-bezier(0.45, 0, 0.15, 1); /* 先加速后减速缓动 */
+  --cf-dur: 520ms;
+}
+
+/* 角色卡基础及槽位样式 */
+.card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--slot-w);
+  height: var(--slot-h);
+  opacity: var(--slot-opacity);
+  filter: blur(var(--slot-blur));
+  z-index: var(--slot-z-index);
+  transform: translate(-50%, -50%) translateX(var(--slot-x)) scale(var(--slot-scale));
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  touch-action: none; /* 关键：防止原生拖动，利于 Pointer 事件捕捉 */
+  box-sizing: border-box;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 6px;
+  border: none;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 52% 46% at 50% 45%, rgba(238, 222, 194, 0.065), transparent 72%),
+    radial-gradient(ellipse 68% 58% at 50% 62%, rgba(200, 168, 120, 0.035), transparent 78%);
+  box-shadow: none;
+  overflow: visible; /* 让星座和发光浮出边界 */
+  /* 平滑缓动过渡 */
+  transition:
+    transform var(--cf-dur) var(--cf-ease),
+    width var(--cf-dur) var(--cf-ease),
+    height var(--cf-dur) var(--cf-ease),
+    opacity var(--cf-dur) var(--cf-ease),
+    filter var(--cf-dur) var(--cf-ease),
+    background 0.45s ease;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 6%;
+  height: 34%;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 70% 72% at 50% 100%,
+    rgba(229, 204, 162, 0.16) 0%,
+    rgba(200, 168, 120, 0.07) 42%,
+    transparent 78%
+  );
+  opacity: 0.28;
+  transform-origin: 50% 100%;
+  animation: cardFloorBreathe 8.5s ease-in-out infinite;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 9% 9% 7%;
+  z-index: 0;
+  border-radius: 48% 52% 42% 58% / 38% 40% 60% 62%;
+  background: radial-gradient(
+    ellipse 70% 82% at 50% 48%,
+    rgba(245, 232, 208, 0.105) 0%,
+    rgba(200, 168, 120, 0.055) 38%,
+    rgba(200, 168, 120, 0.018) 58%,
+    transparent 78%
+  );
+  opacity: 0.38;
+  animation: cardAuraBreathe 9s ease-in-out infinite;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+
+.card:hover::before,
+.card:focus-visible::before {
+  opacity: 0.68;
+  transform: scale(1.03);
+  animation: none;
+}
+
+.card:hover::after,
+.card:focus-visible::after {
+  opacity: 0.6;
+  animation: none;
+}
+
+/* —— 分级背景 + 呼吸氛围（B1）：中心(0)最强，两侧(1)递减，远端(2)极淡 —— */
+/* 中心卡：最暖最亮的光晕底 + 最大呼吸振幅 */
+.card[data-tier='0'] {
+  --aura-min: 0.44;
+  --aura-max: 0.68;
+  --floor-min: 0.32;
+  --floor-max: 0.60;
+  background:
+    radial-gradient(ellipse 56% 50% at 50% 44%, rgba(238, 222, 194, 0.105), transparent 72%),
+    radial-gradient(ellipse 74% 64% at 50% 60%, rgba(200, 168, 120, 0.058), transparent 80%);
+}
+
+/* 两侧卡：中等强度（约等于原始基线） */
+.card[data-tier='1'] {
+  --aura-min: 0.30;
+  --aura-max: 0.46;
+  --floor-min: 0.22;
+  --floor-max: 0.40;
+  background:
+    radial-gradient(ellipse 52% 46% at 50% 45%, rgba(238, 222, 194, 0.060), transparent 72%),
+    radial-gradient(ellipse 68% 58% at 50% 62%, rgba(200, 168, 120, 0.032), transparent 78%);
+}
+
+/* 远端卡：仅留一抹极淡的金雾作纵深氛围 */
+.card[data-tier='2'] {
+  --aura-min: 0.14;
+  --aura-max: 0.22;
+  --floor-min: 0.10;
+  --floor-max: 0.18;
+  background:
+    radial-gradient(ellipse 64% 60% at 50% 52%, rgba(200, 168, 120, 0.022), transparent 82%);
+}
+
+/* 文字渐隐控制，不压缩文本大小 */
+.cardContent {
+  position: relative;
+  z-index: 10;
+  opacity: var(--slot-text-opacity);
+  transition: opacity var(--cf-dur) var(--cf-ease);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.cardName {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lg);
+  color: var(--paper);
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.cardRarity {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xxs);
+  color: var(--gold-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.tag {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xxs);
+  color: var(--paper-mute);
+  padding: 0;
+}
+
+/* 导航箭头 */
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--paper-dim);
+  cursor: pointer;
+  padding: 16px;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s var(--cf-ease);
+  border-radius: 50%;
+}
+
+.arrow:hover {
+  color: var(--gold-light);
+  filter: drop-shadow(0 0 6px var(--gold-glow));
+}
+
+.arrow:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+.arrowLeft {
+  left: 40px;
+}
+
+.arrowRight {
+  right: 40px;
+}
+
+.arrowIcon {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.loading {
+  color: var(--paper-mute);
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+}
+
+.error {
+  color: #b06060;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  text-align: center;
+  padding: 16px;
+}
+
+/* 窄屏/移动端自适应 */
+@media (max-width: 768px) {
+  .root {
+    padding: 40px 58px 40px 16px;
+  }
+
+  .viewport {
+    height: 460px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+  }
+
+  .card {
+    /* 等比例缩小 75% 尺寸 */
+    width: calc(var(--slot-w) * 0.75) !important;
+    height: calc(var(--slot-h) * 0.75) !important;
+    /* translateX 缩进 60% 保证手机屏能露出左右边缘 */
+    transform: translate(-50%, -50%) translateX(calc(var(--slot-x) * 0.6)) scale(var(--slot-scale)) !important;
+    padding: 24px 16px;
+  }
+
+  /* 隐藏最边缘两侧的远侧细条，避免重叠 */
+  .card[style*="--slot-z-index: 70"],
+  .card[style*="--slot-z-index:70"] {
+    display: none !important;
+  }
+
+  /* 移动端空间很窄，侧卡保留轮廓和星座氛围，文字只给中心卡 */
+  .card[style*="--slot-z-index: 80"] .cardContent,
+  .card[style*="--slot-z-index:80"] .cardContent {
+    opacity: 0 !important;
+  }
+
+  .arrowLeft {
+    left: 8px;
+  }
+
+  .arrowRight {
+    right: 8px;
+  }
+}
+
+/* 减弱动效回退方案 */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: opacity 0.15s ease !important;
+    transform: translate(-50%, -50%) !important; /* 所有卡堆在中央，仅靠 opacity 切换显示 */
+    filter: none !important;
+  }
+  .cardContent {
+    transition: none !important;
+  }
+  .constellationActive {
+    animation: none !important;
+  }
+  .card {
+    animation: none !important;
+  }
+  .card::before,
+  .card::after {
+    animation: none !important;
+  }
+}
+
+/* 星座漂浮动效 */
+@keyframes constellationFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(0.6deg);
+  }
+}
+
+.constellationActive {
+  animation: constellationFloat 6.5s ease-in-out infinite;
+}

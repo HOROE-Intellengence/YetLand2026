@@ -1,0 +1,50 @@
+// 运营后台 mock — 用 ADMIN_TOKEN 鉴权（默认 admin-dev-token）
+// 所有写动作都通过 _audit.audit() 落审计；读动作不落审计
+import { Hono } from 'hono';
+import { adminCandleRoute } from './candle';
+import { adminQuotaRoute } from './quota';
+import { adminSurveysRoute } from './surveys';
+import { adminUsersRoute } from './users';
+import { adminPromptsRoute } from './prompts';
+import { adminCostsRoute } from './costs';
+import { adminConfigRoute } from './config';
+import { adminIfCodesRoute } from './if-codes';
+import { adminAuditRoute } from './audit';
+import { adminSessionsRoute } from './sessions';
+import { adminHealthRoute } from './health';
+import { adminDiagnosticsRoute } from './diagnostics';
+import { adminSeedRoute } from './seed';
+import { adminCharactersRoute } from './characters';
+import { adminConstellationsRoute } from './constellations';
+import { adminPolicyRoute } from './policy';
+import { adminSidecarPromptsRoute } from './sidecar-prompts';
+import { adminSidecarConfigRoute } from './sidecar-config';
+import { adminPreludeCardsRoute } from './prelude-cards';
+import { adminLlmApisRoute } from './llm-apis';
+import { adminMembershipRoute } from './membership';
+import { requireAdmin } from '../../middleware/auth';
+
+export const mockAdminRoute = new Hono();
+mockAdminRoute.use('*', requireAdmin());
+
+mockAdminRoute.route('/health', adminHealthRoute);
+mockAdminRoute.route('/diagnostics', adminDiagnosticsRoute);
+mockAdminRoute.route('/seed', adminSeedRoute);
+mockAdminRoute.route('/config', adminConfigRoute);
+mockAdminRoute.route('/candle', adminCandleRoute);
+mockAdminRoute.route('/quota', adminQuotaRoute);
+mockAdminRoute.route('/surveys', adminSurveysRoute);
+mockAdminRoute.route('/users', adminUsersRoute);
+mockAdminRoute.route('/prompts', adminPromptsRoute);
+mockAdminRoute.route('/costs', adminCostsRoute);
+mockAdminRoute.route('/if-codes', adminIfCodesRoute);
+mockAdminRoute.route('/audit', adminAuditRoute);
+mockAdminRoute.route('/sessions', adminSessionsRoute);
+mockAdminRoute.route('/characters', adminCharactersRoute);
+mockAdminRoute.route('/constellations', adminConstellationsRoute);
+mockAdminRoute.route('/policy', adminPolicyRoute);
+mockAdminRoute.route('/sidecar-prompts', adminSidecarPromptsRoute);
+mockAdminRoute.route('/sidecar-config', adminSidecarConfigRoute);
+mockAdminRoute.route('/prelude-cards', adminPreludeCardsRoute);
+mockAdminRoute.route('/llm-apis', adminLlmApisRoute);
+mockAdminRoute.route('/membership', adminMembershipRoute);

@@ -1,0 +1,66 @@
+.root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 40px 24px;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-2xl);
+  color: var(--paper);
+  text-align: center;
+  animation: fadeUp 0.8s ease;
+}
+
+.body {
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  color: var(--paper-dim);
+  text-align: center;
+  max-width: 420px;
+  line-height: 1.8;
+  animation: fadeUp 0.8s ease 0.2s both;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  animation: fadeUp 0.8s ease 0.4s both;
+}
+
+.btn {
+  padding: 10px 28px;
+  border-radius: 10px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.primaryBtn {
+  composes: btn;
+  background: rgba(200, 168, 120, 0.12);
+  border: 1px solid rgba(200, 168, 120, 0.22);
+  color: var(--gold-light);
+}
+
+.primaryBtn:hover {
+  background: rgba(200, 168, 120, 0.2);
+}
+
+.secondaryBtn {
+  composes: btn;
+  background: transparent;
+  border: 1px solid rgba(200, 184, 164, 0.1);
+  color: var(--paper-dim);
+}
+
+.secondaryBtn:hover {
+  border-color: rgba(200, 184, 164, 0.2);
+  color: var(--paper);
+}

@@ -1,0 +1,105 @@
+.root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: min(560px, 100%);
+  animation: fadeUp 0.8s ease both;
+}
+
+.prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  color: var(--paper);
+  font-family: var(--font-serif);
+  font-size: var(--fs-2xl);
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(220, 188, 130, 0.22);
+}
+
+.input {
+  width: min(280px, 100%);
+  border: 0;
+  border-bottom: 1px solid rgba(220, 188, 130, 0.5);
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--gold-light);
+  font: inherit;
+  /* ≥16px 结构性地板：iOS 聚焦不触发自动缩放（移动端方案 Phase 2；Login 复用本 .input） */
+  font-size: max(16px, var(--fs-md));
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 0 14px rgba(232, 168, 84, 0.2);
+}
+
+.input::placeholder {
+  color: rgba(220, 188, 130, 0.35);
+}
+
+.input:focus {
+  border-bottom-color: rgba(245, 232, 208, 0.86);
+}
+
+.subtitle {
+  margin: -4px 0 6px;
+  color: var(--paper-mute);
+  font-family: var(--font-serif);
+  font-size: var(--fs-sm);
+  line-height: 1.8;
+  text-align: center;
+}
+
+.error {
+  margin: 0;
+  color: #b06060;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.enterBtn {
+  composes: horizonField from '../styles/horizon.module.css';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.enterBtn:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.enterBtn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

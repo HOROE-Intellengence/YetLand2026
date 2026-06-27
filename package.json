@@ -1,0 +1,66 @@
+{
+  "name": "yelan",
+  "version": "0.8.7",
+  "private": true,
+  "description": "夜阑 - 角色对话产品 monorepo",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "setup": "node scripts/setup.mjs",
+    "seed": "node scripts/seed-data.mjs",
+
+    "start:local": "node scripts/start.mjs local",
+    "start:server": "node scripts/start.mjs server",
+    "start:full": "node scripts/start.mjs full",
+
+    "sim": "node scripts/start-sim.mjs",
+    "mock:llm": "node scripts/mock-llm-server.mjs",
+
+    "deploy:up": "docker compose -f infra/deploy/docker-compose.yml up -d --build",
+    "deploy:down": "docker compose -f infra/deploy/docker-compose.yml down",
+    "deploy:logs": "docker compose -f infra/deploy/docker-compose.yml logs -f",
+    "deploy:ps": "docker compose -f infra/deploy/docker-compose.yml ps",
+
+    "dev": "pnpm -r --parallel --filter \"./apps/api\" --filter \"./apps/web\" run dev",
+    "dev:check": "node scripts/doctor.mjs && pnpm dev",
+    "dev:server": "node scripts/dev-server-linked.mjs",
+    "dev:server:raw": "pnpm --filter \"./apps/server\" run dev",
+    "dev:web": "pnpm --filter \"./apps/web\" run dev",
+    "dev:mock": "pnpm --filter \"./apps/api\" run dev",
+    "dev:unlim": "pnpm --filter \"./apps/unlim-worker\" run dev",
+
+    "build": "pnpm prompts:build && pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "contracts:check": "node scripts/check-api-contracts.mjs",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "test": "pnpm -r run test",
+    "test:gray": "pnpm --filter @yelan/api run test:gray && pnpm --filter @yelan/server run test",
+    "verify:gray": "pnpm -r run lint && pnpm -r run typecheck && pnpm test:gray && pnpm contracts:check",
+    "gray:snapshot": "node scripts/gray-snapshot.mjs",
+    "gray:reset": "node scripts/gray-reset.mjs",
+
+    "prompts:build": "pnpm --filter @yelan/prompts build",
+    "prompts:watch": "pnpm --filter @yelan/prompts watch",
+
+    "db:status": "pnpm --filter @yelan/db status",
+    "db:up": "pnpm --filter @yelan/db up",
+    "db:new": "pnpm --filter @yelan/db new",
+    "db:reset": "pnpm --filter @yelan/db reset",
+    "db:gui": "pnpm --filter @yelan/db gui"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.0",
+    "eslint-config-prettier": "^10.0.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.24.0",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@yelan/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/tokens.ts",
+  "exports": {
+    ".": "./src/tokens.ts",
+    "./css": "./src/tokens.css"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

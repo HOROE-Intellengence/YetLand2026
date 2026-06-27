@@ -1,0 +1,84 @@
+html, body {
+  background: var(--bg);
+  color: var(--paper);
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: var(--fs-md);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-root {
+  width: 100vw;
+  height: 100vh; /* 基线：所有浏览器都认 */
+  position: relative;
+}
+
+/* 渐进增强：现代浏览器用最小视口高，护住底部不被地址栏顶掉。
+   必须保留上面的 100vh 基线 —— 旧浏览器不认 svh 会丢弃声明而非回落 100vh（移动端方案 Phase 1）。 */
+@supports (height: 100svh) {
+  .app-root {
+    height: 100svh;
+  }
+}
+
+/* 防 iOS 聚焦自动缩放：触屏下所有输入控件的字号地板 16px（移动端方案 Phase 2，结构性地板）。
+   仅 (pointer: coarse) 触发，桌面零影响；元素选择器特异性较低，显式设了字号的 .input 类各自落地。 */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, var(--fs-md));
+  }
+}
+
+/* keyframes — 来源 prototype/app.jsx 末尾的 styleEl
+   TODO: 按场景拆到对应 CSS Module，全局只留真正全局的 keyframes */
+
+@keyframes breathe {
+  0%, 100% { text-shadow: 0 0 18px rgba(220, 188, 130, 0.32), 0 0 4px rgba(220, 188, 130, 0.22); }
+  50%      { text-shadow: 0 0 28px rgba(220, 188, 130, 0.55), 0 0 10px rgba(220, 188, 130, 0.4); }
+}
+
+@keyframes fadeUp {
+  0%   { opacity: 0; transform: translateY(14px); filter: blur(3px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+
+@keyframes emberBeat {
+  0%, 100% { transform: translate(-50%,-50%) scale(.85); }
+  20%      { transform: translate(-50%,-50%) scale(1.15); }
+  50%      { transform: translate(-50%,-50%) scale(.9); }
+  75%      { transform: translate(-50%,-50%) scale(1.1); }
+}
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1) translateY(0); opacity: .95; }
+  25%      { transform: scale(1.15) translateY(-1px); opacity: 1; }
+  55%      { transform: scale(.92) translateY(1px); opacity: .85; }
+  80%      { transform: scale(1.08) translateY(0); opacity: 1; }
+}
+@keyframes ripple {
+  0%   { width: 60px; height: 60px; opacity: .6; border-color: rgba(220,188,130,.5); }
+  100% { width: 520px; height: 520px; opacity: 0; border-color: rgba(220,188,130,0); }
+}
+@keyframes sigilSpinCW  { from { transform: rotate(0deg); }    to { transform: rotate(360deg); } }
+@keyframes sigilSpinCCW { from { transform: rotate(0deg); }    to { transform: rotate(-360deg); } }
+@keyframes starTwinkle {
+  0%, 100% { opacity: .3; transform: scale(.8); }
+  50%      { opacity: 1;  transform: scale(1.1); }
+}
+@keyframes titleBreathe {
+  0%, 100% { filter: url(#titleGlow) drop-shadow(0 0 12px rgba(232,168,84,.4)); }
+  50%      { filter: url(#titleGlow) drop-shadow(0 0 22px rgba(232,168,84,.7)) drop-shadow(0 0 6px rgba(245,232,208,.5)); }
+}
+@keyframes petalBurst {
+  0%   { opacity: 0; transform: scaleY(.1) translateY(60px); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleY(1.6) translateY(-40px); }
+}
+@keyframes sealPulse {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: .6; }
+  50%      { transform: rotate(45deg) scale(1.08); opacity: .85; }
+}
+
+/* 完整 keyframes 集合：见 prototype/app.jsx 的 styleEl，会在迁移期分散落到具体组件的 .module.css */

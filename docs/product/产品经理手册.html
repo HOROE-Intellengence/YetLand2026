@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夜阑 · 产品经理手册</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg-elevated: #12121a;
+    --bg-card: #16161f;
+    --text-primary: #c8b8a4;
+    --text-secondary: #8a7e6e;
+    --text-muted: #5a5248;
+    --accent: #a08060;
+    --accent-light: #c8a878;
+    --border: #2a2a35;
+    --border-light: #3a3a45;
+    --red: #c05050;
+    --green: #50a070;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Noto Serif SC', Georgia, serif;
+    font-size: 14px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 60px 40px 120px;
+  }
+
+  /* Cover */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 60px;
+  }
+  .cover h1 {
+    font-size: 42px;
+    font-weight: 400;
+    letter-spacing: 12px;
+    color: var(--accent-light);
+    margin-bottom: 16px;
+  }
+  .cover .subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 4px;
+    margin-bottom: 40px;
+  }
+  .cover .tagline {
+    font-size: 16px;
+    color: var(--text-primary);
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+  .cover .meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1px;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 56px;
+  }
+  .section-num {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .section h2 {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent-light);
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .section h3 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 28px 0 12px;
+  }
+
+  /* Text */
+  p { margin-bottom: 14px; }
+  .highlight {
+    color: var(--accent-light);
+    font-weight: 500;
+  }
+  .callout {
+    background: var(--bg-elevated);
+    border-left: 2px solid var(--accent);
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+  .callout strong {
+    color: var(--text-primary);
+    font-style: normal;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 0.5px solid var(--border);
+    color: var(--text-secondary);
+  }
+  tr:hover td { color: var(--text-primary); }
+
+  /* List */
+  ul, ol {
+    padding-left: 20px;
+    margin: 12px 0;
+  }
+  li {
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+  }
+  li strong { color: var(--text-primary); }
+
+  /* Metric box */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .metric {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+  }
+  .metric .value {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 300;
+    color: var(--accent-light);
+    margin-bottom: 4px;
+  }
+  .metric .label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* Phase tag */
+  .phase-tag {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    margin-right: 8px;
+  }
+  .phase-1 { background: #1a2a1a; color: var(--green); border: 0.5px solid #2a3a2a; }
+  .phase-2 { background: #1a1a2a; color: #7070c0; border: 0.5px solid #2a2a3a; }
+
+  /* Design spec box */
+  .design-spec {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+  .design-spec .spec-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .design-spec .spec-row:last-child { border-bottom: none; }
+  .design-spec .spec-key {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1px;
+  }
+  .design-spec .spec-val {
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+  }
+  .color-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 6px;
+    border: 0.5px solid var(--border-light);
+  }
+
+  /* Flow */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+  .flow-arrow {
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 80px;
+    padding-top: 20px;
+    border-top: 0.5px solid var(--border);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 1px;
+  }
+
+  /* Priority tag */
+  .p0 { color: var(--red); font-weight: 500; }
+  .p1 { color: var(--accent-light); }
+  .p2 { color: var(--text-muted); }
+
+  @media (max-width: 600px) {
+    .page { padding: 30px 20px 80px; }
+    .cover h1 { font-size: 28px; letter-spacing: 6px; }
+    .metrics { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<!-- COVER -->
+<div class="cover">
+  <h1>夜 阑</h1>
+  <div class="subtitle">产品经理手册 / Product Manager Handbook</div>
+  <div class="tagline">"A novel that writes itself around you."</div>
+  <div class="tagline">一本围着你写的小说</div>
+  <div style="height:24px"></div>
+  <div class="meta">VERSION 0.2 &nbsp;·&nbsp; 2026.05.06 &nbsp;·&nbsp; CONFIDENTIAL</div>
+</div>
+
+<!-- 01 VISION -->
+<div class="section">
+  <div class="section-num">01</div>
+  <h2>产品愿景</h2>
+
+  <div class="callout">
+    <strong>一句话定义：</strong>夜阑是一个高质感的沉浸式文字叙事平台——让用户住进一个会回应她的故事里，而不是和一个AI聊天。
+  </div>
+
+  <p>市场存在一个明确的空白象限：<span class="highlight">高自由度 + 高质感</span>。做NSFW的人不懂设计，懂设计的人不做NSFW。夜阑站在两条线的交叉点上——用文学级的叙事品质和极致克制的视觉设计，服务那些厌倦了粗糙工具的女性用户。</p>
+
+  <p>产品不是"AI聊天工具"，是<span class="highlight">一间装帧极美的深夜书店——每本书都会跟你说话</span>。用户不是在"调参数"，是在"读故事"。</p>
+
+  <h3>核心价值三角</h3>
+  <table>
+    <tr><th>维度</th><th>定义</th><th>竞争差异化</th></tr>
+    <tr><td><strong>文笔</strong></td><td>AI输出具备文学性、推拉感和叙事节奏</td><td>SillyTavern输出取决于用户prompt水平；星野输出同质化降智</td></tr>
+    <tr><td><strong>记忆</strong></td><td>AI记住用户说过的每一句话，跨会话持续</td><td>SillyTavern无自动记忆；CrushOn记忆窗口短；Nomi记忆强但不支持中文语境</td></tr>
+    <tr><td><strong>质感</strong></td><td>每一个像素传递克制、温暖、高级感</td><td>所有NSFW竞品的UI都在"能用"和"好看"之间，无人做到"有品位"</td></tr>
+  </table>
+</div>
+
+<!-- 02 MARKET -->
+<div class="section">
+  <div class="section-num">02</div>
+  <h2>市场分析</h2>
+
+  <h3>赛道数据</h3>
+  <div class="metrics">
+    <div class="metric">
+      <div class="value">$1870万</div>
+      <div class="label">CrushOn年收入(2024)</div>
+    </div>
+    <div class="metric">
+      <div class="value">22%</div>
+      <div class="label">免费→付费转化率</div>
+    </div>
+    <div class="metric">
+      <div class="value">42%</div>
+      <div class="label">CrushOn女性用户占比</div>
+    </div>
+  </div>
+
+  <h3>竞品定位矩阵</h3>
+  <table>
+    <tr><th>产品</th><th>自由度</th><th>质感</th><th>中文支持</th><th>核心痛点</th></tr>
+    <tr><td>SillyTavern</td><td>极高</td><td>极低</td><td>社区汉化</td><td>门槛极高，UI如工业仪表盘</td></tr>
+    <tr><td>CrushOn AI</td><td>中高</td><td>中等</td><td>弱</td><td>质感平庸，叙事深度不足</td></tr>
+    <tr><td>JanitorAI</td><td>中</td><td>普通</td><td>弱</td><td>同上</td></tr>
+    <tr><td>Kindroid</td><td>高</td><td>中等</td><td>极弱</td><td>不理解中文暧昧与留白</td></tr>
+    <tr><td>星野/筑梦岛</td><td>极低</td><td>较好</td><td>原生</td><td>模型阉割→降智+谜语人</td></tr>
+    <tr style="color:var(--accent-light)"><td><strong>夜阑</strong></td><td><strong>高</strong></td><td><strong>极高</strong></td><td><strong>原生</strong></td><td><strong>——</strong></td></tr>
+  </table>
+
+  <h3>目标用户画像</h3>
+  <table>
+    <tr><th>维度</th><th>描述</th></tr>
+    <tr><td>核心人群</td><td>18-30岁女性，宅女/腐女/同人创作者，有NSFW文字扮演需求</td></tr>
+    <tr><td>现有行为</td><td>使用SillyTavern（忍受UI）或CrushOn（忍受质感）或星野（忍受阉割）</td></tr>
+    <tr><td>核心诉求</td><td>"先情后欲"的推拉叙事，不是直白低俗；高情绪价值+文学性表达</td></tr>
+    <tr><td>付费意愿</td><td>强——CrushOn同人群ARPU $4.2/月，转化率22%，女性用户付费意愿显著高于男性</td></tr>
+    <tr><td>消费心理</td><td>订阅接受度高，前提是体验无缝。周订阅¥9.9=一杯奶茶，月订阅=一顿饭。拒绝的不是"付费"，是"被算计"——余额数字倒数=痛苦，光线渐暗=自然</td></tr>
+    <tr><td>传播路径</td><td>小红书截图 + 私域社群口传 + B站体验视频 + 成就解锁炫耀</td></tr>
+  </table>
+</div>
+
+<!-- 03 MVP -->
+<div class="section">
+  <div class="section-num">03</div>
+  <h2>MVP定义</h2>
+
+  <div class="callout">
+    <strong>MVP原则：</strong>只做一件事——比所有竞品好看100倍的NSFW叙事前端。用户开箱即用，零门槛，零配置。用户不需要知道API是什么。
+  </div>
+
+  <h3><span class="phase-tag phase-1">PHASE 1</span> 功能清单</h3>
+
+  <table>
+    <tr><th>优先级</th><th>功能</th><th>说明</th></tr>
+    <tr><td class="p0">P0</td><td>沉浸式对话界面</td><td>暗色系、serif字体、句级浮现、叙事密度映射屏幕呼吸感</td></tr>
+    <tr><td class="p0">P0</td><td>平台API接入</td><td>平台统一采购API额度（NVIDIA NIM等），用户开箱即用，零配置零门槛，无需自行购买Key</td></tr>
+    <tr><td class="p0">P0</td><td>订阅与代币系统</td><td>周/月订阅（月光/星河/永夜）+ 代币「烛」+ 余额光状态暗示（🟢🟡🔴）+ 叙事性截断</td></tr>
+    <tr><td class="p0">P0</td><td>Prompt叙事引擎</td><td>3套预设叙事模板（先情后欲/古风暧昧/现代推拉），自动选最优参数，用户零配置</td></tr>
+    <tr><td class="p0">P0</td><td>本地记忆存储</td><td>基于IndexedDB的对话历史 + 向量化记忆检索，跨会话记忆用户偏好</td></tr>
+    <tr><td class="p1">P1</td><td>成就代币系统</td><td>对话内叙事成就（执念/告白/旧识等），解锁隐藏角色卡和代币奖励，成就=叙事而非系统通知</td></tr>
+    <tr><td class="p1">P1</td><td>角色卡商店</td><td>用「烛」解锁角色卡，每张角色卡有独特叙事风格，一次购买永久可用</td></tr>
+    <tr><td class="p1">P1</td><td>记忆整理面板</td><td>用户可查看/编辑AI记忆的内容摘要，确保记忆准确性</td></tr>
+    <tr><td class="p2">P2</td><td>多角色切换</td><td>对话中自然引入新角色（"换个人"），无需手动配置</td></tr>
+    <tr><td class="p2">P2</td><td>导出与分享</td><td>将对话导出为排版精美的长图（小红书传播素材）</td></tr>
+  </table>
+
+  <h3>明确不做（Phase 1）</h3>
+  <ul>
+    <li>角色头像/立绘 —— 角色只存在于文字中，想象永远比图像更有吸引力</li>
+    <li>参数面板 —— temperature/sampling等全部由系统自动优化，用户不碰</li>
+    <li>世界书/思维链可视化 —— 工程师功能，不是用户功能</li>
+    <li>App客户端 —— 先做Web，规避应用商店审核，节省双端开发成本</li>
+    <li>社交/社区功能 —— 第一版是私密体验，不是社交平台</li>
+    <li>语音/图片生成 —— 文字叙事是核心，多模态是Phase 2</li>
+    <li>用户自带API Key —— 增加认知负担，与"开箱即用"原则冲突，Phase 2 再考虑作为进阶选项</li>
+  </ul>
+</div>
+
+<!-- 04 DESIGN -->
+<div class="section">
+  <div class="section-num">04</div>
+  <h2>设计系统</h2>
+
+  <div class="callout">
+    <strong>设计哲学：</strong>让用户忘记这是软件。每一个像素都在做同一件事——消除"工具感"，制造"故事感"。
+  </div>
+
+  <h3>视觉规范</h3>
+  <div class="design-spec">
+    <div class="spec-row">
+      <span class="spec-key">主背景色</span>
+      <span class="spec-val"><span class="color-swatch" style="background:#0a0a0f"></span>#0a0a0f（暗夜，非纯黑，有微妙暖意）</span>
+    </div>
+    <div class="spec-row">
+      <span class="spec-key">正文字体</span>
+      <span class="spec-val">Noto Serif SC / Georgia, 15px</span>
+    </div>
+    <div class="spec-row">
+      <span class="spec-key">正文色</span>
+      <span class="spec-val"><span class="color-swatch" style="background:#c8b8a4"></span>#c8b8a4（暖羊皮纸色，非冷白）</span>
+    </div>
+    <div class="spec-row">
+      <span class="spec-key">强调色</span>
+      <span class="spec-val"><span class="color-swatch" style="background:#a08060"></span>#a08060（暗金，克制）</span>
+    </div>
+    <div class="spec-row">
+      <span class="spec-key">行间距</span>
+      <span class="spec-val">1.9（比常规更松，制造阅读呼吸感）</span>
+    </div>
+    <div class="spec-row">
+      <span class="spec-key">最大行宽</span>
+      <span class="spec-val">560px（小说排版宽度，非网页宽度）</span>
+    </div>
+    <div class="spec-row">
+      <span class="spec-key">段间距</span>
+      <span class="spec-val">24px（大于常规，留白即节奏）</span>
+    </div>
+  </div>
+
+  <h3>交互规范</h3>
+  <table>
+    <tr><th>交互元素</th><th>设计决策</th><th>理由</th></tr>
+    <tr><td>文字浮现</td><td>句级浮现，非逐字打字机。关键句子前有0.8s停顿</td><td>打字机=机械，句级浮现=斟酌措辞的真人</td></tr>
+    <tr><td>叙事强化</td><td>叙事强度↑ → 页边距收窄、字号+1px、文字色温偏暖</td><td>用户无意识感知"空间收窄=亲密感增加"</td></tr>
+    <tr><td>叙事留白</td><td>叙事节奏放缓 → 页边距恢复、出现细线分隔符</td><td>视觉呼吸=叙事呼吸</td></tr>
+    <tr><td>发送方式</td><td>回车发送，无发送按钮</td><td>发送按钮是"聊天工具"的遗物，不是"叙事体验"的组件</td></tr>
+    <tr><td>角色头像</td><td>无。角色仅存在于文字</td><td>想象永远比图像有吸引力，且省去美术成本</td></tr>
+    <tr><td>退出动画</td><td>文字2s内渐隐至50%透明度，然后屏幕缓慢暗下</td><td>像合上一本书，像入睡，而非"关闭软件"</td></tr>
+    <tr><td>开场</td><td>屏幕中央一行字："今夜，你想和谁说话？" + 光标</td><td>零选择、零引导，用户唯一操作就是说话</td></tr>
+  </table>
+
+  <h3>叙事密度 → 屏幕映射</h3>
+  <div class="flow">
+    <div class="flow-node">日常对话</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">推拉升温</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">情欲高潮</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">余韵回落</div>
+  </div>
+  <table>
+    <tr><th>叙事阶段</th><th>页边距</th><th>字号</th><th>文字色温</th><th>行间距</th></tr>
+    <tr><td>日常对话</td><td>正常 (80px)</td><td>15px</td><td>标准暖色</td><td>1.9</td></tr>
+    <tr><td>推拉升温</td><td>收窄 (60px)</td><td>15px</td><td>偏暖</td><td>1.8</td></tr>
+    <tr><td>情欲高潮</td><td>最窄 (40px)</td><td>16px</td><td>明显暖色</td><td>1.7</td></tr>
+    <tr><td>余韵回落</td><td>恢复 (80px)</td><td>15px</td><td>标准</td><td>2.0（更松）</td></tr>
+  </table>
+</div>
+
+<!-- 05 TECH -->
+<div class="section">
+  <div class="section-num">05</div>
+  <h2>技术架构</h2>
+
+  <h3>三层架构</h3>
+  <table>
+    <tr><th>层</th><th>职责</th><th>关键技术</th></tr>
+    <tr><td><strong>Prompt叙事层</strong></td><td>叙事质量天花板——文笔、节奏、推拉感、留白</td><td>精调系统Prompt + 叙事策略路由 + 动态参数优化</td></tr>
+    <tr><td><strong>记忆层</strong></td><td>跨会话记忆——记住用户说过的每句话</td><td>IndexedDB本地存储 + 浏览器端向量嵌入(Transformer.js) + 语义检索</td></tr>
+    <tr><td><strong>编排层</strong></td><td>零操作体验——用户只说话，系统自动编排一切</td><td>情绪感知(输入分析) → 叙事策略选择 → 自动参数配置 → 屏幕呼吸映射</td></tr>
+  </table>
+
+  <h3>API接入策略</h3>
+  <table>
+    <tr><th>策略</th><th>说明</th></tr>
+    <tr><td><strong>平台统一采购</strong></td><td>平台采购NVIDIA NIM / OpenAI / Claude等API额度，用户无需接触任何API概念。开箱即用，零配置零门槛。API成本由订阅收入覆盖</td></tr>
+    <tr><td><strong>多模型路由</strong></td><td>根据对话内容自动路由到最优模型——日常对话用低成本模型，叙事高潮用高能力模型。兼顾成本与质量</td></tr>
+    <tr><td><strong>上下文压缩</strong></td><td>长对话自动压缩历史上下文，降低token消耗。叙事性截断也是成本控制手段——免费用户在悬念点自然截断</td></tr>
+    <tr><td><strong>进阶选项（Phase 2）</strong></td><td>支持用户自带API Key作为高级选项，满足极客用户需求，同时降低平台成本</td></tr>
+  </table>
+
+  <h3>记忆系统设计</h3>
+  <table>
+    <tr><th>组件</th><th>功能</th><th>实现</th></tr>
+    <tr><td>短期记忆</td><td>当前对话上下文</td><td>对话历史直接注入prompt上下文窗口</td></tr>
+    <tr><td>长期记忆</td><td>跨会话的用户偏好、情感轨迹、关键事件</td><td>每轮对话结束 → 提取关键信息 → 向量化存入IndexedDB → 下次对话语义检索注入</td></tr>
+    <tr><td>记忆整理</td><td>用户可查看/编辑AI记忆内容</td><td>记忆面板展示结构化摘要，支持删除/修改，确保用户掌控权</td></tr>
+  </table>
+
+  <h3>Prompt工程策略</h3>
+  <p>这是产品的命脉。Prompt工程质量直接决定叙事天花板。</p>
+  <table>
+    <tr><th>叙事模板</th><th>叙事风格</th><th>核心技法</th></tr>
+    <tr><td>先情后欲</td><td>现代都市，情感推拉，克制升温</td><td>延迟满足叙事 → 情感铺垫3-5轮 → 身体描写从间接到直接 → 留白收束</td></tr>
+    <tr><td>古风暧昧</td><td>文言/半文言，含蓄隽永</td><td>典故化用 → 物象暗喻(雨/烛/茶) → 礼教与欲望的张力 → 以景结情</td></tr>
+    <tr><td>现代推拉</td><td>都市关系，嘴硬心软，反差萌</td><td>对话驱动 → 语言攻击性+行为温柔 → 权力反转 → 事后脆弱</td></tr>
+  </table>
+</div>
+
+<!-- 06 BUSINESS -->
+<div class="section">
+  <div class="section-num">06</div>
+  <h2>商业模式</h2>
+
+  <div class="callout">
+    <strong>核心原则：</strong>用户不应该知道API是什么。她们买的不是算力，是一段只属于她的夜晚。付费行为必须像"续住"而不是"充值"。
+  </div>
+
+  <h3>订阅体系：月光 · 星河 · 永夜</h3>
+  <p>套餐命名本身就是叙事——用户不是在选"算力套餐"，是在选"和故事的关系深度"。</p>
+  <table>
+    <tr><th>套餐</th><th>周价</th><th>月价</th><th>叙事体验</th><th>赠送代币</th><th>适合人群</th></tr>
+    <tr><td><strong>免费</strong></td<td>—</td><td>—</td><td>每日可完成一个完整叙事弧（约30-40轮），叙事性截断于悬念点</td><td>—</td><td>新用户 / 轻度体验</td></tr>
+    <tr><td><strong>月光</strong></td><td>¥9.9</td><td>¥29.9</td><td>每周一晚，月光陪你。每日对话不限轮次，叙事完整流畅</td><td>200烛/月</td><td>规律型用户，每周固定几次沉浸</td></tr>
+    <tr><td><strong>星河</strong></td><td>¥19.9</td><td>¥59.9</td><td>每个夜晚，星光随行。无限对话 + 优先叙事引擎 + 高级角色卡池</td><td>600烛/月</td><td>重度用户，每天都要进来</td></tr>
+    <tr><td><strong>永夜</strong></td><td>¥39.9</td><td>¥99.9</td><td>永远为你亮着。无限对话 + 全部角色卡 + 图片生成 + 记忆深度扩展</td><td>1500烛/月</td><td>深度沉浸用户，多角色+多叙事</td></tr>
+  </table>
+
+  <h3>代币体系：烛</h3>
+  <p>代币命名为<strong>「烛」</strong>——在夜阑里，烛光是一切体验的隐喻。烛不显示数字余额，只用光的状态暗示。</p>
+
+  <table>
+    <tr><th>代币用途</th><th>消耗量（参考）</th><th>说明</th></tr>
+    <tr><td>角色卡解锁</td><td>50-200烛</td><td>每张角色卡有独特叙事风格，一次购买永久可用</td></tr>
+    <tr><td>图片生成</td><td>100-300烛</td><td>叙事场景可视化，Phase 2 功能</td></tr>
+    <tr><td>叙事风格包</td><td>150烛/包</td><td>"病娇占有""年下直球""禁忌张力"等高级叙事风格</td></tr>
+    <tr><td>记忆深度扩展</td><td>300烛</td><td>扩展AI记忆容量，记住更多跨会话细节</td></tr>
+  </table>
+
+  <h3>余额暗示设计：光的状态</h3>
+  <p>绝不显示数字。数字=理性计算=痛苦。光的状态=直觉感知=无摩擦。</p>
+  <table>
+    <tr><th>状态</th><th>视觉</th><th>含义</th><th>用户心理</th></tr>
+    <tr><td>充盈</td><td>🟢 稳定暖光</td><td>放心聊，今夜很长</td><td>安心，沉浸</td></tr>
+    <tr><td>渐晚</td><td>🟡 光线微颤</td><td>夜色渐深，注意了</td><td>开始感知，但不停下</td></tr>
+    <tr><td>将尽</td><td>🔴 光芒收敛</td><td>今夜将尽，天快亮了</td><td>自然的叙事收束，不是粗暴截断</td></tr>
+  </table>
+  <p>只有三个状态。多于三个=用户开始计算=回到数字焦虑。三个够了——充盈、渐晚、将尽，像真实的夜晚。</p>
+
+  <h3>叙事性截断：免费用户的核心体验设计</h3>
+  <div class="callout">
+    <strong>设计原则：</strong>免费用户的额度用尽时，不是弹窗"您的额度已用尽"，而是叙事引擎自动将故事引向一个悬念点——"他的手停在门把上，回头看了你一眼。明天……他会来吗？"
+  </div>
+  <p>这叫<strong>叙事性截断</strong>——像章回小说的"欲知后事如何，且听下回分解"。用户回来不是因为"还有额度"，是因为"他到底说了什么"。</p>
+  <ul>
+    <li><strong>免费额度</strong>：每日可完成一个完整叙事弧（约30-40轮对话），足够从开场到高潮到收束</li>
+    <li><strong>截断时机</strong>：叙事引擎计算最佳悬念点，在叙事的"呼吸间隙"自然截断，绝不在高潮中斩断</li>
+    <li><strong>回归钩子</strong>：截断后显示"明晚，他等你回来"——不是"明日额度刷新"，是叙事邀请</li>
+  </ul>
+
+  <h3>成就代币：叙事内的隐藏奖励</h3>
+  <p>免费用户甚至可以在对话中获得隐藏代币。成就不是系统通知，是叙事的一部分。</p>
+  <table>
+    <tr><th>成就名称</th><th>触发条件</th><th>奖励</th><th>叙事融合</th></tr>
+    <tr><td>执念</td><td>连续5轮对话无主动退出</td><td>50烛 + 解锁偏执型角色</td><td>角色突然说了一句从未说过的话，屏幕边缘泛起微光</td></tr>
+    <tr><td>告白</td><td>首次在对话中说"喜欢"</td><td>30烛</td><td>文字浮现速度突然慢下来，像对方在认真听</td></tr>
+    <tr><td>旧识</td><td>提到3天前对话中的细节</td><td>80烛 + 记忆加深</td><td>AI回应："你居然还记得……"——记忆即奖励</td></tr>
+    <tr><td>深夜</td><td>在凌晨0-4点使用</td><td>40烛</td><td>界面色温自动偏暖："这么晚了，你还在。"</td></tr>
+    <tr><td>离别</td><td>7日后首次回归</td><td>100烛 + 专属回归叙事</td><td>角色："我以为你不来了。"</td></tr>
+  </table>
+  <p>解锁瞬间不是弹出"恭喜获得"——而是叙事自然生长出新的东西。一个角色卡出现时，不是系统通知，是故事自己长出来了。</p>
+
+  <h3>单位经济模型（目标）</h3>
+  <div class="metrics">
+    <div class="metric">
+      <div class="value">¥29.9</div>
+      <div class="label">月光月费（入门ARPU）</div>
+    </div>
+    <div class="metric">
+      <div class="value">20%+</div>
+      <div class="label">免费→付费转化率</div>
+    </div>
+    <div class="metric">
+      <div class="value">65%+</div>
+      <div class="label">付费用户月续费率</div>
+    </div>
+  </div>
+
+  <h3>成本估算（单用户/月）</h3>
+  <table>
+    <tr><th>用户类型</th><th>API成本</th><th>收入</th><th>毛利率</th></tr>
+    <tr><td>免费用户</td><td>~$1.5（限额使用）</td><td>¥0</td><td>负（获客成本）</td></tr>
+    <tr><td>月光用户</td><td>~$3-4</td><td>¥29.9 (~$4.1)</td><td>~15-25%</td></tr>
+    <tr><td>星河用户</td><td>~$5-7</td><td>¥59.9 (~$8.2)</td><td>~30-40%</td></tr>
+    <tr><td>永夜用户</td><td>~$8-12</td><td>¥99.9 (~$13.7)</td><td>~35-45%</td></tr>
+  </table>
+  <p>代币消耗和角色卡购买带来额外margin。图片生成（Phase 2）的代币消耗是高margin项——生成成本远低于用户心理定价。</p>
+
+  <h3>长线：周边与品牌</h3>
+  <p>品牌势能积累后，周边不是割韭菜，是品牌延伸。但只做一样东西：一本手工装帧的空笔记本，封面只有一个烫金字——"夜阑"。里面是空的，让用户自己写。这才是品牌。</p>
+</div>
+
+<!-- 07 GTM -->
+<div class="section">
+  <div class="section-num">07</div>
+  <h2>冷启动与增长</h2>
+
+  <h3>冷启动策略：买内容，不买量</h3>
+  <table>
+    <tr><th>阶段</th><th>动作</th><th>目标</th></tr>
+    <tr><td>第1-2周</td><td>找到10个精准KOC：2-5万粉，内容调性偏宅女/同人/腐向的小红书博主</td><td>种子内容生成</td></tr>
+    <tr><td>第3-4周</td><td>免费提供产品体验，让KOC自然产出截图/体验帖</td><td>口碑素材积累</td></tr>
+    <tr><td>第5-8周</td><td>KOC内容发酵 → 二创传播 → 自然用户涌入</td><td>验证增长飞轮</td></tr>
+  </table>
+
+  <h3>传播素材设计</h3>
+  <p>用户自发传播的核心素材是什么？是截图。截图里必须有两个要素：</p>
+  <ol>
+    <li><strong>文笔震撼</strong>："它写的这段也太好看了吧" —— 文学性输出本身就是传播内容</li>
+    <li><strong>记忆冲击</strong>："我上周随口说我怕打雷，今天打雷它主动来安慰我" —— 记忆=情感投资=不可迁移</li>
+  </ol>
+  <p>因此产品内置"导出为长图"功能（P2优先级），自动生成排版精美的小红书适配长图——暗色背景、serif字体、自然段分隔，让截图本身就好看。</p>
+
+  <h3>数据飞轮</h3>
+  <div class="flow">
+    <div class="flow-node">文笔震撼</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">截图传播</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">新用户涌入</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">对话数据沉淀</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node">叙事质量提升</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-node" style="border-color:var(--accent)">文笔更强</div>
+  </div>
+
+  <h3>护城河</h3>
+  <table>
+    <tr><th>护城河类型</th><th>来源</th><th>强度</th></tr>
+    <tr><td><strong>数据护城河</strong></td><td>用户与AI之间的记忆和情感投入不可迁移——换产品=从零开始</td><td>极强</td></tr>
+    <tr><td><strong>体验护城河</strong></td><td>叙事密度→屏幕呼吸的映射逻辑，需要大量细节打磨才能复制</td><td>中强</td></tr>
+    <tr><td><strong>Prompt护城河</strong></td><td>精调的叙事prompt模板，经过大量测试迭代，不可逆向工程</td><td>强</td></tr>
+    <tr><td>品牌护城河</td><td>"有品位的NSFW"心智占位——在竞品都是"粗糙工具"时率先建立</td><td>中（需时间）</td></tr>
+  </table>
+</div>
+
+<!-- 08 ROADMAP -->
+<div class="section">
+  <div class="section-num">08</div>
+  <h2>产品路线图</h2>
+
+  <table>
+    <tr><th>阶段</th><th>时间</th><th>核心目标</th><th>关键交付</th></tr>
+    <tr>
+      <td><span class="phase-tag phase-1">P1</span></td>
+      <td>第1-4周</td>
+      <td>核心体验可用</td>
+      <td>沉浸式对话界面 + 平台API接入(零配置) + 订阅代币系统(月光/星河/永夜) + 叙事性截断 + 3套叙事Prompt + 本地记忆存储</td>
+    </tr>
+    <tr>
+      <td><span class="phase-tag phase-1">P1</span></td>
+      <td>第5-8周</td>
+      <td>冷启动验证</td>
+      <td>角色卡商店 + 成就代币系统 + 记忆整理面板 + KOC种子投放 + 首批用户数据</td>
+    </tr>
+    <tr>
+      <td><span class="phase-tag phase-1">P1</span></td>
+      <td>第9-12周</td>
+      <td>增长验证</td>
+      <td>导出长图功能 + 更多叙事模板 + 周订阅→月订阅转化路径优化 + 用户量/留存/转化数据验证</td>
+    </tr>
+    <tr>
+      <td><span class="phase-tag phase-2">P2</span></td>
+      <td>第13-24周</td>
+      <td>规模化产品</td>
+      <td>服务端记忆系统(跨设备) + 创作者生态(模板投稿) + 高级叙事引擎(Agent架构) + 移动端适配</td>
+    </tr>
+    <tr>
+      <td><span class="phase-tag phase-2">P2</span></td>
+      <td>第25周+</td>
+      <td>生态扩展</td>
+      <td>多模态(语音/AI人像) + 社区功能 + 国际化(英文/日文) + 用户自带Key选项 + 实体周边</td>
+    </tr>
+  </table>
+</div>
+
+<!-- 09 METRICS -->
+<div class="section">
+  <div class="section-num">09</div>
+  <h2>关键指标</h2>
+
+  <h3>Phase 1 成功标准</h3>
+  <table>
+    <tr><th>指标</th><th>基准线</th><th>目标值</th><th>说明</th></tr>
+    <tr><td>月活用户(MAU)</td><td>—</td><td>500+</td><td>12周内，纯自然增长</td></tr>
+    <tr><td>次日留存</td><td>行业40%</td><td>55%+</td><td>文笔+记忆驱动留存</td></tr>
+    <tr><td>7日留存</td><td>行业25%</td><td>35%+</td><td>记忆积累=回来理由</td></tr>
+    <tr><td>免费→付费转化</td><td>CrushOn 22%</td><td>20%+</td><td>免费额度大方+叙事性截断驱动转化</td></tr>
+    <tr><td>周→月订阅转化</td><td>—</td><td>30%+</td><td>周订阅用户1个月内升级月订阅的比例</td></tr>
+    <tr><td>付费月续费率</td><td>—</td><td>65%+</td><td>记忆不可迁移=续费动力</td></tr>
+    <tr><td>平均会话时长</td><td>—</td><td>12min+</td><td>CrushOn基准14.5min</td></tr>
+    <tr><td>平均每会话消息数</td><td>CrushOn 45条</td><td>50+</td><td>叙事深度>浅层聊天</td></tr>
+    <tr><td>月收入</td><td>—</td><td>¥5000+</td><td>覆盖API成本+基础运营+正向现金流</td></tr>
+    <tr><td>成就代币触发率</td><td>—</td><td>40%+</td><td>免费用户至少触发1个成就的比例</td></tr>
+  </table>
+
+  <h3>Phase 1 → Phase 2 升级条件</h3>
+  <ul>
+    <li>MAU > 500 且 7日留存 > 30%</li>
+    <li>付费转化率 > 10% 且 月收入 > API成本</li>
+    <li>至少3个KOC产出自然传播内容</li>
+    <li>用户主动要求的功能Top3清晰可见</li>
+  </ul>
+</div>
+
+<!-- 10 RISKS -->
+<div class="section">
+  <div class="section-num">10</div>
+  <h2>风险与应对</h2>
+
+  <table>
+    <tr><th>风险</th><th>级别</th><th>应对</th></tr>
+    <tr><td><strong>合规审查</strong></td><td style="color:var(--red)">高</td><td>Web端优先（无应用商店审核）；二重验证（年龄+身份）；不存储敏感内容于服务端；Prompt工程走"留白叙事"而非直白路线</td></tr>
+    <tr><td><strong>API成本失控</strong></td><td style="color:var(--red)">高</td><td>平台全额承担API成本，重度用户可能亏损。应对：多模型路由（日常低成本低模型/叙事高潮高能力模型）；叙事性截断控制免费用户消耗；长对话自动压缩上下文；监控单用户API成本，超过阈值时优雅降级</td></tr>
+    <tr><td><strong>Prompt被逆向</strong></td><td style="color:var(--accent-light)">中</td><td>Prompt模板不暴露给前端，通过服务端代理注入；持续迭代保持领先</td></tr>
+    <tr><td><strong>竞品快速跟进</strong></td><td style="color:var(--accent-light)">中</td><td>前端-only模式无技术壁垒，靠记忆系统+Prompt质量+品牌心智建立先发优势</td></tr>
+    <tr><td>记忆存储性能</td><td style="color:var(--text-muted)">低</td><td>IndexedDB可支撑百万级向量；超大规模用户时再迁移至服务端</td></tr>
+    <tr><td>模型能力波动</td><td style="color:var(--text-muted)">低</td><td>支持多模型切换，不绑定单一API；Prompt层做模型适配</td></tr>
+  </table>
+</div>
+
+<!-- 11 TEAM -->
+<div class="section">
+  <div class="section-num">11</div>
+  <h2>跨部门协作接口</h2>
+
+  <table>
+    <tr><th>协作方</th><th>你需要提供</th><th>你需要从对方获得</th></tr>
+    <tr><td><strong>前端开发</strong></td><td>设计系统(04节)、交互规范(04节)、组件优先级(P0/P1/P2)</td><td>技术可行性评估、开发排期、性能约束（记忆系统本地运行可行性）</td></tr>
+    <tr><td><strong>Prompt工程</strong></td><td>叙事风格定义(05节)、目标文笔样本、测试用例</td><td>Prompt迭代结果、边界case反馈、模型适配方案</td></tr>
+    <tr><td><strong>后端/基础设施</strong></td><td>API接入方案(05节)、订阅代币系统(06节)、支付通道需求、合规要求(10节)</td><td>API采购与路由方案、支付通道选型（微信/支付宝）、订阅系统架构、成本监控方案</td></tr>
+    <tr><td><strong>运营/市场</strong></td><td>目标用户画像(02节)、KOC筛选标准(07节)、传播素材规范</td><td>KOC名单、内容数据反馈、用户调研结果</td></tr>
+    <tr><td><strong>法务</strong></td><td>产品定位(01节)、合规方案(10节)、二重验证流程</td><td>合规审查意见、隐私政策模板、用户协议</td></tr>
+  </table>
+</div>
+
+<div class="footer">
+  夜阑 · 产品经理手册 &nbsp;·&nbsp; v0.2 &nbsp;·&nbsp; 内部机密 &nbsp;·&nbsp; 2026.05.06
+</div>
+
+</div>
+</body>
+</html>

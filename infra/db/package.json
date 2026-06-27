@@ -1,0 +1,24 @@
+{
+  "name": "@yelan/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "status": "tsx src/cli.ts status",
+    "up": "tsx src/cli.ts up",
+    "new": "tsx src/cli.ts new",
+    "reset": "tsx src/cli.ts reset",
+    "gui": "tsx src/gui/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.12.0",
+    "hono": "^4.5.0",
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.6.0"
+  }
+}
