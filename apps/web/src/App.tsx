@@ -13,6 +13,7 @@ import { OpeningScene } from './scenes/OpeningScene';
 import { LoginScene } from './scenes/LoginScene';
 import { NameScene } from './scenes/NameScene';
 import { CharacterSelect } from './scenes/CharacterSelect';
+import { CharacterCreate } from './scenes/CharacterCreate';
 import { Conversation } from './scenes/Conversation';
 import { NarrativeCutoff } from './scenes/NarrativeCutoff';
 import { ParticleField } from './components/particles/ParticleField';
@@ -55,6 +56,7 @@ export default function App() {
       {scene === 'login' && <LoginScene />}
       {scene === 'name' && <NameScene />}
       {scene === 'select' && <CharacterSelect />}
+      {scene === 'create' && <CharacterCreate />}
       {scene === 'chat' && <Conversation />}
       {scene === 'end' && <NarrativeCutoff />}
 
