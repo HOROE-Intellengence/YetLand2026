@@ -1,6 +1,7 @@
 export * from './auth';
 export * from './me';
 export * from './characters';
+export * from './user-character';
 export * from './admin';
 export * from './achievements';
 export * from './chat';

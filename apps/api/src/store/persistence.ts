@@ -157,6 +157,15 @@ export interface CharacterRow {
   forbiddenPhrases: string[];
   description: string;
   profileSections?: { key: string; value: string; order: number }[];
+  // —— 用户自定义角色卡（feat/user-character-cards）——
+  // origin 缺省视为 'admin'（老数据/yaml seed）。用户卡带 ownerUserId + 可见性/审核态。
+  origin?: 'admin' | 'user';
+  ownerUserId?: string | null;
+  visibility?: 'private' | 'public';
+  // 审核态：admin 卡='none'（自动可见）；用户私有卡='private'；申请公开='pending'→'approved'/'rejected'
+  reviewStatus?: 'none' | 'private' | 'pending' | 'approved' | 'rejected';
+  // 原始结构化输入 —— 给后台看的 JSON 真理源 + 防注入隔离层（喂 AI 的是编译后的 profileSections）
+  customPayload?: unknown;
   updatedAt: string;
 }
 
