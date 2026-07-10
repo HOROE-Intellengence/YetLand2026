@@ -4,7 +4,9 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Character, CharacterProfileSection } from '@yelan/shared';
+import { randomUUID } from 'node:crypto';
+import type { Character, CharacterProfileSection, UserCharacterCreate } from '@yelan/shared';
+import { compileUserCharacter } from '@yelan/shared';
 import { store, type CharacterRow } from '../store/persistence';
 import { parseTinyYaml } from '../prompts/yaml';
 
@@ -71,8 +73,29 @@ function rowFromYaml(slug: string, raw: Record<string, unknown>): CharacterRow {
     forbiddenPhrases: forbidden,
     description: typeof raw.description === 'string' ? raw.description : '',
     profileSections: [],
+    origin: 'admin',
+    reviewStatus: 'none',
+    visibility: 'public',
     updatedAt: new Date().toISOString(),
   };
+}
+
+/** origin 缺省视为 admin —— 老数据/yaml seed 没有该字段。 */
+function rowOrigin(row: CharacterRow): 'admin' | 'user' {
+  return row.origin === 'user' ? 'user' : 'admin';
+}
+
+/** 是否对所有人公开可见：admin 卡=在用即可；用户卡=公开意愿 + 审核通过 + 在用。 */
+export function isPubliclyVisible(row: CharacterRow): boolean {
+  if (!row.isActive) return false;
+  if (rowOrigin(row) === 'admin') return true;
+  return row.visibility === 'public' && row.reviewStatus === 'approved';
+}
+
+/** 某用户能否访问该卡（读取/进入对话）：公开可见 或 本人的卡。 */
+function canAccessRow(row: CharacterRow, userId: string | undefined): boolean {
+  if (isPubliclyVisible(row)) return true;
+  return Boolean(userId) && row.ownerUserId === userId;
 }
 
 let _hydrated = false;
@@ -117,12 +140,22 @@ function rowToCharacter(row: CharacterRow): Character {
 
 export type AdminCharacter = Character & {
   profileSections: CharacterProfileSection[];
+  origin: 'admin' | 'user';
+  ownerUserId: string | null;
+  visibility: 'private' | 'public';
+  reviewStatus: 'none' | 'private' | 'pending' | 'approved' | 'rejected';
+  customPayload?: unknown;
 };
 
 function rowToAdminCharacter(row: CharacterRow): AdminCharacter {
   return {
     ...rowToCharacter(row),
     profileSections: normalizeProfileSections(row.profileSections),
+    origin: rowOrigin(row),
+    ownerUserId: row.ownerUserId ?? null,
+    visibility: row.visibility ?? 'public',
+    reviewStatus: row.reviewStatus ?? 'none',
+    customPayload: row.customPayload,
   };
 }
 
@@ -141,6 +174,11 @@ export interface CharacterUpsertInput {
   description?: string;
   profileSections?: CharacterProfileSection[];
   isActive?: boolean;
+  origin?: 'admin' | 'user';
+  ownerUserId?: string | null;
+  visibility?: 'private' | 'public';
+  reviewStatus?: 'none' | 'private' | 'pending' | 'approved' | 'rejected';
+  customPayload?: unknown;
 }
 
 export const charactersService = {
@@ -150,11 +188,11 @@ export const charactersService = {
     return Object.values(store.state().characters).map(rowToAdminCharacter);
   },
 
-  /** 列出在用（公开 API 用） */
+  /** 列出对所有人公开可见的卡（不含用户私有卡）。匿名/未登录公开 API 用。 */
   listActive(): Character[] {
     hydrateIfNeeded();
     return Object.values(store.state().characters)
-      .filter((c) => c.isActive)
+      .filter((c) => isPubliclyVisible(c))
       .map(rowToCharacter);
   },
 
@@ -207,9 +245,83 @@ export const charactersService = {
       forbiddenPhrases: input.forbiddenPhrases ?? prev?.forbiddenPhrases ?? [],
       description: input.description ?? prev?.description ?? '',
       profileSections: normalizeProfileSections(input.profileSections ?? prev?.profileSections),
+      origin: input.origin ?? prev?.origin ?? 'admin',
+      ownerUserId: input.ownerUserId === undefined ? (prev?.ownerUserId ?? null) : input.ownerUserId,
+      visibility: input.visibility ?? prev?.visibility ?? 'public',
+      reviewStatus: input.reviewStatus ?? prev?.reviewStatus ?? 'none',
+      customPayload: input.customPayload === undefined ? prev?.customPayload : input.customPayload,
       updatedAt: new Date().toISOString(),
     };
     s.characters[id] = row;
+    store.save();
+    return rowToAdminCharacter(row);
+  },
+
+  /** 用户创建自定义卡 —— 编译进既有 profileSections/forbiddenPhrases，落库为私有或待审。 */
+  createFromUser(ownerUserId: string, payload: UserCharacterCreate): AdminCharacter {
+    hydrateIfNeeded();
+    const { profileSections, forbiddenPhrases } = compileUserCharacter(payload);
+    const id = `custom-${randomUUID()}`;
+    return this.upsert({
+      id,
+      slug: id,
+      name: payload.name,
+      rarity: 'free',
+      priceCandle: 0,
+      styleTags: [],
+      boundaryDefault: 2,
+      isActive: true,
+      forbiddenPhrases,
+      profileSections,
+      description: '',
+      origin: 'user',
+      ownerUserId,
+      visibility: payload.makePublic ? 'public' : 'private',
+      // 申请公开 → 待审；仅自用 → private（本人可见可进，不进公共列表）
+      reviewStatus: payload.makePublic ? 'pending' : 'private',
+      customPayload: payload,
+    });
+  },
+
+  /** 列出对某访问者可见的卡：公开可见 + 本人的私有卡。公开列表 API 用。 */
+  listVisibleTo(userId: string | undefined): Character[] {
+    hydrateIfNeeded();
+    return Object.values(store.state().characters)
+      .filter((c) => canAccessRow(c, userId))
+      .map(rowToCharacter);
+  },
+
+  /** 列出某用户创建的卡（含私有/待审/已拒），本人后台/我的列表用。 */
+  listCreatedBy(userId: string): AdminCharacter[] {
+    hydrateIfNeeded();
+    return Object.values(store.state().characters)
+      .filter((c) => rowOrigin(c) === 'user' && c.ownerUserId === userId)
+      .map(rowToAdminCharacter);
+  },
+
+  /** 访问控制：某用户能否读取/进入该卡（越权护栏）。 */
+  canAccess(idOrSlug: string, userId: string | undefined): boolean {
+    const row = this.getRow(idOrSlug);
+    return Boolean(row) && canAccessRow(row!, userId);
+  },
+
+  /**
+   * 审核用户自定义卡：approve → 公开常驻（visibility=public + reviewStatus=approved）；
+   * reject → reviewStatus=rejected（仍归本人私有可见，不进公共列表）。
+   * 仅对 origin='user' 的卡有效；非用户卡返回 null。
+   */
+  reviewUserCharacter(id: string, action: 'approve' | 'reject'): AdminCharacter | null {
+    hydrateIfNeeded();
+    const s = store.state();
+    const row = s.characters[id] ?? Object.values(s.characters).find((r) => r.slug === id);
+    if (!row || rowOrigin(row) !== 'user') return null;
+    if (action === 'approve') {
+      row.visibility = 'public';
+      row.reviewStatus = 'approved';
+    } else {
+      row.reviewStatus = 'rejected';
+    }
+    row.updatedAt = new Date().toISOString();
     store.save();
     return rowToAdminCharacter(row);
   },

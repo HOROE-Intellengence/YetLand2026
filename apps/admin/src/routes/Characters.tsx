@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
-import { UserCheck, Plus, Circle, Upload } from 'lucide-react';
+import { UserCheck, Plus, Circle, Upload, FileJson, Check, X } from 'lucide-react';
 import {
   AdminCharactersCreateSchema,
   AdminCharactersPatchSchema,
   AdminCharactersListResponseSchema,
   type AdminCharactersCreate,
   type AdminCharactersPatch,
+  type AdminCharacterJsonResponse,
   type CharacterProfileSection,
 } from '@yelan/shared';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
+import { JsonViewer } from '../components/JsonViewer';
 import { CharacterImportDialog } from './CharacterImportDialog';
+
+type Origin = 'admin' | 'user';
+type ReviewStatus = 'none' | 'private' | 'pending' | 'approved' | 'rejected';
 
 interface Character {
   id: string; slug: string; name: string; rarity: string;
@@ -19,7 +24,19 @@ interface Character {
   openingLines: { firstVisit: string; returnVisit: string };
   description?: string; forbiddenPhrases?: string[]; updatedAt?: string;
   profileSections: CharacterProfileSection[];
+  origin?: Origin;
+  ownerUserId?: string | null;
+  visibility?: 'private' | 'public';
+  reviewStatus?: ReviewStatus;
 }
+
+const REVIEW_BADGE: Record<ReviewStatus, { label: string; cls: string }> = {
+  none: { label: '—', cls: '' },
+  private: { label: '私有', cls: '' },
+  pending: { label: '待审', cls: 'badge-warn' },
+  approved: { label: '已通过', cls: 'badge-ok' },
+  rejected: { label: '已驳回', cls: 'badge-danger' },
+};
 
 interface PreludeCardOption {
   id: string;
@@ -37,6 +54,8 @@ export function Characters() {
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<Character | null>(null);
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [jsonView, setJsonView] = useState<AdminCharacterJsonResponse | null>(null);
 
   const load = async () => {
     try {
@@ -79,6 +98,28 @@ export function Characters() {
     }
   }
 
+  async function handleViewJson(id: string) {
+    try {
+      const data = await api.get<AdminCharacterJsonResponse>(`/api/admin/characters/${id}/json`);
+      setJsonView(data);
+    } catch (e) {
+      toastErr((e as Error).message);
+    }
+  }
+
+  async function handleReview(character: Character, action: 'approve' | 'reject') {
+    const verb = action === 'approve' ? '通过' : '驳回';
+    const reason = window.prompt(`${verb}「${character.name}」的理由（必填）`, action === 'approve' ? '内容合规' : '');
+    if (!reason) return;
+    try {
+      await api.post(`/api/admin/characters/${character.id}/review`, { action, reason });
+      success(action === 'approve' ? '已通过，角色已开放为常驻' : '已驳回');
+      await load();
+    } catch (e) {
+      toastErr((e as Error).message);
+    }
+  }
+
   async function handleToggle(character: Character) {
     if (!window.confirm(`确定要${character.isActive ? '停用' : '启用'}「${character.name}」吗？`)) return;
     try {
@@ -101,11 +142,22 @@ export function Characters() {
     return <div className="state-placeholder state-error"><Circle size={32} /><span>{err}</span></div>;
   }
 
+  const pendingCount = chars.filter((c) => c.reviewStatus === 'pending').length;
+  const visible = pendingOnly ? chars.filter((c) => c.reviewStatus === 'pending') : chars;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ marginBottom: 0 }}>角色卡管理</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {pendingCount > 0 && (
+            <button
+              className={`btn btn-sm ${pendingOnly ? 'btn-primary' : ''}`}
+              onClick={() => setPendingOnly((v) => !v)}
+            >
+              待审 {pendingCount}
+            </button>
+          )}
           <button className="btn" onClick={() => setShowImport(true)}>
             <Upload size={14} /> 导入角色包
           </button>
@@ -115,33 +167,75 @@ export function Characters() {
         </div>
       </div>
 
-      {chars.length === 0 ? (
-        <div className="state-placeholder"><UserCheck size={32} /><span>暂无角色卡</span></div>
+      {visible.length === 0 ? (
+        <div className="state-placeholder"><UserCheck size={32} /><span>{pendingOnly ? '没有待审角色卡' : '暂无角色卡'}</span></div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
           <table>
             <thead>
-              <tr><th>ID</th><th>名称</th><th>稀有度</th><th>烛价</th><th>边界</th><th>状态</th><th>操作</th></tr>
+              <tr><th>ID</th><th>名称</th><th>来源</th><th>稀有度</th><th>边界</th><th>状态</th><th>审核</th><th>操作</th></tr>
             </thead>
             <tbody>
-              {chars.map((c) => (
+              {visible.map((c) => {
+                const isUser = c.origin === 'user';
+                const review = REVIEW_BADGE[c.reviewStatus ?? 'none'];
+                return (
                 <tr key={c.id}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{c.slug}</td>
                   <td>{c.name}</td>
+                  <td>
+                    <span className={`badge ${isUser ? 'badge-warn' : 'badge-ok'}`}>{isUser ? '用户' : 'admin'}</span>
+                    {isUser && c.ownerUserId && (
+                      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{c.ownerUserId}</div>
+                    )}
+                  </td>
                   <td><span className={`badge ${c.rarity === 'paid' ? 'badge-warn' : c.rarity === 'hidden' ? 'badge-danger' : 'badge-ok'}`}>{c.rarity}</span></td>
-                  <td>{c.priceCandle}</td>
                   <td>{c.boundaryDefault}</td>
                   <td><span className={`badge ${c.isActive ? 'badge-ok' : 'badge-danger'}`}>{c.isActive ? '启用' : '停用'}</span></td>
+                  <td>{review.cls ? <span className={`badge ${review.cls}`}>{review.label}</span> : review.label}</td>
                   <td>
+                    {isUser && (
+                      <button className="btn btn-sm" onClick={() => handleViewJson(c.id)} style={{ marginRight: 6 }} title="查看结构化档案">
+                        <FileJson size={13} /> JSON
+                      </button>
+                    )}
+                    {isUser && c.reviewStatus === 'pending' && (
+                      <>
+                        <button className="btn btn-sm btn-primary" onClick={() => handleReview(c, 'approve')} style={{ marginRight: 6 }}>
+                          <Check size={13} /> 通过
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleReview(c, 'reject')} style={{ marginRight: 6 }}>
+                          <X size={13} /> 驳回
+                        </button>
+                      </>
+                    )}
                     <button className="btn btn-sm" onClick={() => setEditing(c)} style={{ marginRight: 6 }}>编辑</button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleToggle(c)}>
                       {c.isActive ? '停用' : '启用'}
                     </button>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {jsonView && (
+        <div className="modal-overlay" onClick={() => setJsonView(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>档案 · {jsonView.characterName}</h2>
+            <div className="modal-scroll">
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 0 }}>
+                创建人：{jsonView.userName}（{jsonView.ownerUserId ?? '—'}） · 审核态：{REVIEW_BADGE[jsonView.reviewStatus].label}
+              </p>
+              <JsonViewer data={jsonView} maxHeight={480} />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn" onClick={() => setJsonView(null)}>关闭</button>
+            </div>
+          </div>
         </div>
       )}
 

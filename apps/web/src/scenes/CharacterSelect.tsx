@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listCharacters } from '../api/characters';
+import { getToken } from '../api/client';
 import { useSessionStore } from '../stores/sessionStore';
 import { circularOffset, slotForOffset } from './CharacterSelect.carousel';
 import { resolveConstellation } from './CharacterSelect.constellation';
@@ -31,6 +32,14 @@ const RightArrowIcon = () => (
 
 export function CharacterSelect() {
   const pickCharacter = useSessionStore((s) => s.pickCharacter);
+  const goCreate = useSessionStore((s) => s.goCreate);
+  const goLogin = useSessionStore((s) => s.goLogin);
+
+  // 入口：已登录（有 token）→ 进创建流程；游客 → 先去登录（创建角色卡需登录）。
+  const handleCreateEntry = () => {
+    if (getToken()) goCreate();
+    else goLogin();
+  };
   const { data, isLoading, error } = useQuery({
     queryKey: ['characters'],
     queryFn: listCharacters,
@@ -239,6 +248,10 @@ export function CharacterSelect() {
       {data && data.length === 0 && (
         <p className={styles.loading}>暂无可用角色</p>
       )}
+
+      <button className={styles.createEntry} onClick={handleCreateEntry}>
+        创建属于你的那位
+      </button>
     </div>
   );
 }

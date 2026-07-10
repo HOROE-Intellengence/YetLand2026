@@ -9,23 +9,30 @@ import { policyService } from '../services/policy';
 
 export const mockCharactersRoute = new Hono();
 
+// 全局软鉴权：拿到 userId 以便按可见性过滤（含"本人的私有卡"）。
+mockCharactersRoute.use('*', softAuth());
+
 // 星座独立存储，读时 join 进角色卡（持久化优先，缺省回退内置默认）
-mockCharactersRoute.get('/', (c) =>
-  c.json(
+// 列表 = 对当前访问者可见的卡（公开可见 + 本人私有卡）。
+mockCharactersRoute.get('/', (c) => {
+  const userId = c.get('userId') as string | undefined;
+  return c.json(
     charactersService
-      .listActive()
+      .listVisibleTo(userId)
       .map((ch) => ({ ...ch, constellation: constellationsService.resolve(ch.slug) })),
-  ),
-);
+  );
+});
 
 mockCharactersRoute.get('/:id', (c) => {
   const id = c.req.param('id');
+  const userId = c.get('userId') as string | undefined;
   const found = charactersService.get(id);
-  if (!found) return c.json({ code: 'NOT_FOUND', message: 'character not found' }, 404);
+  // 越权护栏：私有卡仅本人可读；他人一律 404（不暴露存在性）。
+  if (!found || !charactersService.canAccess(id, userId)) {
+    return c.json({ code: 'NOT_FOUND', message: 'character not found' }, 404);
+  }
   return c.json({ ...found, constellation: constellationsService.resolve(found.slug) });
 });
-
-mockCharactersRoute.use('/:id/unlock', softAuth());
 mockCharactersRoute.post('/:id/unlock', (c) => {
   const enabled = policyService.get<boolean>('EXCHANGE_ENABLED', true);
   if (!enabled) return c.json({ code: 'EXCHANGE_DISABLED', message: '兑换功能已关闭' }, 403);

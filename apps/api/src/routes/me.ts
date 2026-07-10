@@ -30,6 +30,7 @@ import {
 import { validationHook } from '../middleware/validation';
 import { mockMemoriesRoute } from './me/memories';
 import { mockPreferencesRoute } from './me/preferences';
+import { mockCreatedCharactersRoute } from './me/created-characters';
 import { achievementRepo } from '../store/repositories';
 
 export const mockMeRoute = new Hono();
@@ -228,3 +229,4 @@ mockMeRoute.get('/achievements', async (c) => {
 
 mockMeRoute.route('/memories', mockMemoriesRoute);
 mockMeRoute.route('/preferences', mockPreferencesRoute);
+mockMeRoute.route('/created-characters', mockCreatedCharactersRoute);

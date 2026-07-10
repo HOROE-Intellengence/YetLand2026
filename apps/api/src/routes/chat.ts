@@ -51,6 +51,10 @@ mockChatRoute.post(
 
     const character = charactersService.get(body.characterId);
     if (!character) return c.json({ code: 'CHARACTER_NOT_FOUND', message: 'character not found' }, 400);
+    // 越权护栏：私有的用户自定义卡只有本人能进对话（否则可拿他人私有卡内容跑 prompt）。
+    if (!charactersService.canAccess(body.characterId, userId)) {
+      return c.json({ code: 'CHARACTER_NOT_FOUND', message: 'character not found' }, 400);
+    }
 
     ensureChatSession({ id: body.sessionId, userId, characterId: body.characterId });
     const ifUnlock = resolveIfUnlockFromText(userId, body.sessionId, body.text);

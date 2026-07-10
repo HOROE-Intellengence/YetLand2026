@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { DEFAULT_USER_BOUNDARY, type Character, type Stage, type Boundary } from '@yelan/shared';
 
-type Scene = 'home' | 'intro' | 'opening' | 'login' | 'name' | 'select' | 'chat' | 'end';
+type Scene = 'home' | 'intro' | 'opening' | 'login' | 'name' | 'select' | 'create' | 'chat' | 'end';
 
 interface SessionState {
   scene: Scene;
@@ -20,6 +20,7 @@ interface SessionState {
   setGreeting: (g: string) => void;
   setUserName: (name: string) => void;
   goSelect: () => void;
+  goCreate: () => void;
   pickCharacter: (c: Character) => void;
   setStage: (s: Stage) => void;
   setBoundary: (b: Boundary) => void;
@@ -46,6 +47,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   setGreeting: (greeting) => set({ greeting, scene: 'name' }),
   setUserName: (userName) => set({ userName, scene: 'select' }),
   goSelect: () => set({ scene: 'select' }),
+  goCreate: () => set({ scene: 'create' }),
   pickCharacter: (character) => set({ character, scene: 'chat' }),
   setStage: (stage) => set({ stage }),
   setBoundary: (boundary) => set({ boundary }),

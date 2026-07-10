@@ -6,6 +6,8 @@ import {
   AdminCharacterImportCommitSchema,
   AdminCharacterImportPreviewRequestSchema,
   AdminCharacterImportPreviewResponseSchema,
+  AdminCharacterJsonResponseSchema,
+  AdminCharacterReviewSchema,
   AdminCharactersCreateSchema,
   AdminCharactersPatchSchema,
   normalizeCharacterImportBundle,
@@ -14,6 +16,7 @@ import {
   type AdminCharacterImportPreviewResponse,
 } from '@yelan/shared';
 import { charactersService } from '../../services/characters';
+import { getUserById } from '../../services/users';
 import { audit } from './_audit';
 import { validationHook } from '../../middleware/validation';
 
@@ -131,6 +134,56 @@ adminCharactersRoute.get('/:id', (c) => {
   if (!found) return c.json({ code: 'NOT_FOUND', message: 'character not found' }, 404);
   return c.json(found);
 });
+
+// 后台档案 JSON 视图 —— 防注入：只回结构化 JSON（角色名/用户名/id + 原始输入 + 编译产物），
+// 绝不回拼装后的 prompt 原文。管理员据此核对与审核。
+adminCharactersRoute.get('/:id/json', (c) => {
+  const found = charactersService.getAdmin(c.req.param('id'));
+  if (!found) return c.json({ code: 'NOT_FOUND', message: 'character not found' }, 404);
+  const owner = found.ownerUserId ? getUserById(found.ownerUserId) : null;
+  const userName = owner
+    ? (owner.nickname ?? owner.name ?? owner.email ?? owner.id)
+    : found.origin === 'user'
+      ? (found.ownerUserId ?? 'unknown')
+      : 'admin';
+  const response = AdminCharacterJsonResponseSchema.parse({
+    id: found.id,
+    characterName: found.name,
+    userName,
+    ownerUserId: found.ownerUserId,
+    origin: found.origin,
+    visibility: found.visibility,
+    reviewStatus: found.reviewStatus,
+    isActive: found.isActive,
+    updatedAt: found.updatedAt,
+    customPayload: found.customPayload ?? null,
+    compiled: {
+      profileSections: found.profileSections,
+      forbiddenPhrases: found.forbiddenPhrases ?? [],
+    },
+  });
+  return c.json(response);
+});
+
+// 审核用户自定义卡：通过 → 公开常驻；驳回 → 保持本人私有可见。
+adminCharactersRoute.post(
+  '/:id/review',
+  zValidator('json', AdminCharacterReviewSchema, validationHook),
+  (c) => {
+    const id = c.req.param('id');
+    const body = c.req.valid('json');
+    const reviewed = charactersService.reviewUserCharacter(id, body.action);
+    if (!reviewed) {
+      return c.json({ code: 'NOT_FOUND', message: 'user character not found' }, 404);
+    }
+    audit(`character.review.${body.action}`, reviewed.id, body.reason, {
+      slug: reviewed.slug,
+      reviewStatus: reviewed.reviewStatus,
+      visibility: reviewed.visibility,
+    });
+    return c.json(reviewed);
+  },
+);
 
 adminCharactersRoute.post(
   '/',
