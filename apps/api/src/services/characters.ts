@@ -305,6 +305,27 @@ export const charactersService = {
     return Boolean(row) && canAccessRow(row!, userId);
   },
 
+  /**
+   * 审核用户自定义卡：approve → 公开常驻（visibility=public + reviewStatus=approved）；
+   * reject → reviewStatus=rejected（仍归本人私有可见，不进公共列表）。
+   * 仅对 origin='user' 的卡有效；非用户卡返回 null。
+   */
+  reviewUserCharacter(id: string, action: 'approve' | 'reject'): AdminCharacter | null {
+    hydrateIfNeeded();
+    const s = store.state();
+    const row = s.characters[id] ?? Object.values(s.characters).find((r) => r.slug === id);
+    if (!row || rowOrigin(row) !== 'user') return null;
+    if (action === 'approve') {
+      row.visibility = 'public';
+      row.reviewStatus = 'approved';
+    } else {
+      row.reviewStatus = 'rejected';
+    }
+    row.updatedAt = new Date().toISOString();
+    store.save();
+    return rowToAdminCharacter(row);
+  },
+
   /** 软删（停用）— 不真删，便于回滚和审计 */
   disable(id: string): boolean {
     hydrateIfNeeded();

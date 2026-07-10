@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { store } from '../store/persistence';
 import { mockMeRoute } from '../routes/me';
 import { mockCharactersRoute } from '../routes/characters';
+import { adminCharactersRoute } from '../routes/admin/characters';
 import { charactersService } from '../services/characters';
 import { loadCharacterCard } from '../prompts/loader';
 
@@ -128,5 +129,87 @@ describe('用户自定义角色卡 — 可见性与越权', () => {
     });
     const arrB = (await listB.json()) as Array<{ id: string }>;
     expect(arrB.some((c) => c.id === character.id)).toBe(false);
+  });
+});
+
+describe('用户自定义角色卡 — 后台审核', () => {
+  beforeEach(() => store.__resetForTests());
+
+  async function seedUserCard(makePublic: boolean) {
+    const { token } = makeUser('usr_a', 'tok_a');
+    const res = await createCard(token, {
+      name: '待审沈砚之',
+      worldbook: { background: '旧城归人' },
+      makePublic,
+      consent: true,
+    });
+    const { character } = (await res.json()) as { character: { id: string } };
+    return character.id;
+  }
+
+  it('JSON 视图回结构化档案（角色名/用户名/id + 原始输入 + 编译产物），非 prompt 原文', async () => {
+    const id = await seedUserCard(true);
+    const res = await adminCharactersRoute.request(`/${id}/json`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      characterName: string;
+      userName: string;
+      customPayload: { worldbook?: { background?: string } };
+      compiled: { profileSections: Array<{ key: string; value: string }> };
+    };
+    expect(body.characterName).toBe('待审沈砚之');
+    expect(body.userName).toBe('usr_a');
+    expect(body.customPayload.worldbook?.background).toBe('旧城归人');
+    expect(body.compiled.profileSections.some((s) => s.key === '背景')).toBe(true);
+    // 防注入：不回拼装后的 `# 角色 · ...` prompt 原文
+    expect(JSON.stringify(body)).not.toContain('# 角色 ·');
+  });
+
+  it('通过审核 → 公开常驻，他人可见', async () => {
+    const id = await seedUserCard(true);
+    makeUser('usr_b', 'tok_b');
+    const res = await adminCharactersRoute.request(`/${id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve', reason: '内容合规' }),
+    });
+    expect(res.status).toBe(200);
+    const reviewed = (await res.json()) as { reviewStatus: string; visibility: string };
+    expect(reviewed.reviewStatus).toBe('approved');
+    expect(reviewed.visibility).toBe('public');
+
+    const listB = await mockCharactersRoute.request('/', { headers: { Authorization: 'Bearer tok_b' } });
+    const arrB = (await listB.json()) as Array<{ id: string }>;
+    expect(arrB.some((c) => c.id === id)).toBe(true);
+  });
+
+  it('驳回 → reviewStatus=rejected，仍不进他人公共列表', async () => {
+    const id = await seedUserCard(true);
+    makeUser('usr_b', 'tok_b');
+    const res = await adminCharactersRoute.request(`/${id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reject', reason: '含敏感内容' }),
+    });
+    expect(res.status).toBe(200);
+    const reviewed = (await res.json()) as { reviewStatus: string };
+    expect(reviewed.reviewStatus).toBe('rejected');
+
+    const listB = await mockCharactersRoute.request('/', { headers: { Authorization: 'Bearer tok_b' } });
+    const arrB = (await listB.json()) as Array<{ id: string }>;
+    expect(arrB.some((c) => c.id === id)).toBe(false);
+  });
+
+  it('审核只对用户卡有效：admin 卡 review → 404', async () => {
+    charactersService.upsert({
+      id: 'admin-card', slug: 'admin-card', name: '官方角色',
+      rarity: 'free', priceCandle: 0, boundaryDefault: 2,
+    });
+    const res = await adminCharactersRoute.request('/admin-card/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve', reason: 'x' }),
+    });
+    expect(res.status).toBe(404);
   });
 });

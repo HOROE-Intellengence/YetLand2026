@@ -147,7 +147,39 @@ export const AdminCharactersListResponseSchema = z.object({
     forbiddenPhrases: z.array(z.string()).optional(),
     profileSections: z.array(CharacterProfileSectionSchema),
     updatedAt: z.string().optional(),
+    // —— 用户自定义角色卡（feat/user-character-cards）——
+    // 老 admin 卡可能无这些字段 → optional，前端按缺省=admin/none 处理。
+    origin: z.enum(['admin', 'user']).optional(),
+    ownerUserId: z.string().nullable().optional(),
+    visibility: z.enum(['private', 'public']).optional(),
+    reviewStatus: z.enum(['none', 'private', 'pending', 'approved', 'rejected']).optional(),
   })),
+});
+
+// ── 用户自定义卡审核 ──
+export const AdminCharacterReviewSchema = z.object({
+  action: z.enum(['approve', 'reject']),
+  reason: z.string().min(1).max(500),
+});
+
+// 后台档案 JSON 视图（防注入：只回结构化 JSON，绝不回拼装后的 prompt 原文）
+export const AdminCharacterJsonResponseSchema = z.object({
+  id: z.string(),
+  characterName: z.string(),
+  userName: z.string(),
+  ownerUserId: z.string().nullable(),
+  origin: z.enum(['admin', 'user']),
+  visibility: z.enum(['private', 'public']),
+  reviewStatus: z.enum(['none', 'private', 'pending', 'approved', 'rejected']),
+  isActive: z.boolean(),
+  updatedAt: z.string().optional(),
+  // 用户原始结构化输入（世界书 + 角色卡）
+  customPayload: z.unknown(),
+  // 编译产物（喂主 AI 的派生物，已 sanitize）—— 便于管理员核对实际注入内容
+  compiled: z.object({
+    profileSections: z.array(CharacterProfileSectionSchema),
+    forbiddenPhrases: z.array(z.string()),
+  }),
 });
 
 export const AdminCharacterImportCommitResponseSchema = AdminCharacterImportPreviewResponseSchema.extend({
@@ -523,6 +555,8 @@ export const AdminAuditEntrySchema = z.object({
 export type AdminCharactersCreate = z.infer<typeof AdminCharactersCreateSchema>;
 export type AdminCharactersPatch = z.infer<typeof AdminCharactersPatchSchema>;
 export type AdminCharactersListResponse = z.infer<typeof AdminCharactersListResponseSchema>;
+export type AdminCharacterReview = z.infer<typeof AdminCharacterReviewSchema>;
+export type AdminCharacterJsonResponse = z.infer<typeof AdminCharacterJsonResponseSchema>;
 export type AdminCharacterImportMode = z.infer<typeof AdminCharacterImportModeSchema>;
 export type AdminCharacterImportPayload = z.infer<typeof AdminCharacterImportPayloadSchema>;
 export type AdminCharacterImportIssue = z.infer<typeof AdminCharacterImportIssueSchema>;
