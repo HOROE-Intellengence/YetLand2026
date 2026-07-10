@@ -74,6 +74,45 @@ export function clearLocalChat(characterId: string, userId?: string): void {
   }
 }
 
+/**
+ * 把归属在 fromUserId 名下的所有本地对话快照迁到 toUserId。
+ * 用于登录时把访客（设备 id）对话过户到真实账号，让登录前的对话不丢。
+ * 目标 key 已存在则跳过（不覆盖账号自己的对话）；迁移成功后删除源 key。
+ * 返回迁移的快照条数。
+ */
+export function migrateLocalChatOwner(fromUserId: string, toUserId: string): number {
+  if (!fromUserId || !toUserId || fromUserId === toUserId) return 0;
+  let migrated = 0;
+  try {
+    const srcPrefix = `${KEY_PREFIX}${fromUserId}.`;
+    const sourceKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(srcPrefix)) sourceKeys.push(key);
+    }
+    for (const srcKey of sourceKeys) {
+      const characterId = srcKey.slice(srcPrefix.length);
+      const destKey = storageKey(characterId, toUserId);
+      const raw = localStorage.getItem(srcKey);
+      // 目标已有对话则保留目标、丢弃源；否则改写 ownerUserId 后过户。
+      if (raw && !localStorage.getItem(destKey)) {
+        try {
+          const parsed = JSON.parse(raw) as Partial<LocalChatSnapshot>;
+          parsed.ownerUserId = toUserId;
+          localStorage.setItem(destKey, JSON.stringify(parsed));
+          migrated += 1;
+        } catch {
+          /* 源快照损坏，跳过迁移，照常删除 */
+        }
+      }
+      localStorage.removeItem(srcKey);
+    }
+  } catch {
+    /* local cache is best effort */
+  }
+  return migrated;
+}
+
 function storageKey(characterId: string, userId?: string): string {
   if (userId) return `${KEY_PREFIX}${userId}.${characterId}`;
   return `${KEY_PREFIX}${characterId}`;

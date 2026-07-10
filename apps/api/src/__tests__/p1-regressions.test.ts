@@ -150,20 +150,46 @@ describe('P1 #2: stale token PATCH /api/me/profile must NOT write to anon', () =
   });
 });
 
-// ── P1 关联检查：PATCH /name 保留 softAuth（开门流契约），但行为可解释 ──
+// ── P1 关联检查：PATCH /name 保留 softAuth（开门流契约），但落到「每浏览器独立游客」而非共享匿名号 ──
 
-describe('PATCH /api/me/name: soft-auth path retained, documented behavior', () => {
+describe('PATCH /api/me/name: soft-auth path retained, isolated per-visitor guest', () => {
   beforeEach(() => store.__resetForTests());
 
-  it('no token → falls through to anon and writes name there (this is the open-flow contract)', async () => {
+  it('no token (with device id) → writes name to that device\'s own guest row, NOT the shared anon', async () => {
     const res = await mockMeRoute.request('/name', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Device-Id': 'dev_visitorA' },
       body: JSON.stringify({ name: '访客称呼' }),
     });
     expect(res.status).toBe(200);
-    const anonId = store.state().phoneIndex['00000000000']!;
-    expect(store.state().users[anonId]!.name).toBe('访客称呼');
-    // 已知 trade-off：stale token 也会落到匿名号。Backlog 中记入「区分 no-token vs stale-token」。
+
+    // 名字落在该设备自己的游客行上
+    const guestId = store.state().deviceIndex['dev_visitorA'];
+    expect(guestId).toBeTruthy();
+    expect(store.state().users[guestId!]!.name).toBe('访客称呼');
+
+    // 共享匿名号（若存在）绝不承接这个名字 —— 这是本次修复的核心不变量
+    const anonId = store.state().phoneIndex['00000000000'];
+    if (anonId) {
+      expect(store.state().users[anonId]!.name).not.toBe('访客称呼');
+    }
+  });
+
+  it('two different devices → two independent guest rows with independent names', async () => {
+    await mockMeRoute.request('/name', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Device-Id': 'dev_alice' },
+      body: JSON.stringify({ name: '爱丽丝' }),
+    });
+    await mockMeRoute.request('/name', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Device-Id': 'dev_bob' },
+      body: JSON.stringify({ name: '鲍勃' }),
+    });
+    const alice = store.state().deviceIndex['dev_alice']!;
+    const bob = store.state().deviceIndex['dev_bob']!;
+    expect(alice).not.toBe(bob);
+    expect(store.state().users[alice]!.name).toBe('爱丽丝');
+    expect(store.state().users[bob]!.name).toBe('鲍勃');
   });
 });

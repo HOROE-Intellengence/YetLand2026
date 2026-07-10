@@ -6,17 +6,21 @@ import { getLlmApiConfig } from '../services/llm-api-inventory';
 
 /** 侧袋 AI 的模型配置 — 使用便宜模型 */
 function getSidecarConfig(taskKey?: SidecarPromptKey) {
+  // baseUrl = API 根（如 .../v1），下方 fetch 再拼 /chat/completions。
+  // 容错后台粘贴了完整 .../v1/chat/completions：去掉重复后缀，否则拼出
+  // .../chat/completions/chat/completions → 404（侧袋永久降级）。
+  const normalizeBase = (url: string) => url.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
   const selected = getLlmApiConfig('sidecar', taskKey);
   if (selected) {
     return {
       model: selected.model,
-      baseUrl: selected.baseUrl.replace(/\/+$/, ''),
+      baseUrl: normalizeBase(selected.baseUrl),
       apiKey: selected.apiKey,
     };
   }
   return {
     model: process.env.SIDECAR_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat',
-    baseUrl: (process.env.SIDECAR_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, ''),
+    baseUrl: normalizeBase(process.env.SIDECAR_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'),
     apiKey: process.env.SIDECAR_API_KEY || process.env.DEEPSEEK_API_KEY || '',
   };
 }
@@ -51,6 +55,75 @@ export function extractSidecarJson(raw: string): string {
     if (end > start) s = s.slice(start, end + 1);
   }
   return s;
+}
+
+/** 从 from 起、在当前 JSON 字符串闭合（遇未转义的 "）之前，是否还有一个 $ */
+function hasUnescapedDollarAhead(s: string, from: number): boolean {
+  for (let i = from; i < s.length; i++) {
+    const c = s[i];
+    if (c === '\\') { i += 1; continue; } // 跳过被转义的下一字符
+    if (c === '"') return false; // 字符串结束仍没找到配对 $
+    if (c === '$') return true;
+  }
+  return false;
+}
+
+/**
+ * 修复侧袋结构化模型输出里「LaTeX 反斜杠未转义」导致的 JSON 腐化。
+ *
+ * 廉价模型被要求输出 json_object 时，常把公式里的 `\frac` `\times` `\neq` 写成单反斜杠。
+ * 这在 JSON 里恰好是合法转义（`\f`=换页、`\t`=制表、`\n`=换行），于是 JSON.parse 不报错，
+ * 却把 `\frac` 解成「换页符 + rac」—— 前端 KaTeX 拿到掏空了反斜杠的乱码，公式渲染失败、
+ * `$` 也残留（用户报的「G 和 rac 中间有个向上箭头、$ 没消失」正是 U+000C 换页符）。
+ *
+ * 朴素的「只补非法转义」行不通：`\frac→\f`、`\times→\t`、`\neq→\n` 全撞上合法转义，
+ * 而串外真正的 `\n` 又确实是换行。唯一可靠的判别是上下文 —— `$...$` 数学区内的反斜杠
+ * 一律是 LaTeX 命令、应翻倍；区外的 `\n` 保持换行。故只在数学区内补斜杠。
+ * 进入数学区前还要确认本串内有配对的 $，否则把货币写法（`$5`）误当公式开端。
+ */
+export function repairLatexBackslashes(raw: string): string {
+  let out = '';
+  let inString = false;
+  let inMath = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (!inString) {
+      if (c === '"') inString = true;
+      out += c;
+      continue;
+    }
+    // —— JSON 字符串内部 ——
+    if (c === '\\') {
+      const n = raw[i + 1];
+      const isValidEscape =
+        n === '\\' || n === '"' || n === '/' ||
+        (n === 'u' && /^[0-9a-fA-F]{4}$/.test(raw.slice(i + 2, i + 6)));
+      if (inMath && !isValidEscape) {
+        out += '\\\\' + (n ?? ''); // 数学区裸反斜杠 → 翻倍，让 JSON.parse 还原出真正的 \
+      } else {
+        out += c + (n ?? ''); // 合法转义（含已正确翻倍的 \\）原样保留
+      }
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      inString = false;
+      inMath = false; // 串结束，数学区一并关闭，防漏配的 $ 渗到下一串
+      out += c;
+      continue;
+    }
+    if (c === '$') {
+      const dbl = raw[i + 1] === '$';
+      if (inMath || hasUnescapedDollarAhead(raw, i + (dbl ? 2 : 1))) {
+        inMath = !inMath;
+      }
+      out += dbl ? '$$' : '$';
+      if (dbl) i += 1;
+      continue;
+    }
+    out += c;
+  }
+  return out;
 }
 
 /**
@@ -107,7 +180,11 @@ export async function sidecarCall<T>(
       }
 
       try {
-        const parsed = JSON.parse(extractSidecarJson(content)) as T;
+        const json = extractSidecarJson(content);
+        // 先按原样解析；失败再尝试修复 LaTeX 反斜杠后重解（避免对正常 JSON 多做一遍扫描）。
+        // 但即便首解成功，公式里的 \frac 也可能被「合法地」解成换页符 —— 那类腐化不会抛错，
+        // 故无条件先修复：repair 对不含数学区的 JSON 是恒等变换，开销仅一次线性扫描。
+        const parsed = JSON.parse(repairLatexBackslashes(json)) as T;
         return { ok: true, data: parsed };
       } catch {
         return { ok: false, error: `sidecar JSON parse failed: ${content.slice(0, 200)}` };

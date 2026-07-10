@@ -88,7 +88,7 @@ app.use(
       return profile.corsOrigins.includes(origin) ? origin : '';
     },
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'x-request-id', 'Accept'],
+    allowHeaders: ['Content-Type', 'Authorization', 'x-request-id', 'Accept', 'X-Device-Id'],
     credentials: true,
     maxAge: 86400,
   }),

@@ -11,6 +11,16 @@ import { hasActiveMembershipRow, refreshExpiredMembershipRows } from './membersh
 const MAX_FAILED_LOGINS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 分钟
 
+// 共享匿名号手机号 —— 与 middleware/auth.ts、下方 ANON_PHONE_GUARD 保持一致。
+// softAuth 改造后新访客不再落到它，但历史遗留的 usr_f044c211 仍是这个号；
+// 个人字段（name/画像）绝不能写到共享号上，否则会跨匿名访客串味。
+const SHARED_ANON_PHONE = '00000000000';
+
+/** 该 user 是否共享匿名号（phone === 共享匿名号）。个人字段写入前用它挡一道。 */
+function isSharedAnon(u: PersistedUser): boolean {
+  return u.phone === SHARED_ANON_PHONE;
+}
+
 /** 解析 token 中嵌入的版本号。形如 `tok_v3_xxxx` → 3；旧格式 `tok_xxx` → 0（向后兼容）。 */
 export function parseTokenVersion(token: string): number {
   const m = token.match(/^tok_v(\d+)_/);
@@ -56,7 +66,43 @@ export class UserDeletedError extends Error {
   }
 }
 
-export function getOrCreateUserByPhone(phone: string): PersistedUser {
+/**
+ * 按设备 id 找一条「可转正」的游客行（存在、isGuest、未注销）。
+ * 用于注册/首次 OTP 时把游客行原地升级为真实账户 —— 会话/额度零迁移。
+ */
+function findConvertibleGuestByDevice(deviceId?: string): PersistedUser | null {
+  if (!deviceId) return null;
+  const s = store.state();
+  const id = s.deviceIndex[deviceId];
+  if (!id) return null;
+  const u = s.users[id];
+  if (!u || !u.isGuest || u.deletedAt) return null;
+  return u;
+}
+
+/** 转正时发放注册烛火（游客建号时未发），并记账。 */
+function grantRegisterCandle(u: PersistedUser, grant: number, now: string): void {
+  u.candle += grant;
+  u.registerGrant = grant;
+  store.state().candleLedger.push({
+    id: `cl_${randomUUID().slice(0, 8)}`,
+    userId: u.id,
+    delta: grant,
+    reason: 'register_grant',
+    refId: u.id,
+    createdAt: now,
+  });
+}
+
+/** 摘掉游客标记：清 isGuest/deviceId 并从 deviceIndex 删映射（登出后该设备重新拿到新游客号）。 */
+function deGuest(u: PersistedUser): void {
+  const s = store.state();
+  if (u.deviceId) delete s.deviceIndex[u.deviceId];
+  delete u.isGuest;
+  delete u.deviceId;
+}
+
+export function getOrCreateUserByPhone(phone: string, guestDeviceId?: string): PersistedUser {
   const s = store.state();
   const existingId = s.phoneIndex[phone];
   if (existingId) {
@@ -68,6 +114,19 @@ export function getOrCreateUserByPhone(phone: string): PersistedUser {
   }
 
   const grant = policyService.get<number>('REGISTER_CANDLE_GRANT', 100);
+  const now = new Date().toISOString();
+
+  // 游客转正：原地把游客行升级为真实手机号账户，会话/额度全部保留。
+  const guest = findConvertibleGuestByDevice(guestDeviceId);
+  if (guest) {
+    guest.phone = phone;
+    deGuest(guest);
+    grantRegisterCandle(guest, grant, now);
+    s.phoneIndex[phone] = guest.id;
+    store.save();
+    return guest;
+  }
+
   const id = `usr_${randomUUID().slice(0, 8)}`;
   const token = `tok_${randomUUID().replace(/-/g, '')}`;
   const user: PersistedUser = {
@@ -77,7 +136,7 @@ export function getOrCreateUserByPhone(phone: string): PersistedUser {
     ageVerified: false,
     narrativeBoundary: DEFAULT_USER_BOUNDARY,
     ifUnlocked: false,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     candle: grant,
     registerGrant: grant,
     conversationRounds: 0,
@@ -93,6 +152,44 @@ export function getOrCreateUserByPhone(phone: string): PersistedUser {
     refId: id,
     createdAt: user.createdAt,
   });
+  store.save();
+  return user;
+}
+
+/**
+ * 按设备 id 查/建游客行。直接进入（跳过注册）的访客走这里，
+ * 每台设备一条独立 user 行 → 后台可见「游客xxxxx」+ 其会话/额度。
+ * 注意：游客建号不发 register grant —— 转正（注册/登录）时才发放，防止刷设备薅烛。
+ */
+export function getOrCreateGuestByDevice(deviceId: string): PersistedUser {
+  const s = store.state();
+  const existingId = s.deviceIndex[deviceId];
+  if (existingId) {
+    const existing = s.users[existingId];
+    if (existing && !existing.deletedAt) return existing;
+  }
+
+  const id = `usr_${randomUUID().slice(0, 8)}`;
+  const token = `tok_${randomUUID().replace(/-/g, '')}`;
+  // 展示名：游客 + 设备 id 尾段（去掉 dev_ 前缀后取末 5 位），便于后台辨认
+  const suffix = deviceId.replace(/^dev_/, '').replace(/-/g, '').slice(-5) || randomUUID().slice(0, 5);
+  const user: PersistedUser = {
+    id,
+    token,
+    isGuest: true,
+    deviceId,
+    name: `游客${suffix}`,
+    ageVerified: false,
+    narrativeBoundary: DEFAULT_USER_BOUNDARY,
+    ifUnlocked: false,
+    createdAt: new Date().toISOString(),
+    candle: 0,
+    registerGrant: 0,
+    conversationRounds: 0,
+  };
+  s.users[id] = user;
+  s.tokenIndex[token] = id;
+  s.deviceIndex[deviceId] = id;
   store.save();
   return user;
 }
@@ -115,6 +212,9 @@ export function patchUserName(id: string, name: string): PersistedUser | null {
   const s = store.state();
   const u = s.users[id];
   if (!u) return null;
+  // 护栏：绝不把个人称呼名/画像写到共享匿名号上（会跨访客串味）。
+  // 正常路径下 softAuth 已不再产出共享号；这里是 stale-token 等边角的最后一道防线。
+  if (isSharedAnon(u)) return u;
   const cleanName = name.trim();
   u.name = cleanName;
 
@@ -160,6 +260,9 @@ export function patchUserProfile(
   const s = store.state();
   const u = s.users[id];
   if (!u) return null;
+  // 护栏：共享匿名号不接受个人档案写入（email/nickname/avatar/bio）。
+  // profile 路由本就走 requireAuth 不该命中共享号，这里与 patchUserName 对齐兜底。
+  if (isSharedAnon(u)) return u;
   if (patch.email !== undefined) {
     const v = patch.email?.trim().toLowerCase() || '';
     if (!v) {
@@ -313,6 +416,7 @@ export async function registerWithEmail(
   emailRaw: string,
   password: string,
   name?: string,
+  guestDeviceId?: string,
 ): Promise<{ user: PersistedUser; token: string }> {
   const s = store.state();
   const email = normalizeEmail(emailRaw);
@@ -323,6 +427,28 @@ export async function registerWithEmail(
     throw new PasswordError('WEAK', '密码至少 8 位，需包含字母与数字');
   }
   const grant = policyService.get<number>('REGISTER_CANDLE_GRANT', 100);
+  const now = new Date().toISOString();
+  const passwordHash = await hashPassword(password);
+
+  // 游客转正：原地升级游客行为邮箱账户，会话/额度全部保留，游客名被真实 name 覆盖。
+  const guest = findConvertibleGuestByDevice(guestDeviceId);
+  if (guest) {
+    guest.email = email;
+    if (name?.trim()) guest.name = name.trim();
+    guest.passwordHash = passwordHash;
+    guest.passwordUpdatedAt = now;
+    // bump 到 v1，与新注册用户一致（游客行原 token 无版本号，登录后换新版 token）
+    guest.tokenVersion = 1;
+    const newToken = issueToken(1);
+    deGuest(guest);
+    grantRegisterCandle(guest, grant, now);
+    s.emailIndex[email] = guest.id;
+    s.tokenIndex[newToken] = guest.id;
+    guest.token = newToken;
+    store.save();
+    return { user: guest, token: newToken };
+  }
+
   const id = `usr_${randomUUID().slice(0, 8)}`;
   const token = issueToken(1);
   const user: PersistedUser = {
@@ -330,13 +456,13 @@ export async function registerWithEmail(
     token,
     email,
     name: name?.trim() || undefined,
-    passwordHash: await hashPassword(password),
-    passwordUpdatedAt: new Date().toISOString(),
+    passwordHash,
+    passwordUpdatedAt: now,
     tokenVersion: 1,
     ageVerified: false,
     narrativeBoundary: DEFAULT_USER_BOUNDARY,
     ifUnlocked: false,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
     candle: grant,
     registerGrant: grant,
     conversationRounds: 0,

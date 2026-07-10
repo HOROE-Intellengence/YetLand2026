@@ -18,6 +18,6 @@ export function withCors(): MiddlewareHandler<{ Bindings: Env }> {
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Authorization', 'X-Admin-Token', 'Content-Type'],
+    allowHeaders: ['Authorization', 'X-Admin-Token', 'Content-Type', 'Accept', 'X-Device-Id'],
   });
 }

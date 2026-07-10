@@ -233,16 +233,20 @@ describe('POST /api/me/password (route)', () => {
 describe('softAuth degradation when token version stale', () => {
   beforeEach(() => store.__resetForTests());
 
-  it('falls back to anon user instead of 401 (keeps openflow alive)', async () => {
+  it('falls back to an isolated per-visitor guest instead of 401 (keeps openflow alive)', async () => {
     const { id, token } = makeUser();
-    // 模拟密码改过 → version bump
+    // 模拟密码改过 → version bump，旧 token 失效
     store.state().users[id]!.tokenVersion = 5;
     const res = await mockMeRoute.request('/', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, 'X-Device-Id': 'dev_stale_probe' },
     });
+    // 仍 200（开门流不中断），但降级到「该设备自己的游客行」而非共享匿名号
     expect(res.status).toBe(200);
-    const body = await res.json() as { phone: string };
-    // 降级到匿名号
-    expect(body.phone).toBe('00000000000');
+    const body = await res.json() as { id: string; phone?: string };
+    expect(body.id).not.toBe(id); // 不是原用户
+    expect(body.phone).toBeUndefined(); // 游客行没有共享匿名号的 phone
+    expect(body.id).toBe(store.state().deviceIndex['dev_stale_probe']);
+    // 共享匿名号不再被 softAuth 创建
+    expect(store.state().phoneIndex['00000000000']).toBeUndefined();
   });
 });

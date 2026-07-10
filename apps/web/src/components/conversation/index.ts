@@ -6,3 +6,4 @@ export { DialogueText } from './DialogueText';
 export { GlowSentence } from './GlowSentence';
 export { ExitFadeLayer } from './ExitFadeLayer';
 export { TypingDots } from './TypingDots';
+export { MathText } from './MathText';

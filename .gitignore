@@ -59,3 +59,7 @@ yelan-webui/
 
 # 注: packages/prompts/src/generated.ts 是自动生成但 *会* 进 git
 # 这样新人 clone 后无需先 build 就能 typecheck 通过；改 yaml 时一并提交重新生成的文件
+
+# 运行期状态快照 / 备份（含真实用户数据，禁止入库）
+infra/deploy/backup-*/
+infra/deploy/_data/

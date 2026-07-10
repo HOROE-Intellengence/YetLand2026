@@ -9,7 +9,11 @@ export const adminUsersRoute = new Hono();
 
 adminUsersRoute.get('/', (c) => {
   const limit = Number(c.req.query('limit') ?? 100);
-  return c.json(listUsers().slice(0, limit));
+  const guestFilter = c.req.query('guest'); // '1' 只看游客，'0' 只看注册用户，缺省全部
+  let rows = listUsers();
+  if (guestFilter === '1') rows = rows.filter((u) => u.isGuest);
+  else if (guestFilter === '0') rows = rows.filter((u) => !u.isGuest);
+  return c.json(rows.slice(0, limit));
 });
 
 adminUsersRoute.get('/:id', (c) => {

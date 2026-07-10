@@ -22,7 +22,12 @@ export function createOpenAILikeProvider(opts: OpenAILikeOptions): LLMProvider {
   const apiKey = opts.apiKey;
   const ready = !!apiKey && apiKey.length > 10;
   const name = opts.name ?? 'openai';
-  const baseUrl = (opts.baseUrl ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
+  // baseUrl 归一：约定 baseUrl = API 根（如 .../v1），下方再拼 /chat/completions。
+  // 容错管理员在后台直接粘贴了完整 .../v1/chat/completions —— 去掉重复后缀，
+  // 否则会拼成 .../chat/completions/chat/completions 直接 404。
+  const baseUrl = (opts.baseUrl ?? 'https://api.openai.com/v1')
+    .replace(/\/+$/, '')
+    .replace(/\/chat\/completions$/, '');
   const defaultModel = opts.defaultModel ?? 'gpt-4o-mini';
 
   const provider: LLMProvider = {

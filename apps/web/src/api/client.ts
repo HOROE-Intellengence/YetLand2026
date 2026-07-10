@@ -4,6 +4,7 @@ import { env } from '../config/env';
 
 const TOKEN_KEY = 'yelan.token';
 const USER_ID_KEY = 'yelan.userId';
+const DEVICE_ID_KEY = 'yelan.deviceId';
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -69,6 +70,33 @@ export function getCurrentUserId(): string | null {
   }
 }
 
+/**
+ * 稳定的本机设备 id —— 未登录访客的对话归属锚点。
+ * 首次访问时生成并落 localStorage，之后保持不变（除非用户清浏览器数据）。
+ * 登录后访客对话会由 migrateLocalChatOwner 迁到真实 userId 名下。
+ */
+export function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = `dev_${crypto.randomUUID()}`;
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    // localStorage 不可用（无痕/禁用）：退化为进程内临时 id，至少本次会话内一致。
+    return `dev_ephemeral`;
+  }
+}
+
+/**
+ * 本地对话快照的归属 key：已登录用 userId，未登录回落到设备 id。
+ * 让访客刷新/重进也能从 localStorage 恢复对话，而不是每次都从头开始。
+ */
+export function getChatScopeId(): string {
+  return getCurrentUserId() ?? getDeviceId();
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const res = await fetch(env.apiBase + path, {
@@ -76,6 +104,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      'X-Device-Id': getDeviceId(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },

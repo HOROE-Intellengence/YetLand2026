@@ -65,9 +65,10 @@ mockMeRoute.get('/', (c) => {
   return c.json(toMe(u));
 });
 
-// PATCH /name 保持 softAuth：这是 NameScene 开门流契约 —— 未登录的访客
-// 也能落座 name（写到匿名号）。stale token 这条边角情况会污染匿名 name 字段，
-// 但匿名号是本机共享、name 字段无外溢，可接受。如要彻底封死见 backlog。
+// PATCH /name 保持 softAuth：这是 NameScene 开门流契约 —— 未登录的访客也能落座 name。
+// 改造后 softAuth 给每个浏览器一条独立游客行（X-Device-Id > yl_anon cookie），
+// name 落到访客自己的行上，不再写共享匿名号。stale-token 等边角即便命中共享号，
+// patchUserName 里的 isSharedAnon 护栏也会挡住写入。见 middleware/auth.ts。
 mockMeRoute.patch('/name', zValidator('json', MeNamePatchSchema, validationHook), (c) => {
   const userId = c.get('userId') as string;
   const body = c.req.valid('json');

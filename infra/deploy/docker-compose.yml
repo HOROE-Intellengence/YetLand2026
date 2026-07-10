@@ -61,6 +61,10 @@ services:
       # 策略
       NARRATIVE_BOUNDARY_GLOBAL: ${NARRATIVE_BOUNDARY_GLOBAL:-2}
 
+      # 真实 LLM 总开关：off/缺省 → 所有对话走脚本化 mock（默认 5 句台词）。
+      # 线上必须 on，否则配了 key 也只会产出默认对话。
+      FEATURE_REAL_LLM: ${FEATURE_REAL_LLM:-on}
+
       # 控制台是否开放（生产建议 false 改用独立 admin 前端；为了一键体验默认 true）
       ENABLE_ADMIN_CONSOLE: ${ENABLE_ADMIN_CONSOLE:-true}
 

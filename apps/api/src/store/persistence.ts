@@ -58,6 +58,11 @@ export interface PersistedUser {
   lockedUntil?: string;
   // 软删时间（Phase 4 注销账户用）
   deletedAt?: string;
+  // —— 游客留痕（feat/guest-trace）——
+  // 直接进入（跳过注册）的访客：按设备 id 建独立行，isGuest=true。
+  // 注册/登录转正时原地升级为真实账户（清掉这两个字段）。
+  isGuest?: boolean;
+  deviceId?: string;
 }
 
 export interface QuotaRow {
@@ -279,6 +284,7 @@ interface PersistedState {
   tokenIndex: Record<string, string>; // token → userId
   phoneIndex: Record<string, string>; // phone → userId
   emailIndex: Record<string, string>; // email(lowercased) → userId
+  deviceIndex: Record<string, string>; // deviceId → userId（游客归属锚点）
   quota: Record<string, Record<string, QuotaRow>>; // userId → date → row
   candleLedger: CandleLedgerRow[];
   sessions: Record<string, SessionRow>;
@@ -361,6 +367,7 @@ function defaultState(): PersistedState {
     tokenIndex: {},
     phoneIndex: {},
     emailIndex: {},
+    deviceIndex: {},
     quota: {},
     candleLedger: [],
     sessions: {},
@@ -453,6 +460,22 @@ function normalizeLoadedState(parsed: PersistedState): PersistedState {
       if (typeof u.email === 'string' && u.email) {
         const key = u.email.toLowerCase();
         if (!s.emailIndex[key]) s.emailIndex[key] = u.id;
+      }
+    }
+    markNormalizeDirty();
+  }
+  // deviceIndex 旧 state 没有 → 兜底 + 从 user.deviceId 回填
+  if (!s.deviceIndex) {
+    s.deviceIndex = {};
+    markNormalizeDirty();
+  }
+  const needsDeviceBackfill = Object.values(s.users).some(
+    (u) => typeof u.deviceId === 'string' && u.deviceId && !s.deviceIndex[u.deviceId],
+  );
+  if (needsDeviceBackfill) {
+    for (const u of Object.values(s.users)) {
+      if (typeof u.deviceId === 'string' && u.deviceId && !s.deviceIndex[u.deviceId]) {
+        s.deviceIndex[u.deviceId] = u.id;
       }
     }
     markNormalizeDirty();

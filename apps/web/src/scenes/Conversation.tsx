@@ -5,8 +5,9 @@ import { useViewport } from '../hooks/useViewport';
 import { useSessionStore } from '../stores/sessionStore';
 import { useChatStore } from '../stores/chatStore';
 import { DialogueText } from '../components/conversation/DialogueText';
+import { MathText } from '../components/conversation/MathText';
 import { createLocalSessionId, loadLocalChat, saveLocalChat } from '../chat/local-history';
-import { getCurrentUserId } from '../api/client';
+import { getChatScopeId } from '../api/client';
 
 import { TypingDots } from '../components/conversation/TypingDots';
 import styles from './Conversation.module.css';
@@ -54,7 +55,9 @@ function StructuredParts({ parts }: { parts: StructuredMessagePart[] }) {
     <>
       {visibleParts.map((p, i) => (
         <span key={i} className={partClass(p.type)}>
-          <DialogueText>{p.text}</DialogueText>
+          <DialogueText>
+            <MathText>{p.text}</MathText>
+          </DialogueText>
         </span>
       ))}
     </>
@@ -71,7 +74,11 @@ function AssistantContent({
   if (parts && parts.length > 0) {
     return <StructuredParts parts={parts} />;
   }
-  return <span className={styles.plainText}>{content}</span>;
+  return (
+    <span className={styles.plainText}>
+      <MathText>{content}</MathText>
+    </span>
+  );
 }
 
 export function Conversation() {
@@ -108,7 +115,7 @@ export function Conversation() {
 
   useEffect(() => {
     if (!character) return;
-    const userId = getCurrentUserId();
+    const userId = getChatScopeId();
     const snapshot = userId ? loadLocalChat(character.id, userId) : null;
     // 空 messages 快照视同无快照 —— 否则 openingLine 永远没机会注入：
     // 早期某次 openingFirstVisit=='' 时落了一份 messages:[] 快照，之后即使
@@ -131,7 +138,7 @@ export function Conversation() {
     // 别把空 messages 落盘 —— 否则一旦 reset 写空（openingLine 缺失时），
     // 这份空快照会反过来污染下一次 hydrate，触发「点进去空白」死循环。
     if (messages.length === 0) return;
-    const userId = getCurrentUserId();
+    const userId = getChatScopeId();
     if (!userId) return;
     saveLocalChat({
       version: 2,
@@ -214,7 +221,9 @@ export function Conversation() {
                 parts={structuredParts[m.content]}
               />
             ) : (
-              <span>{m.content}</span>
+              <span>
+                <MathText>{m.content}</MathText>
+              </span>
             )}
           </div>
         ))}

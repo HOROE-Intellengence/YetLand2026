@@ -12,7 +12,7 @@ import {
   updateMyName,
   updateMyProfile,
 } from '../../../api/auth';
-import { getCurrentUserId, getToken } from '../../../api/client';
+import { getChatScopeId, getToken } from '../../../api/client';
 import { createLocalSessionId, clearLocalChat } from '../../../chat/local-history';
 import { useChatStore } from '../../../stores/chatStore';
 import { useDrawerStore } from '../../../stores/drawerStore';
@@ -228,7 +228,7 @@ export function YouPanel() {
       setConfirmingClear(true);
       return;
     }
-    clearLocalChat(character.id, getCurrentUserId() ?? undefined);
+    clearLocalChat(character.id, getChatScopeId() ?? undefined);
     useChatStore
       .getState()
       .resetForLocalSession(createLocalSessionId(character.id), character.openingLines.firstVisit);

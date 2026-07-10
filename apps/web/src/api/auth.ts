@@ -1,8 +1,9 @@
 // 鉴权 — 手机号 + 验证码（Phase 1 暂不做年龄验证）
 // verifyOtp 成功后调用 setToken，让后续所有 api() 自动带 Bearer
-import { api, getCurrentUserId, setAuthSession, setToken } from './client';
+import { api, getCurrentUserId, getDeviceId, setAuthSession, setToken } from './client';
 import type { Me, MeProfilePatch } from '@yelan/shared';
 import { clearLocalUserData } from '../lib/clear-local-user-data';
+import { migrateLocalChatOwner } from '../chat/local-history';
 
 export const requestOtp = (phone: string) =>
   api<{ ok: true }>('/api/auth/otp', {
@@ -11,6 +12,9 @@ export const requestOtp = (phone: string) =>
   });
 
 async function adoptAuthSession(r: { token: string; me: Me }): Promise<void> {
+  // 登录前的访客对话挂在设备 id 名下 —— 先过户到真实账号，
+  // 再走 clearLocalUserData（它只保留 keepChatUserId 的 key，会清掉设备 id 的）。
+  migrateLocalChatOwner(getDeviceId(), r.me.id);
   await clearLocalUserData({ keepChatUserId: r.me.id });
   setAuthSession(r.token, r.me.id);
 }

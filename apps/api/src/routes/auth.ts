@@ -60,7 +60,8 @@ mockAuthRoute.post(
   async (c) => {
     const body = c.req.valid('json');
     try {
-      const user = getOrCreateUserByPhone(body.phone);
+      const guestDeviceId = c.req.header('x-device-id');
+      const user = getOrCreateUserByPhone(body.phone, guestDeviceId);
       return c.json(AuthVerifyResponseSchema.parse({ token: user.token, me: toMe(user) }));
     } catch (e) {
       if (e instanceof UserDeletedError) {
@@ -128,7 +129,8 @@ mockAuthRoute.post(
   async (c) => {
     const body = c.req.valid('json');
     try {
-      const { user, token } = await registerWithEmail(body.email, body.password, body.name);
+      const guestDeviceId = c.req.header('x-device-id');
+      const { user, token } = await registerWithEmail(body.email, body.password, body.name, guestDeviceId);
       return c.json(AuthVerifyResponseSchema.parse({ token, me: toMe(user) }));
     } catch (e) {
       if (e instanceof EmailAuthError) {

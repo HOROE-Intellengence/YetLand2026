@@ -65,3 +65,29 @@ describe('createOpenAILikeProvider reasoning_effort', () => {
     expect(calls[1].body.reasoning_effort).toBe('minimal');
   });
 });
+
+describe('createOpenAILikeProvider baseUrl 归一', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('baseUrl 为 API 根时正常拼出 /chat/completions', async () => {
+    const calls = captureFetch();
+    const p = createOpenAILikeProvider({ apiKey, baseUrl: 'https://horoe.cn/v1' });
+    await drain(p, { model: 'gemini-3.1-flash-lite', messages: [{ role: 'user', content: 'hi' }] });
+    expect(calls[0].url).toBe('https://horoe.cn/v1/chat/completions');
+  });
+
+  it('后台误粘贴了完整 .../chat/completions 时去重，不拼成双段', async () => {
+    const calls = captureFetch();
+    const p = createOpenAILikeProvider({ apiKey, baseUrl: 'https://horoe.cn/v1/chat/completions' });
+    await drain(p, { model: 'gemini-3.1-flash-lite', messages: [{ role: 'user', content: 'hi' }] });
+    expect(calls[0].url).toBe('https://horoe.cn/v1/chat/completions');
+    expect(calls[0].url).not.toContain('/chat/completions/chat/completions');
+  });
+
+  it('带尾随斜杠的完整 URL 也能去重', async () => {
+    const calls = captureFetch();
+    const p = createOpenAILikeProvider({ apiKey, baseUrl: 'https://horoe.cn/v1/chat/completions/' });
+    await drain(p, { model: 'gemini-3.1-flash-lite', messages: [{ role: 'user', content: 'hi' }] });
+    expect(calls[0].url).toBe('https://horoe.cn/v1/chat/completions');
+  });
+});

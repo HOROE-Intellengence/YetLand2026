@@ -1,6 +1,6 @@
 import { ChatStreamEventSchema, type ChatRequest, type ChatStreamEvent } from '@yelan/shared';
 import { env } from '../config/env';
-import { getToken } from './client';
+import { getToken, getDeviceId } from './client';
 import { track } from './events';
 
 export async function* openChatStream(
@@ -13,6 +13,7 @@ export async function* openChatStream(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
+      'X-Device-Id': getDeviceId(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
