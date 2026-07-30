@@ -42,6 +42,8 @@ export function Sessions() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [msgsLoading, setMsgsLoading] = useState(false);
+  // 折叠无效对话：轮次 <= 1（刚开场、还没真正聊起来）默认隐藏
+  const [foldInactive, setFoldInactive] = useState(true);
 
   const load = async () => {
     try {
@@ -117,6 +119,13 @@ export function Sessions() {
     },
   ], [userNames]);
 
+  // 无效对话 = 轮次 <= 1（还没聊起来的空开场）
+  const hiddenCount = useMemo(() => rows.filter((s) => s.round <= 1).length, [rows]);
+  const visibleRows = useMemo(
+    () => (foldInactive ? rows.filter((s) => s.round > 1) : rows),
+    [rows, foldInactive],
+  );
+
   if (loading) {
     return <div className="state-placeholder"><MessageSquare size={32} /><span>加载会话列表...</span></div>;
   }
@@ -129,6 +138,15 @@ export function Sessions() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ marginBottom: 0 }}>会话</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--paper-dim)', cursor: hiddenCount ? 'pointer' : 'default' }}>
+            <input
+              type="checkbox"
+              checked={foldInactive}
+              onChange={(e) => setFoldInactive(e.target.checked)}
+              style={{ width: 'auto', margin: 0 }}
+            />
+            折叠无效对话{hiddenCount ? `（${hiddenCount}）` : ''}
+          </label>
           <input
             value={userIdFilter}
             onChange={(e) => setUserIdFilter(e.target.value)}
@@ -141,7 +159,7 @@ export function Sessions() {
 
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={visibleRows}
         emptyMessage="暂无会话记录。"
         rowKey={(row) => row.id}
       />

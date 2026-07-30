@@ -8,12 +8,17 @@ import { validationHook } from '../../middleware/validation';
 export const adminUsersRoute = new Hono();
 
 adminUsersRoute.get('/', (c) => {
-  const limit = Number(c.req.query('limit') ?? 100);
+  // 缺省不截断（0/未传 → 全量）。历史上默认 100 + 前端 limit=200 会把「最新」用户切掉：
+  // listUsers() 是插入序（旧→新），slice(0,200) 恰好丢弃最新注册的用户 → 后台看不到新增。
+  const rawLimit = Number(c.req.query('limit'));
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : Infinity;
   const guestFilter = c.req.query('guest'); // '1' 只看游客，'0' 只看注册用户，缺省全部
   let rows = listUsers();
   if (guestFilter === '1') rows = rows.filter((u) => u.isGuest);
   else if (guestFilter === '0') rows = rows.filter((u) => !u.isGuest);
-  return c.json(rows.slice(0, limit));
+  // 最新注册在前：即使调用方传了 limit，被保留的也是最新的用户，而非最旧的。
+  rows = [...rows].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  return c.json(Number.isFinite(limit) ? rows.slice(0, limit) : rows);
 });
 
 adminUsersRoute.get('/:id', (c) => {

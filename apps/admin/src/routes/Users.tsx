@@ -50,10 +50,13 @@ export function UsersPanel() {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [flags, setFlags] = useState<Omit<AdminUsersFlags, 'reason'>>({ ifUnlocked: false, narrativeBoundary: DEFAULT_USER_BOUNDARY, ageVerified: false });
   const [reasonOpen, setReasonOpen] = useState(false);
+  // 折叠无效用户：对话轮数 <= 0 的视为无效，默认隐藏以让运营看清真实活跃用户
+  const [foldInactive, setFoldInactive] = useState(true);
 
   const load = async () => {
     try {
-      const data = await api.get<AdminUser[]>('/api/admin/users?limit=200');
+      // 不传 limit → 后端返回全量（最新注册在前）。历史 limit=200 会把最新用户切掉。
+      const data = await api.get<AdminUser[]>('/api/admin/users');
       setRows(data);
       setErr('');
     } catch (e) {
@@ -141,6 +144,13 @@ export function UsersPanel() {
     },
   ], []);
 
+  // 无效用户 = 对话轮数 <= 0（从未开口的注册/游客）
+  const hiddenCount = useMemo(() => rows.filter((u) => u.conversationRounds <= 0).length, [rows]);
+  const visibleRows = useMemo(
+    () => (foldInactive ? rows.filter((u) => u.conversationRounds > 0) : rows),
+    [rows, foldInactive],
+  );
+
   if (loading) {
     return <div className="state-placeholder"><Users size={32} /><span>加载用户列表...</span></div>;
   }
@@ -152,12 +162,23 @@ export function UsersPanel() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ marginBottom: 0 }}>用户管理</h2>
-        <span className="pill">{rows.length} 个用户</span>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--paper-dim)', cursor: hiddenCount ? 'pointer' : 'default' }}>
+            <input
+              type="checkbox"
+              checked={foldInactive}
+              onChange={(e) => setFoldInactive(e.target.checked)}
+              style={{ width: 'auto', margin: 0 }}
+            />
+            折叠无效用户{hiddenCount ? `（${hiddenCount}）` : ''}
+          </label>
+          <span className="pill">{foldInactive ? `${visibleRows.length} / ${rows.length}` : rows.length} 个用户</span>
+        </div>
       </div>
 
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={visibleRows}
         emptyMessage="暂无用户数据。运行 pnpm seed 灌入示例数据。"
         rowKey={(row) => row.id}
       />
