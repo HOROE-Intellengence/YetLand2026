@@ -43,8 +43,9 @@ export const ROUTES: Record<string, RouteDef> = {
     component: lazy(() => import('./PreludeCards').then((m) => ({ default: m.PreludeCards }))),
   },
   prompts: {
-    hash: 'prompts', label: 'Prompt 灰度',
+    hash: 'prompts', label: '系统提示编辑器',
     component: lazy(() => import('./Prompts').then((m) => ({ default: m.Prompts }))),
+    description: '编辑并发布主 AI 系统提示各段（系统模板 / 边界条款 B1–B5 / 阶段策略 / 角色卡）。发布即生效（下一轮对话），支持版本回滚。',
   },
   'sidecar-prompts': {
     hash: 'sidecar-prompts', label: '侧袋 Prompt',

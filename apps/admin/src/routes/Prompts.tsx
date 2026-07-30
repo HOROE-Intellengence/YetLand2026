@@ -62,7 +62,7 @@ export function Prompts() {
       setSelectedKey((prev) => prev || sourceData.sources.find((s) => s.kind === 'boundary')?.key || sourceData.sources[0]?.key || '');
     } catch (e) {
       setErr((e as Error).message);
-      toastErr('加载 Prompt 灰度失败');
+      toastErr('加载系统提示失败');
     } finally {
       setLoading(false);
     }
@@ -79,12 +79,13 @@ export function Prompts() {
     if (!selectedKey || !value.trim() || !reason.trim()) return;
     setSaving(true);
     try {
-      await api.post('/api/admin/prompts/release', {
+      const res = await api.post<{ ok: boolean; warning?: string }>('/api/admin/prompts/release', {
         key: selectedKey,
         value,
         reason,
       });
-      success('Prompt 灰度版本已发布');
+      if (res.warning) toastErr(res.warning);
+      else success('已发布，下一轮对话生效');
       setReason('');
       await load();
     } catch (e) {
@@ -110,14 +111,22 @@ export function Prompts() {
     }
   }
 
-  if (loading) return <div className="state-placeholder"><FileText size={32} /><span>加载 Prompt 灰度...</span></div>;
+  if (loading) return <div className="state-placeholder"><FileText size={32} /><span>加载系统提示...</span></div>;
   if (err) return <div className="state-placeholder state-error"><Circle size={32} /><span>{err}</span></div>;
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ marginBottom: 0 }}>Prompt 灰度</h2>
-        <span className="pill">{sources.length} 个源 Prompt</span>
+        <h2 style={{ marginBottom: 0 }}>系统提示编辑器</h2>
+        <span className="pill">{sources.length} 段</span>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--accent, #7c9)' }}>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
+          编辑主 AI 系统提示的各段：<b>系统模板 / 边界条款 B1–B5 / 阶段策略 / 角色卡</b>。
+          发布后 <b>下一轮对话即生效</b>（缺省回退代码内文件），可保留历史版本随时回滚。
+          改系统模板若漏掉必需槽位或全局约束，发布仍成功但会返回告警。
+        </p>
       </div>
 
       <div className="card">
@@ -179,7 +188,7 @@ export function Prompts() {
                 <RotateCcw size={14} /> 用原始内容覆盖
               </button>
               <button className="btn btn-primary" onClick={release} disabled={saving || !reason.trim()}>
-                <Send size={14} /> {saving ? '发布中...' : '发布灰度'}
+                <Send size={14} /> {saving ? '发布中...' : '发布并生效'}
               </button>
             </div>
           </div>
@@ -193,7 +202,7 @@ export function Prompts() {
           </thead>
           <tbody>
             {selectedVersions.length === 0 ? (
-              <tr><td colSpan={5} style={{ color: 'var(--paper-mute)' }}>暂无灰度版本，当前使用左侧原始内容。</td></tr>
+              <tr><td colSpan={5} style={{ color: 'var(--paper-mute)' }}>暂无发布版本，当前使用左侧原始内容（代码内文件）。</td></tr>
             ) : selectedVersions.map((version) => (
               <tr key={version.id}>
                 <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{version.id}</td>

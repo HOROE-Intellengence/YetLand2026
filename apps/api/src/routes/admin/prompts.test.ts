@@ -34,16 +34,51 @@ describe('admin prompts release — system template slot warning', () => {
     expect(json.warning).toContain('{{atmosphere_block}}');
   });
 
-  it('omits the warning when the system template carries both required slots', async () => {
+  it('omits the warning when the system template carries both slots and global anchors', async () => {
     const res = await release({
       key: 'system:template',
-      value: '{{character_card}}\n\n{{boundary_clause}}\n\n{{stage_strategy}}\n\n{{atmosphere_block}}',
+      value: '{{character_card}}\n\n{{boundary_clause}}\n\n{{stage_strategy}}\n\n{{atmosphere_block}}'
+        + '\n\n[全局表达约束]\n非必要不在回答结尾提问。\n\n[反八股 · 去模板化写作规范]\n...',
       reason: '完整模板',
     });
 
     const json = (await res.json()) as { ok: boolean; warning?: string };
     expect(json.ok).toBe(true);
     expect(json.warning).toBeUndefined();
+  });
+
+  it('warns when the system template drops the hardcoded global constraints (anchors)', async () => {
+    const res = await release({
+      key: 'system:template',
+      // 槽位齐全，但整段模板漏抄了写死的全局约束 / 反八股
+      value: '{{prelude_card}}\n\n{{character_card}}\n\n{{boundary_clause}}\n\n'
+        + '{{stage_strategy}}\n\n{{recall_block}}\n\n{{cutoff_warning}}\n\n{{atmosphere_block}}',
+      reason: '整段替换模板但漏抄全局约束',
+    });
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { ok: boolean; warning?: string };
+    expect(json.ok).toBe(true);
+    // 保存不阻断
+    expect(store.state().prompts.versions.at(-1)).toMatchObject({ key: 'system:template' });
+    // 但告警点名两条全局约束
+    expect(json.warning).toBeTruthy();
+    expect(json.warning).toContain('全局约束');
+    expect(json.warning).toContain('少结尾提问');
+    expect(json.warning).toContain('反八股');
+    // 槽位齐全时不应误报槽位缺失
+    expect(json.warning).not.toContain('必需槽位');
+  });
+
+  it('warns for both missing slots and missing anchors together', async () => {
+    const res = await release({
+      key: 'system:template',
+      value: '{{character_card}}\n\n{{stage_strategy}}', // 缺 温度+边界槽位，也缺全局约束
+      reason: '空模板',
+    });
+    const json = (await res.json()) as { ok: boolean; warning?: string };
+    expect(json.warning).toContain('必需槽位');
+    expect(json.warning).toContain('全局约束');
   });
 
   it('never warns for non-system prompt keys', async () => {

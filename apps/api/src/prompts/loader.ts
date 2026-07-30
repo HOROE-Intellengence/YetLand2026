@@ -8,10 +8,26 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { charactersService } from '../services/characters';
 import { preludeCardsService } from '../services/prelude-cards';
+import { store } from '../store/persistence';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // apps/api/src/prompts → ../../../../packages/prompts
 const PROMPTS_ROOT = resolve(here, '..', '..', '..', '..', 'packages', 'prompts');
+
+/**
+ * 灰度覆盖：返回某个 prompt key 当前「生效中」（activeAt 非空）的灰度版本值，
+ * 没有则返回 null。key 命名与 routes/admin/prompts.ts 的 listPromptSources 对齐：
+ *   system:template / boundary:<slug> / strategy:<slug> / system:cutoff_warning
+ *
+ * 设计要点：
+ * - 直接读 store.state()（live 真理源），不进 ensureLoaded 的文件缓存，
+ *   所以后台发布/回滚灰度版本后「下一轮对话」即生效，无需重载文件缓存。
+ * - 空串也算有效覆盖（管理员可能有意清空某段），故用 != null 判断而非真值判断。
+ */
+function getActiveVersion(key: string): string | null {
+  const v = store.state().prompts?.versions?.find((ver) => ver.key === key && ver.activeAt);
+  return v ? v.value : null;
+}
 
 export interface CharacterCardLite {
   id: string;
@@ -97,20 +113,36 @@ export function loadPreludeCard(characterId: string, ifActive: boolean): string 
 
 export function loadStrategyForStage(stage: string): string {
   ensureLoaded();
-  return _strategies![`stage_${stage}`] ?? '';
+  // 灰度覆盖优先，缺省回退磁盘文件。
+  return getActiveVersion(`strategy:stage_${stage}`) ?? _strategies![`stage_${stage}`] ?? '';
 }
+
+const BOUNDARY_SLUG: Record<number, string> = {
+  1: 'b1_pure', 2: 'b2_restrained', 3: 'b3_subtle', 4: 'b4_explicit', 5: 'b5_direct',
+};
 
 export function loadBoundaryClause(level: 1 | 2 | 3 | 4 | 5): string {
   ensureLoaded();
-  const slug: Record<number, string> = {
-    1: 'b1_pure', 2: 'b2_restrained', 3: 'b3_subtle', 4: 'b4_explicit', 5: 'b5_direct',
-  };
-  return _boundaries![slug[level]!] ?? '';
+  const slug = BOUNDARY_SLUG[level]!;
+  // 灰度覆盖优先，缺省回退磁盘文件。
+  return getActiveVersion(`boundary:${slug}`) ?? _boundaries![slug] ?? '';
 }
 
 export function getSystemTemplate(): string {
   ensureLoaded();
-  return _systemTemplate!;
+  // 灰度覆盖优先，缺省回退磁盘文件。
+  return getActiveVersion('system:template') ?? _systemTemplate!;
+}
+
+/**
+ * 清空文件类提示资产缓存（system template / strategies / boundaries）。
+ * 配置重载后调用，让下次 ensureLoaded() 重新 readFileSync，无需重启进程。
+ * 懒加载：本函数只置空，实际重读发生在下一次用到时，不增加重载耗时。
+ */
+export function resetPromptCache(): void {
+  _strategies = null;
+  _boundaries = null;
+  _systemTemplate = null;
 }
 
 /** 兼容旧调用：从 service 取角色行并转成旧的 lite 视图 */

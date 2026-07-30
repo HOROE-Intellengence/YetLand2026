@@ -128,13 +128,32 @@ const REQUIRED_SYSTEM_SLOTS: Array<{ slot: string; label: string }> = [
   { slot: '{{boundary_clause}}', label: '边界' },
 ];
 
-/** 软校验：后台改系统模板若漏掉温度/边界槽位，返回 warning 文案（仅提示，不阻断保存） */
+// 系统模板正文里写死的全局约束 —— 这些不是槽位，而是常驻文本。
+// 灰度发布整段模板时若漏抄，主 AI 就会丢掉「少结尾提问」「反八股」等硬约束。
+// 用关键句做锚点检测（容忍前后文改动，只要锚点句还在即视为保留）。
+const REQUIRED_SYSTEM_ANCHORS: Array<{ anchor: string; label: string }> = [
+  { anchor: '非必要不在回答结尾提问', label: '[全局表达约束] 少结尾提问' },
+  { anchor: '反八股', label: '[反八股] 去模板化规范' },
+];
+
+/**
+ * 软校验：后台改系统模板若漏掉必需槽位或写死的全局约束，返回 warning 文案。
+ * 仅提示、不阻断保存 —— 与既有行为一致。
+ */
 export function systemTemplateSlotWarning(key: string, value: string): string | null {
   if (key !== 'system:template') return null;
-  const missing = REQUIRED_SYSTEM_SLOTS.filter((s) => !value.includes(s.slot));
-  if (missing.length === 0) return null;
-  return `系统模板缺少必需槽位：${missing.map((m) => `${m.label}（${m.slot}）`).join('、')}，` +
-    '主 AI 将拿不到对应注入。模板已保存，请尽快补回。';
+  const missingSlots = REQUIRED_SYSTEM_SLOTS.filter((s) => !value.includes(s.slot));
+  const missingAnchors = REQUIRED_SYSTEM_ANCHORS.filter((a) => !value.includes(a.anchor));
+  if (missingSlots.length === 0 && missingAnchors.length === 0) return null;
+
+  const parts: string[] = [];
+  if (missingSlots.length) {
+    parts.push(`必需槽位：${missingSlots.map((m) => `${m.label}（${m.slot}）`).join('、')}`);
+  }
+  if (missingAnchors.length) {
+    parts.push(`全局约束：${missingAnchors.map((m) => m.label).join('、')}`);
+  }
+  return `系统模板缺少 ${parts.join('；')}，主 AI 将丢失对应注入或约束。模板已保存，请尽快补回。`;
 }
 
 adminPromptsRoute.post(

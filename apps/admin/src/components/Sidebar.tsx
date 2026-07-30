@@ -31,7 +31,7 @@ const groups: { label: string; items: NavItem[] }[] = [
       { label: '角色卡', hash: 'characters', icon: <UserCheck /> },
       { label: '星座编辑器', hash: 'constellations', icon: <Sparkles /> },
       { label: '前置提示卡', hash: 'prelude-cards', icon: <Wrench /> },
-      { label: 'Prompt 灰度', hash: 'prompts', icon: <FileText /> },
+      { label: '系统提示编辑器', hash: 'prompts', icon: <FileText /> },
       { label: '侧袋 Prompt', hash: 'sidecar-prompts', icon: <Brain /> },
     ],
   },

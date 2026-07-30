@@ -9,6 +9,7 @@ import { store } from '../../store/persistence';
 import { getRouter, resetRouter } from '../../llm/create-router';
 import { clearFlagCache, FEATURE_FLAGS, flag } from '../../config/feature-flags';
 import { getDeployMode } from '../../config/deploy-mode';
+import { resetPromptCache } from '../../prompts/loader';
 
 export const adminDiagnosticsRoute = new Hono();
 
@@ -216,9 +217,10 @@ adminDiagnosticsRoute.post('/reload-config', (c) => {
     }
   }
 
-  // 3. 清 flag 缓存 + 重建 router
+  // 3. 清 flag 缓存 + 重建 router + 清提示资产缓存（模板/策略/边界，懒加载重读）
   clearFlagCache();
   resetRouter();
+  resetPromptCache();
 
   // 4. 重载后快照 + 算 diff
   const after: Record<string, boolean> = {};
