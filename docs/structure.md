@@ -1,11 +1,12 @@
 ﻿# 夜阑 · 工程结构
 
-> **Version**: 0.8.7
-> **Last updated**: 2026-06-17
+> **Version**: 0.8.9
+> **Last updated**: 2026-07-30
 > **维护要求**: 任何修改项目结构的改动都必须在同一 PR 内更新本文档并 bump version。具体规则见末尾的"维护规则"。
 >
+> **0.8.9 变更**（patch — token 硬闸总开关）：`services/token-guard.ts` 加 `TOKEN_GUARD_ENABLED` 环境开关（代码默认 on、`!== 'off'` 仅可显式关；`checkTokenBudget` off 时首行直接返回 `{allowed:true}`，不触碰全局/会话上限逻辑）；`infra/deploy/docker-compose.yml` + `.env.example` 加 `TOKEN_GUARD_ENABLED`（部署默认 off）。背景：长会话累计 token 破 `SESSION_TOKEN_LIMIT` 时 `useReal=false` 会静默回退 `mockChatStream()` 脚本台词；关闭硬闸为过渡，长会话降级最终交由上下文压缩按有效上下文大小计（TODO）。
+> **0.8.8 变更**（patch — 提示热重载配套 + 默认卡资产 + 排障脚本）：`apps/api/scripts/` 新增手动排障/审计脚本目录（probe-* / audit-* / real-chat-test / verify-wiring，tsx 直跑）；`packages/prompts/prelude-cards/` 新增默认前置卡 md（`daily-default` / `if-default`，由 `services/prelude-cards.ts` 首启 seed）；`apps/api/src/prompts/` 加 `grayscale-effect.test.ts`（验证 Prompt 灰度发布真正回读生效 + 全局约束不丢）；后台 `prompts` 路由更名「Prompt 灰度」→「系统提示编辑器」（发布即下一轮生效 + 版本回滚）；`prompts/loader.ts` + `diagnostics.ts` reload-config 支持免重启热更（模板/策略/边界缓存）。
 > **0.8.7 变更**（温度乐观异步切换 + 遥测日志护栏）：后台「策略」加 `TEMPERATURE_OPTIMISTIC` 开关（乐观异步=不阻塞首字、judge 异步供下一轮 / 同步阻塞=回复前 await judge、实时反应本轮）；`store/persistence.ts` 加 `pushBounded` / `LOG_RETENTION` 给只追加遥测数组上界（ADR-0010 迁 PG 前过渡，财务/审计不自动修剪）。
-> **0.8.6 变更**（patch — 契约与结构卫生）：补齐非支付接口共享契约（achievements/logs/sessions/admin/survey），支付接口明确列为 deferred；`scripts/check-api-contracts.mjs` 改为扫描 apps/api 并区分 internal/deferred；旧 `console.html` 冻结为 DevOps fallback；`docs/structure.md` 只保留当前结构，历史迁入 `docs/changelog/structure.md`。
 
 ---
 
@@ -207,7 +208,7 @@ apps/api/src/
 │       ├── index.ts              ADMIN_TOKEN 鉴权（默认 admin-dev-token）
 │       ├── _audit.ts             所有写动作落 adminAudit
 │       ├── health.ts             /api/admin/health 概览聚合（含 sidecar.ready）
-│       ├── diagnostics.ts        /api/admin/diagnostics 体检聚合（schema 与 scripts/doctor.mjs 对齐）
+│       ├── diagnostics.ts        /api/admin/diagnostics 体检聚合（schema 与 scripts/doctor.mjs 对齐）；reload-config 重读 .env + 清 flag/router/prompt 缓存（含 loader 模板/策略/边界），不重启进程
 │       ├── seed.ts               /api/admin/seed 一键灌示例
 │       ├── config.ts             env 读写 + 运行期覆盖 + LLM 测试连接
 │       ├── if-codes.ts           暗号 CRUD + 兑换记录（氛围判断命中后温度=5）
@@ -247,10 +248,10 @@ apps/api/src/
 │   ├── memory-gate.ts            shouldInjectMemory：首轮 / stage 切换 / 关系类关键词 / 满 4 轮 才注入 profile+summary+recall（FEATURE_MEMORY_THROTTLE，默认 off）+ memory-gate.test.ts
 │   └── boundary.ts               effectiveBoundary + getGlobalBoundary（stage-engine / sentence-segmenter 在 @yelan/shared）
 ├── prompts/
-│   ├── loader.ts                 角色卡走 services/characters（DB 真理源）；strategies/boundaries/system 模板仍读文件
+│   ├── loader.ts                 角色卡走 services/characters（DB 真理源）；strategies/boundaries/system 模板仍读文件（模块级缓存）；resetPromptCache() 供 reload-config 清缓存热更，免重启
 │   ├── yaml.ts                   极简 yaml 解析（service seed 与 loader 共用，避免循环依赖）
 │   ├── assemble.ts               system prompt + prelude 装配
-│   └── {assemble-prelude,yaml}.test.ts
+│   └── {assemble-prelude,grayscale-effect,yaml}.test.ts  grayscale-effect 验证 Prompt 灰度发布回读生效 + 全局约束不丢
 ├── services/
 │   ├── users.ts                 user / candle / quota / 流水 + 邮箱·密码·手机鉴权（getOrCreateUserByPhone / registerWithEmail / loginWithEmail / loginWithPassword / bindEmail / changePhone / deleteAccount / revokeAllSessions；emailIndex 唯一性 + 原子 swap；UserDeletedError / EmailAuthError / AccountError）
 │   ├── password.ts              密码哈希（scrypt）+ 强度校验 + 比对（PasswordError）；setPassword / resetPasswordViaOtp
@@ -264,7 +265,7 @@ apps/api/src/
 │   ├── policy-definitions.ts    policy 默认值定义表
 │   ├── membership.ts            月光 / 星河 / 永夜 mock 订阅服务：套餐配置、赠烛、有效会员判定
 │   ├── prelude-cards.ts         prelude cards 配置服务
-│   ├── token-guard.ts           token / 额度守门
+│   ├── token-guard.ts           token / 额度守门（会话累计 + 全日上限）；`TOKEN_GUARD_ENABLED=off` 可整体关闭（默认 on，off 时 checkTokenBudget 直接放行）
 │   └── {if-detect,if-multiaccount,if-prelude-scope,llm-api-inventory,memories,membership,policy}.test.ts
 ├── store/
 │   ├── persistence.ts            JSON 文件持久化；state 含 emailIndex / membershipPlans / subscriptions / sidecarPrompts / userProfiles / userProfileFacts / userProfileChangelog / contextSummaries / temperatureLogs；PersistedUser 加 passwordHash·tokenVersion·deletedAt·email·nickname·avatarUrl·bio·conversationRounds，SessionRow 加 lastMemoryRound；normalizeLoadedState 兜底回填 emailIndex / conversationRounds / membership 容器；自动快照 + 损坏隔离 + 快照恢复
@@ -274,6 +275,8 @@ apps/api/src/
 ```
 
 > **持久化路径**：`apps/api/.local/state.json`（gitignore 友好）。删除即重置。运行时自动快照落 `apps/api/.local/snapshots/`（`snapshot-*.json` 保留 12 份、节流 30 分钟）；`state.json` 解析失败时坏文件隔离为 `corrupt-*.json`（保留 5 份）并从最近可用快照恢复，绝不静默清空。`.local/` 整体 gitignore。
+
+> **`apps/api/scripts/`**（手动排障 / 审计脚本，`tsx` 直跑，不进生产路径）：`probe-{10rounds,memory-gate,recharge-quota}.ts`（对话轮次 / 记忆门控 / 充值配额探针）、`audit-{prompt,grayscale-e2e}.ts`（system prompt 装配审计 / Prompt 灰度端到端）、`real-chat-test.ts`（真实 LLM 冒烟）、`verify-wiring.ts`（路由/服务接线自检）。
 
 ### apps/admin/ — 运营后台
 
@@ -288,7 +291,7 @@ apps/admin/
 └── README.md         面板清单 + 扩展指南
 ```
 
-React 后台当前覆盖 23 个路由组件：总览 / 一键向导 / 健康检查 / 诊断 / API 仓库 / LLM 测试 / 对话测试 / 用户管理 / 角色卡 / 星座编辑器 / 策略 / 会员 / 前置提示卡 / Prompt 灰度 / 侧袋 Prompt / IF 暗号 / 问卷 / 烛账 / 配额 / 成本统计 / 会话 / 审计日志 / 支付测试。`Characters.tsx` 额外挂 `CharacterImportDialog.tsx` 作为角色包粘贴导入弹窗。`registry.ts` 另保留 `db-tools` 入口作为 infra/db GUI 外链。
+React 后台当前覆盖 23 个路由组件：总览 / 一键向导 / 健康检查 / 诊断 / API 仓库 / LLM 测试 / 对话测试 / 用户管理 / 角色卡 / 星座编辑器 / 策略 / 会员 / 前置提示卡 / 系统提示编辑器（原「Prompt 灰度」，编辑并发布主 AI 系统提示各段：系统模板 / 边界 B1–B5 / 阶段策略 / 角色卡，发布即下一轮生效 + 版本回滚） / 侧袋 Prompt / IF 暗号 / 问卷 / 烛账 / 配额 / 成本统计 / 会话 / 审计日志 / 支付测试。`Characters.tsx` 额外挂 `CharacterImportDialog.tsx` 作为角色包粘贴导入弹窗。`registry.ts` 另保留 `db-tools` 入口作为 infra/db GUI 外链。
 旧版 17 个面板：一键向导 / 概览 / 服务配置 / LLM / 用户 / 烛账 / 配额 / 问卷 / Prompt 灰度 / 成本 / IF 暗号 / **侧袋 AI** / **角色卡** / 审计 / 会话 / 支付测试 / DB 工具直链。该文件已冻结，不再新增业务面板或产品能力。
 
 > React 后台不等于生产后台完成：当前 admin API 仍主要来自 apps/api；`pnpm dev:server` 只是通过 server fallback 代理过去。
@@ -350,7 +353,8 @@ packages/prompts/
 ├── characters/{shen-yan-zhi,jiang-bai}.yaml
 ├── strategies/stage_{daily,rise,climax,after,end}.md
 ├── boundaries/b{1..5}_*.md
-├── system.template.md
+├── prelude-cards/{daily-default,if-default}.md  默认前置卡文案；apps/api services/prelude-cards.ts 首启 seed 进 state.preludeCards
+├── system.template.md        系统模板；含 [全局表达约束] + [反八股·去模板化写作规范]（所有对话态生效，不受 IF 换前置卡影响）；必需槽位 {{atmosphere_block}}/{{boundary_clause}}
 ├── scripts/build.ts          构建器（支持 --watch）
 └── src/generated.ts          自动生成 — 不要手改
 ```
@@ -409,7 +413,7 @@ infra/deploy/
 ├── Dockerfile           Node 20-alpine + pnpm + tsx；ENV DEPLOY_MODE=server
 ├── docker-compose.yml   apps/api + caddy 两容器；持久化卷 _data/
 ├── Caddyfile            自动 HTTPS + /api/* + SSE flush_interval -1；控制台秘密入口 {$ADMIN_PATH} 改写转发，/admin* 装死成 landing，放行 /admin/assets/*
-├── .env.example         DOMAIN / ADMIN_TOKEN / CORS_ORIGINS / LLM keys / ADMIN_PATH（控制台秘密路径）
+├── .env.example         DOMAIN / ADMIN_TOKEN / CORS_ORIGINS / LLM keys / ADMIN_PATH（控制台秘密路径）/ TOKEN_GUARD_ENABLED（token 硬闸开关，部署默认 off）
 ├── check.sh             ECS 部署前防呆检查（占位域名 / token 强度 / LLM key / 内部 token / ADMIN_PATH 秘密路径）
 ├── .gitignore           忽略 .env 和 _data/
 └── README.md            一句话部署 + 备份 / 安全 / 升级

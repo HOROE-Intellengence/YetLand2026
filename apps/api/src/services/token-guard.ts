@@ -15,6 +15,8 @@ const _sessionTokens = new Map<string, number>();
 
 const SESSION_TOKEN_LIMIT = Number(process.env.SESSION_TOKEN_LIMIT) || 200_000;
 const GLOBAL_DAILY_TOKEN_LIMIT = Number(process.env.GLOBAL_DAILY_TOKEN_LIMIT) || 2_000_000;
+// token 硬闸总开关：off → 不再因累计 token 超限回退 mock（长会话降级交给上下文压缩处理）。
+const TOKEN_GUARD_ENABLED = process.env.TOKEN_GUARD_ENABLED !== 'off';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -42,6 +44,7 @@ export function checkTokenBudget(
   estimatedTokens: number,
   ctx?: TokenGuardCtx,
 ): { allowed: boolean; reason?: string } {
+  if (!TOKEN_GUARD_ENABLED) return { allowed: true };
   resetDailyIfNeeded();
 
   if (_dailyTokens + estimatedTokens > GLOBAL_DAILY_TOKEN_LIMIT) {

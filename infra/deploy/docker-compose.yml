@@ -65,6 +65,9 @@ services:
       # 线上必须 on，否则配了 key 也只会产出默认对话。
       FEATURE_REAL_LLM: ${FEATURE_REAL_LLM:-on}
 
+      # token 累计硬闸：off → 不再因会话累计 token 超限回退 mock（长会话降级交给上下文压缩处理）。
+      TOKEN_GUARD_ENABLED: ${TOKEN_GUARD_ENABLED:-off}
+
       # 控制台是否开放（生产建议 false 改用独立 admin 前端；为了一键体验默认 true）
       ENABLE_ADMIN_CONSOLE: ${ENABLE_ADMIN_CONSOLE:-true}
 
