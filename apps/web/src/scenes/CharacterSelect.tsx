@@ -30,6 +30,13 @@ const RightArrowIcon = () => (
   </svg>
 );
 
+// 三根横线 — 快速角色选择入口
+const MenuIcon = () => (
+  <svg className={styles.menuIcon} viewBox="0 0 24 24">
+    <path d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+);
+
 export function CharacterSelect() {
   const pickCharacter = useSessionStore((s) => s.pickCharacter);
   const goCreate = useSessionStore((s) => s.goCreate);
@@ -49,6 +56,7 @@ export function CharacterSelect() {
   });
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [quickOpen, setQuickOpen] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const wheelAccumulator = useRef(0);
   const wheelLock = useRef(false);
@@ -72,6 +80,11 @@ export function CharacterSelect() {
   // 1. 键盘监听 ArrowLeft / ArrowRight
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setQuickOpen(false);
+        return;
+      }
+      if (quickOpen) return; // 面板打开时不响应转盘左右切换
       if (e.key === 'ArrowLeft') {
         step(-1);
       } else if (e.key === 'ArrowRight') {
@@ -80,7 +93,7 @@ export function CharacterSelect() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [step]);
+  }, [step, quickOpen]);
 
   // 2. 鼠标滚轮监听（带节流与锁）
   useEffect(() => {
@@ -151,7 +164,19 @@ export function CharacterSelect() {
 
   return (
     <div className={styles.root}>
-      <h2 className={styles.heading}>选择一扇门</h2>
+      <div className={styles.headingRow}>
+        <h2 className={styles.heading}>选择一扇门</h2>
+        {n > 0 && (
+          <button
+            className={styles.menuBtn}
+            onClick={() => setQuickOpen((v) => !v)}
+            aria-label="快速选择角色"
+            aria-expanded={quickOpen}
+          >
+            <MenuIcon />
+          </button>
+        )}
+      </div>
 
       {isLoading && <p className={styles.loading}>门正在打开...</p>}
 
@@ -252,6 +277,49 @@ export function CharacterSelect() {
       <button className={styles.createEntry} onClick={handleCreateEntry}>
         创建属于你的那位
       </button>
+
+      {/* 快速角色选择：自上而下滑入的清单，点选即入 */}
+      <div
+        className={`${styles.quickOverlay} ${quickOpen ? styles.quickOverlayOpen : ''}`}
+        onClick={() => setQuickOpen(false)}
+        aria-hidden={!quickOpen}
+      >
+        <div
+          className={`${styles.quickPanel} ${quickOpen ? styles.quickPanelOpen : ''}`}
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={styles.quickHeader}>
+            <span className={styles.quickTitle}>快速进入</span>
+            <button
+              className={styles.quickClose}
+              onClick={() => setQuickOpen(false)}
+              aria-label="收起"
+            >
+              收起 ✕
+            </button>
+          </div>
+          <ul className={styles.quickList}>
+            {activeCharacters.map((c) => (
+              <li key={c.id}>
+                <button
+                  className={styles.quickItem}
+                  role="menuitem"
+                  onClick={() => {
+                    setQuickOpen(false);
+                    pickCharacter(c);
+                  }}
+                >
+                  <span className={styles.quickName}>{c.name}</span>
+                  <span className={styles.quickSlogan}>
+                    {c.openingLines.firstVisit}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

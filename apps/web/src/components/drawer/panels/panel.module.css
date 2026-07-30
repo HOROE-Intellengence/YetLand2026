@@ -123,6 +123,42 @@
   color: var(--paper-mute);
 }
 
+/* 书阁简介折叠：内联展开/收起箭头按钮 */
+.expandToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 4px;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--paper-mute);
+}
+
+.expandToggle:hover {
+  color: var(--gold-light);
+}
+
+.chevronDown,
+.chevronUp {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transition: transform 0.2s;
+}
+
+.chevronDown {
+  transform: translateY(-1px) rotate(45deg);
+}
+
+.chevronUp {
+  transform: translateY(1px) rotate(-135deg);
+}
+
 .goodValue,
 .badValue {
   flex-shrink: 0;
