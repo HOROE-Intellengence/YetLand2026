@@ -7,6 +7,7 @@ import { charactersService } from './characters';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_IF_CARD = resolve(here, '..', '..', '..', '..', 'packages', 'prompts', 'prelude-cards', 'if-default.md');
+const DEFAULT_DAILY_CARD = resolve(here, '..', '..', '..', '..', 'packages', 'prompts', 'prelude-cards', 'daily-default.md');
 
 export interface PreludeCardUpsertInput {
   id?: string;
@@ -27,7 +28,10 @@ function now(): string {
 function hydrateIfNeeded(): void {
   if (_hydrated) return;
   const s = store.state();
-  if (Object.keys(s.preludeCards).length === 0 && existsSync(DEFAULT_IF_CARD)) {
+  let dirty = false;
+
+  // IF 默认卡
+  if (!s.preludeCards['if-default'] && existsSync(DEFAULT_IF_CARD)) {
     const ts = now();
     s.preludeCards['if-default'] = {
       id: 'if-default',
@@ -39,8 +43,26 @@ function hydrateIfNeeded(): void {
       isActive: true,
       updatedAt: ts,
     };
-    store.save();
+    dirty = true;
   }
+
+  // 日常前置卡：非 IF 态全局兜底，确保 {{prelude_card}} 不为空
+  if (!s.preludeCards['daily-default'] && existsSync(DEFAULT_DAILY_CARD)) {
+    const ts = now();
+    s.preludeCards['daily-default'] = {
+      id: 'daily-default',
+      name: '日常默认前置提示卡',
+      content: readFileSync(DEFAULT_DAILY_CARD, 'utf8').trim(),
+      scope: 'global',
+      characterId: null,
+      priority: 50,
+      isActive: true,
+      updatedAt: ts,
+    };
+    dirty = true;
+  }
+
+  if (dirty) store.save();
   _hydrated = true;
 }
 
