@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { useToast } from '../components/Toast';
 import { DataTable, type Column } from '../components/DataTable';
 import { JsonViewer } from '../components/JsonViewer';
+import { formatDateTime } from '../lib/datetime';
 
 const ACTION_GROUPS: { label: string; prefix: string }[] = [
   { label: '全部', prefix: '' },
@@ -23,14 +24,7 @@ const ACTION_GROUPS: { label: string; prefix: string }[] = [
   { label: 'Seed', prefix: 'seed' },
 ];
 
-function formatTime(ts: string) {
-  try {
-    const d = new Date(ts);
-    return d.toLocaleString('zh-CN', { hour12: false });
-  } catch {
-    return ts;
-  }
-}
+const formatTime = formatDateTime;
 
 function actionBadgeClass(action: string): string {
   if (action.includes('delete') || action.includes('disable')) return 'badge-danger';

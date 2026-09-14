@@ -5,6 +5,9 @@ import { useToast } from '../components/Toast';
 import { DataTable, type Column } from '../components/DataTable';
 import { formatUserLabel, useUserNameMap } from '../hooks/useUserNameMap';
 
+// 后端 costsDaily 的分日 key 是 UTC 日期，不是北京时间，所以这里如实标注避免误读。
+const TODAY_HINT = '后端按 UTC 日期分桶统计，北京时间每天 08:00 才翻篇';
+
 interface CostDaily {
   date: string;
   cost: number;
@@ -109,15 +112,15 @@ export function Costs() {
 
       <div className="metrics" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
         <div className="metric">
-          <div className="metric-label">今日调用</div>
+          <div className="metric-label">今日调用<span title={TODAY_HINT} style={{ opacity: 0.55 }}>（UTC 日）</span></div>
           <div className="metric-value">{todayTotal.calls.toLocaleString()}</div>
         </div>
         <div className="metric">
-          <div className="metric-label">今日 Tokens</div>
+          <div className="metric-label">今日 Tokens<span title={TODAY_HINT} style={{ opacity: 0.55 }}>（UTC 日）</span></div>
           <div className="metric-value">{todayTotal.tokens.toLocaleString()}</div>
         </div>
         <div className="metric">
-          <div className="metric-label">今日成本</div>
+          <div className="metric-label">今日成本<span title={TODAY_HINT} style={{ opacity: 0.55 }}>（UTC 日）</span></div>
           <div className="metric-value">${todayTotal.cost.toFixed(4)}</div>
         </div>
         <div className="metric">

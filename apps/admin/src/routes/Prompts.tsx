@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Circle, FileText, RotateCcw, Send } from 'lucide-react';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
+import { formatDateTime } from '../lib/datetime';
 
 type PromptKind = 'boundary' | 'strategy' | 'character' | 'system';
 
@@ -212,7 +213,7 @@ export function Prompts() {
                     {version.activeAt ? '生效中' : '未生效'}
                   </span>
                 </td>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{new Date(version.createdAt).toLocaleString()}</td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{formatDateTime(version.createdAt)}</td>
                 <td>
                   {!version.activeAt && (
                     <button className="btn btn-sm" onClick={() => rollback(version)}>激活</button>

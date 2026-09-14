@@ -9,6 +9,7 @@ import { api } from '../api/client';
 import { useToast } from '../components/Toast';
 import { DataTable, type Column } from '../components/DataTable';
 import { ReasonDialog } from '../components/ReasonDialog';
+import { formatDate, formatDateTime } from '../lib/datetime';
 
 interface AdminUser {
   id: string;
@@ -131,10 +132,7 @@ export function UsersPanel() {
     },
     {
       key: 'createdAt', header: '注册时间', mono: true, width: 150,
-      render: (row) => {
-        try { return new Date(row.createdAt).toLocaleString('zh-CN', { hour12: false }); }
-        catch { return row.createdAt; }
-      },
+      render: (row) => formatDateTime(row.createdAt),
     },
     {
       key: '_actions', header: '操作', width: 70,
@@ -204,7 +202,7 @@ export function UsersPanel() {
               <div className="metric">
                 <div className="metric-label">注册时间</div>
                 <div className="metric-value" style={{ fontSize: 14 }}>
-                  {(() => { try { return new Date(editing.createdAt).toLocaleDateString('zh-CN'); } catch { return editing.createdAt; } })()}
+                  {formatDate(editing.createdAt)}
                 </div>
               </div>
             </div>

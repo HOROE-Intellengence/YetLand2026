@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast';
 import { DataTable, type Column } from '../components/DataTable';
 import { ReasonDialog } from '../components/ReasonDialog';
 import { formatUserLabel, useUserNameMap } from '../hooks/useUserNameMap';
+import { formatDateTime } from '../lib/datetime';
 
 interface CandleLedgerRow {
   id: string;
@@ -74,10 +75,7 @@ export function Candle() {
   const columns: Column<CandleLedgerRow>[] = useMemo(() => [
     {
       key: 'createdAt', header: '时间', mono: true, width: 160,
-      render: (row) => {
-        try { return new Date(row.createdAt).toLocaleString('zh-CN', { hour12: false }); }
-        catch { return row.createdAt; }
-      },
+      render: (row) => formatDateTime(row.createdAt),
     },
     {
       key: 'id', header: '流水号', mono: true, width: 120,

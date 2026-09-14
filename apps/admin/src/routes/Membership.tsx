@@ -12,6 +12,7 @@ import {
 } from '@yelan/shared';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
+import { formatMonthDayTime } from '../lib/datetime';
 
 type PlanDraft = {
   name: string;
@@ -102,13 +103,7 @@ function buildPatch(draft: PlanDraft): AdminMembershipPlanPatch {
 }
 
 function formatPeriod(value?: string): string {
-  if (!value) return '-';
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
+  return formatMonthDayTime(value);
 }
 
 export function Membership() {

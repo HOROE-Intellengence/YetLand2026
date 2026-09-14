@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useToast } from '../components/Toast';
 import { DataTable, type Column } from '../components/DataTable';
 import { formatUserLabel, useUserNameMap } from '../hooks/useUserNameMap';
+import { formatDateTime } from '../lib/datetime';
 
 interface SessionRow {
   id: string;
@@ -27,10 +28,7 @@ interface MessageRow {
 
 const MODE_LABEL: Record<string, string> = { main: '主线', if: 'IF' };
 
-function formatTime(ts: string) {
-  try { return new Date(ts).toLocaleString('zh-CN', { hour12: false }); }
-  catch { return ts; }
-}
+const formatTime = formatDateTime;
 
 export function Sessions() {
   const { error: toastErr } = useToast();

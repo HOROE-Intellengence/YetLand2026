@@ -10,6 +10,7 @@ import {
 } from '@yelan/shared';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
+import { formatDateTime } from '../lib/datetime';
 import { parseConstellationDsl, serializeConstellationDsl } from './constellation-dsl';
 
 interface Pt { id: string; x: number; y: number }
@@ -418,7 +419,7 @@ export function ConstellationEditor() {
                 <RotateCcw size={14} /> 重置为默认
               </button>
             </div>
-            {updatedAt && <div style={{ fontSize: 11, color: 'var(--muted,#888)', marginTop: 8 }}>上次保存：{new Date(updatedAt).toLocaleString()}</div>}
+            {updatedAt && <div style={{ fontSize: 11, color: 'var(--muted,#888)', marginTop: 8 }}>上次保存：{formatDateTime(updatedAt)}</div>}
           </div>
         </div>
       </div>

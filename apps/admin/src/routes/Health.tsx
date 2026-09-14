@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Server, Circle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
+import { formatDateTime } from '../lib/datetime';
 
 interface AdminServerInfo {
   mode: string;
@@ -88,10 +89,7 @@ interface HealthState {
   };
 }
 
-function formatTime(ts: string) {
-  try { return new Date(ts).toLocaleString('zh-CN', { hour12: false }); }
-  catch { return ts; }
-}
+const formatTime = formatDateTime;
 
 function statusBadge(status: 'pass' | 'warn' | 'fail') {
   if (status === 'pass') return <span className="badge badge-ok">pass</span>;
