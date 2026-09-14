@@ -260,9 +260,7 @@ export function LandingScene() {
               <motion.p className={styles.heroCopy} variants={fadeUp}>
                 夜深了。
                 <br className={styles.mobileOnly} />
-                这里没有算法，
-                <br className={styles.mobileOnly} />
-                只有一段等着你的对白。
+                这里有一段等着你的对白。
               </motion.p>
               <motion.div className={styles.heroActions} variants={fadeUp}>
                 <button className={styles.primaryAction} onClick={goIntro} type="button">
@@ -308,9 +306,7 @@ export function LandingScene() {
                 <p>产品介绍</p>
               </div>
               <h2>
-                「夜阑」不是一个催你变高效的工具。
-                <br />
-                它是一个深夜对话空间。
+                慢慢来，这片土地没有束缚。
               </h2>
               <p className={styles.lead}>
                 当你不想被评价、不想解释太多、不想把情绪整理成漂亮句子时，你可以在这里慢慢说。

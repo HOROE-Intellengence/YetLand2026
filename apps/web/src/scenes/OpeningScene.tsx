@@ -17,7 +17,7 @@ export function OpeningScene() {
     <div className={styles.root}>
       <h1 className={styles.title}>夜阑</h1>
       <p className={styles.subtitle}>
-        夜深了。这里没有算法，只有一段等着你的对白。
+        夜深了。这里有一段等着你的对白。
       </p>
       <div className={styles.greetings}>
         {GREETINGS.map((g) => (
