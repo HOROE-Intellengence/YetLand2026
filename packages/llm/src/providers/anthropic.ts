@@ -36,7 +36,7 @@ export function createAnthropicProvider(
             model: req.model || model,
             system,
             messages,
-            max_tokens: req.maxTokens ?? 1024,
+            max_tokens: req.maxTokens ?? 8192,
             temperature: req.temperature ?? 0.8,
             stream: true,
           }),
@@ -71,6 +71,7 @@ export function createAnthropicProvider(
               const ev = JSON.parse(payload) as {
                 type?: string;
                 delta?: { type?: string; text?: string };
+                message?: { stop_reason?: string };
               };
               if (ev.type === 'message_stop') {
                 streamEnded = true;
@@ -78,6 +79,16 @@ export function createAnthropicProvider(
               }
               if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
                 yield { text: ev.delta.text };
+              }
+              // Anthropic 的 message_delta 事件包含 stop_reason
+              if (ev.type === 'message_delta' && ev.delta) {
+                const stopReason = (ev.delta as { stop_reason?: string }).stop_reason;
+                if (stopReason === 'max_tokens') {
+                  console.warn(`[${name}] Response truncated due to max_tokens limit`);
+                  yield { text: '\n[回复因长度限制被截断]', finished: true };
+                  streamEnded = true;
+                  break;
+                }
               }
             } catch {
               /* ignore malformed line */

@@ -47,7 +47,13 @@ export function useChat({
 
       const userMsg: ChatMessage = { role: 'user', content: text };
       const history = useChatStore.getState().messages;
-      useChatStore.getState().addUserMessage(userMsg);
+      // 延迟保存用户消息，只有在 SSE 流成功开始后才保存
+      // useChatStore.getState().addUserMessage(userMsg);  // 移到下面
+
+      // 显式取消旧请求（防御性编程）
+      if (ctrlRef.current) {
+        ctrlRef.current.abort();
+      }
 
       const ctrl = new AbortController();
       ctrlRef.current = ctrl;
@@ -75,8 +81,17 @@ export function useChat({
 
       let assistantBuf = '';
       let assistantParts: StructuredMessagePart[] | null = null;
+      let streamStarted = false;  // 标记流是否成功开始
+      let wasAborted = false;  // 标记是否被用户主动中止
+
       try {
         for await (const ev of openChatStream(req, ctrl.signal)) {
+          // 第一个事件到达，说明请求成功，现在保存用户消息
+          if (!streamStarted) {
+            useChatStore.getState().addUserMessage(userMsg);
+            streamStarted = true;
+          }
+
           switch (ev.kind) {
             case 'chunk':
               assistantBuf += ev.text;
@@ -117,18 +132,38 @@ export function useChat({
           if (ev.kind === 'done' || ev.kind === 'cutoff') break;
         }
       } catch (e) {
-        console.warn('[chat] stream error:', (e as Error).message);
+        // 区分不同类型的错误
+        if (e instanceof Error && e.name === 'AbortError') {
+          console.log('[chat] 用户取消了本轮对话');
+          wasAborted = true;
+        } else {
+          console.warn('[chat] stream error:', (e as Error).message);
+
+          // 如果请求彻底失败且用户消息未保存，通知用户
+          if (!streamStarted) {
+            console.error('[chat] 请求失败，消息未发送');
+            // TODO: 可以在这里显示一个Toast通知用户
+          }
+        }
       } finally {
-        if (assistantBuf) {
+        // 只有成功开始且未被中止才保存 assistant 回复
+        if (assistantBuf && streamStarted && !wasAborted) {
           if (assistantParts && assistantParts.length > 0) {
             useChatStore.getState().addStructuredAssistantMessage(assistantBuf, assistantParts);
           } else {
             useChatStore.getState().addAssistantMessage(assistantBuf);
           }
+        } else if (wasAborted && assistantBuf) {
+          console.log(`[chat] 已丢弃被中止的部分回复 (${assistantBuf.length}字符)`);
         }
         useChatStore.getState().clearLiveChunks();
-        useChatStore.getState().incrementRound();
-        onRoundComplete();
+
+        // 只有成功完成才增加轮次
+        if (streamStarted && !wasAborted) {
+          useChatStore.getState().incrementRound();
+          onRoundComplete();
+        }
+
         useChatStore.getState().setSending(false);
       }
     },

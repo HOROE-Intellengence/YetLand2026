@@ -47,7 +47,7 @@ export function createOpenAILikeProvider(opts: OpenAILikeOptions): LLMProvider {
           model,
           messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
           temperature: req.temperature ?? 0.8,
-          max_tokens: req.maxTokens ?? 1024,
+          max_tokens: req.maxTokens ?? 8192,
           stream: true,
         };
         if (req.reasoningEffort && modelAcceptsReasoningEffort(model)) {
@@ -94,10 +94,25 @@ export function createOpenAILikeProvider(opts: OpenAILikeOptions): LLMProvider {
 
             try {
               const ev = JSON.parse(payload) as {
-                choices?: Array<{ delta?: { content?: string } }>;
+                choices?: Array<{
+                  delta?: { content?: string };
+                  finish_reason?: string | null;
+                }>;
               };
               const text = ev.choices?.[0]?.delta?.content;
               if (text) yield { text };
+
+              // 检测截断：finish_reason 为 'length' 表示达到 max_tokens 限制
+              const finishReason = ev.choices?.[0]?.finish_reason;
+              if (finishReason === 'length') {
+                console.warn(`[${name}] Response truncated due to max_tokens limit`);
+                yield { text: '\n[回复因长度限制被截断]', finished: true };
+                streamEnded = true;
+                break;
+              } else if (finishReason === 'stop') {
+                streamEnded = true;
+                break;
+              }
             } catch {
               /* ignore malformed line */
             }

@@ -69,7 +69,7 @@ export function createNvidiaUnlimProvider(
             model: resolveModel(req.model || opts.model),
             messages,
             temperature: req.temperature ?? 0.8,
-            max_tokens: req.maxTokens ?? 1024,
+            max_tokens: req.maxTokens ?? 8192,
             stream: true,
             stream_options: { include_usage: true },
           }),
@@ -113,13 +113,24 @@ export function createNvidiaUnlimProvider(
                 usage?: { prompt_tokens: number; completion_tokens: number };
               };
               const text = ev.choices?.[0]?.delta?.content;
-              const finished = ev.choices?.[0]?.finish_reason === 'stop';
+              const finishReason = ev.choices?.[0]?.finish_reason;
               const usage = ev.usage
                 ? { inputTokens: ev.usage.prompt_tokens, outputTokens: ev.usage.completion_tokens }
                 : undefined;
 
-              if (text) yield { text, ...(finished ? { finished: true } : {}), ...(usage ? { usage } : {}) };
+              if (text) yield { text, ...(usage ? { usage } : {}) };
               else if (usage) yield { text: '', usage };
+
+              // 检测截断
+              if (finishReason === 'length') {
+                console.warn(`[${name}] Response truncated due to max_tokens limit`);
+                yield { text: '\n[回复因长度限制被截断]', finished: true };
+                streamEnded = true;
+                break;
+              } else if (finishReason === 'stop') {
+                streamEnded = true;
+                break;
+              }
             } catch {
               /* ignore malformed line */
             }

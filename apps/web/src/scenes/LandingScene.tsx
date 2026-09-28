@@ -477,8 +477,13 @@ export function LandingScene() {
           <span>夜阑</span>
           <i>YELAN</i>
         </button>
-        <p>夜未央，对白未完。</p>
-        <div>
+        <div className={styles.footerCopy}>
+          <p>夜未央，对白未完。</p>
+          <a href="https://beian.miit.gov.cn/" rel="noreferrer" target="_blank">
+            粤ICP备2024326738号-2
+          </a>
+        </div>
+        <div className={styles.footerLinks}>
           <button onClick={() => scrollToSection('about')} type="button">关于我们</button>
           <button onClick={() => scrollToSection('feedback')} type="button">反馈</button>
           <button onClick={goIntro} type="button">开始对话</button>

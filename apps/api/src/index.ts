@@ -197,7 +197,17 @@ if (profile.enableAdminConsole) {
 }
 
 // ── 启动 ─────────────────────────────────────────────────────────────────
-serve({ fetch: app.fetch, port: profile.port, hostname: profile.host });
+const server = serve({ fetch: app.fetch, port: profile.port, hostname: profile.host });
+
+// 配置超时 - SSE 流式响应需要更长的超时时间，避免长对话被截断
+// Node.js 默认 headersTimeout=60s 会导致长对话在 60 秒时静默断开连接
+server.headersTimeout = 0;  // 0 = 无限制，适合 SSE 长连接
+server.requestTimeout = 0;  // 0 = 无限制
+server.keepAliveTimeout = 65000;  // 65秒，比 Caddy 的 30s 更大，避免提前关闭
+
+if (profile.verboseStartup) {
+  console.log('  超时配置: headersTimeout=0 (无限制), keepAliveTimeout=65s');
+}
 
 if (profile.verboseStartup) {
   const router = getRouter();

@@ -118,7 +118,18 @@ mockChatRoute.post(
       const requestId = (c.get('requestId') as string) || `req_${randomUUID().slice(0, 12)}`;
       const writeEv = (ev: ChatStreamEvent) => stream.writeSSE({ data: JSON.stringify({ ...ev, requestId }) });
 
-      const router = getRouter();
+      // 心跳机制：每 20 秒发送一次注释保持连接活跃
+      const heartbeatInterval = setInterval(() => {
+        try {
+          stream.writeSSE({ comment: 'keepalive' });
+        } catch (e) {
+          // 连接已断开，清除定时器
+          clearInterval(heartbeatInterval);
+        }
+      }, 20000);
+
+      try {
+        const router = getRouter();
       const realLlmEnabled = flag('FEATURE_REAL_LLM');
       const estimatedTokens = estimateTokens(body.text, body.history.length);
       const tokenBudget = checkTokenBudget(body.sessionId, estimatedTokens, { requestId, userId });
@@ -222,6 +233,8 @@ mockChatRoute.post(
         console.warn('[chat] error:', (e as Error).message);
         await writeEv({ kind: 'error', code: 'LLM_FAILED', message: (e as Error).message });
         await writeEv({ kind: 'done' });
+      } finally {
+        clearInterval(heartbeatInterval);
       }
 
       runAfterDoneSidecars(userId, body.characterId, body.sessionId);
