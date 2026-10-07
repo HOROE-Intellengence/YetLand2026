@@ -146,6 +146,11 @@ export function dbPutMessage(msg: ChatMessage): void {
     chatDb.messages.put(msg).catch(err => console.warn("[ChatDB] put message failed:", err));
 }
 
+/** Await durability before acknowledging an imported server voice turn. */
+export async function dbPutMessageAsync(msg: ChatMessage): Promise<void> {
+    await chatDb.messages.put(msg);
+}
+
 export function dbPutMessages(msgs: ChatMessage[]): void {
     chatDb.messages.bulkPut(msgs).catch(err => console.warn("[ChatDB] bulkPut messages failed:", err));
 }

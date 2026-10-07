@@ -3,15 +3,19 @@ import { useEffect, useRef, useState } from 'react';
 import type { Character } from '@/lib/character-types';
 import { loadChatMessages, pushChatMessage, type ChatSession } from '@/lib/chat-storage';
 import { yelanHeaders, yelanRequest } from '@/lib/yelan-managed-client';
+import { dbPutMessageAsync } from '@/lib/chat-db';
+import { clearPendingVoice, loadPendingVoice, recoverVoiceTurn, savePendingVoice, voiceTurnBase, type PendingVoice } from '@/lib/yelan-voice-recovery';
 
-type Turn = { id: string; sessionId: string; status: string; inputText: string; outputText: string; outputAudioUrl?: string | null; errorCode?: string | null };
 const dataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(blob);
 });
 
 export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSession; characters: Character[]; onEnd: () => void }) {
-  const [characterId, setCharacterId] = useState(characters[0]?.id || '');
-  const [kind, setKind] = useState<'voice' | 'voice-hq'>('voice');
+  const [initialPending] = useState(() => loadPendingVoice(session.id));
+  const pending = useRef<PendingVoice | null>(initialPending);
+  const [pendingJob, setPendingJob] = useState(initialPending);
+  const [characterId, setCharacterId] = useState(initialPending?.characterId || characters[0]?.id || '');
+  const [kind, setKind] = useState<'voice' | 'voice-hq'>(initialPending?.connection.kind || 'voice');
   const [recording, setRecording] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -19,7 +23,7 @@ export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSe
   const [transcript, setTranscript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [text, setText] = useState('');
-  const active = useRef<{ id: string; kind: 'voice' | 'voice-hq' } | null>(null);
+  const active = useRef<{ id: string; kind: 'voice' | 'voice-hq' } | null>(initialPending?.connection || null);
   const recorder = useRef<MediaRecorder | null>(null);
   const tracks = useRef<MediaStream | null>(null);
   const abort = useRef(new AbortController());
@@ -38,7 +42,8 @@ export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSe
       alive.current = false; abort.current.abort();
       if (recordingTimer.current) clearTimeout(recordingTimer.current);
       if (recorder.current) { recorder.current.onstop = null; if (recorder.current.state !== 'inactive') recorder.current.stop(); }
-      tracks.current?.getTracks().forEach(track => track.stop()); void closeSession();
+      tracks.current?.getTracks().forEach(track => track.stop());
+      if (!pending.current) void closeSession();
     };
   }, []);
   async function ensureSession() {
@@ -50,20 +55,10 @@ export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSe
     active.current = created;
     return created;
   }
-  async function submit(blob?: Blob) {
-    if (submitting.current || (!blob && !text.trim())) return;
-    submitting.current = true;
-    setBusy(true); setError('');
-    try {
-      const connection = await ensureSession();
-      const base = `/${connection.kind}/sessions/${connection.id}/turns`;
-      const response = await fetch(`/api/host${base}${blob ? '' : '/text'}`, {
-        method: 'POST', signal: abort.current.signal,
-        headers: { ...yelanHeaders(), 'Content-Type': blob?.type || 'application/json', 'Idempotency-Key': crypto.randomUUID() },
-        body: blob || JSON.stringify({ text: text.trim() }),
-      });
-      if (!response.ok) { const failure = await response.json().catch(() => ({})); throw new Error(failure.code || '夜阑通话请求失败'); }
-      let turn: Turn = await response.json();
+  async function processPending(job: PendingVoice) {
+      const connection = job.connection;
+      const base = voiceTurnBase(job);
+      let turn = await recoverVoiceTurn(job, abort.current.signal);
       const deadline = Date.now() + 300000;
       while (turn.status === 'processing' && Date.now() < deadline) {
         await new Promise<void>((resolve, reject) => {
@@ -71,9 +66,9 @@ export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSe
           const timer = setTimeout(() => { abort.current.signal.removeEventListener('abort', cancel); resolve(); }, 1000);
           abort.current.signal.addEventListener('abort', cancel, { once: true });
         });
-        turn = await yelanRequest<Turn>(`${base}/${turn.id}`, { signal: abort.current.signal });
+        turn = await recoverVoiceTurn(job, abort.current.signal);
       }
-      if (turn.status !== 'complete') throw new Error(turn.errorCode || '语音生成尚未完成，请稍后重试');
+      if (turn.status !== 'complete') throw new Error(turn.errorCode || '语音生成尚未完成，可继续查询本轮');
       let encoded = '';
       const audioPath = connection.kind === 'voice-hq' ? `${base}/${turn.id}/audio` : turn.outputAudioUrl;
       if (audioPath) {
@@ -83,16 +78,57 @@ export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSe
         encoded = await dataUrl(await audioResponse.blob());
       }
       if (!alive.current) return;
-      if (turn.inputText) pushChatMessage({ sessionId: session.id, role: 'user', content: turn.inputText });
-      pushChatMessage({ sessionId: session.id, role: 'assistant', content: '', mediaType: 'audio', mediaUrl: encoded,
-        senderCharacterId: characterId, senderName: characters.find(character => character.id === characterId)?.name,
+      const batchId = `yelan-voice:${turn.id}`;
+      const existing = loadChatMessages(session.id).filter(message => message.responseBatchId === batchId);
+      if (turn.inputText) {
+        const input = existing.find(message => message.role === 'user') || pushChatMessage({ sessionId: session.id, role: 'user', content: turn.inputText, responseBatchId: batchId });
+        await dbPutMessageAsync(input);
+      }
+      const output = existing.find(message => message.role === 'assistant') || pushChatMessage({ sessionId: session.id, role: 'assistant', content: '', mediaType: 'audio', mediaUrl: encoded,
+        responseBatchId: batchId, senderCharacterId: job.characterId, senderName: characters.find(character => character.id === job.characterId)?.name,
         mediaData: { label: turn.outputText, synthesizedFromText: turn.outputText } });
+      await dbPutMessageAsync(output);
+      await clearPendingVoice(session.id); pending.current = null; setPendingJob(null);
       setTranscript(turn.outputText); setAudioUrl(encoded); setText('');
-    } catch (e) { if (alive.current) setError(e instanceof Error ? e.message : '通话失败'); }
-    finally { submitting.current = false; if (alive.current) setBusy(false); }
+  }
+  async function run(work: () => Promise<void>) {
+    if (submitting.current) return;
+    submitting.current = true; setBusy(true); setError('');
+    try { await work(); }
+    catch (e) { if (alive.current) setError(e instanceof Error ? e.message : '通话失败'); }
+    finally {
+      submitting.current = false;
+      if (alive.current) { setBusy(false); setPendingJob(pending.current ? { ...pending.current } : null); }
+    }
+  }
+  async function submit(blob?: Blob) {
+    if (pending.current || (!blob && !text.trim())) return;
+    await run(async () => {
+      const connection = await ensureSession();
+      const job: PendingVoice = { chatSessionId: session.id, characterId, connection, requestId: crypto.randomUUID(),
+        input: blob ? { audio: await dataUrl(blob) } : { text: text.trim() } };
+      pending.current = job;
+      await savePendingVoice(job);
+      await processPending(job);
+    });
+  }
+  async function resume(action?: 'retry-tts' | 'resume-asr') {
+    if (!pending.current) return;
+    const job = pending.current;
+    await run(async () => {
+      if (action && !job.retry) job.retry = { action, requestId: crypto.randomUUID() };
+      await savePendingVoice(job);
+      await processPending(job);
+    });
+  }
+  async function cancelPending() {
+    await run(async () => {
+      if (active.current) await yelanRequest(`/${active.current.kind}/sessions/${active.current.id}/close`, { method: 'POST' });
+      await clearPendingVoice(session.id); pending.current = null; active.current = null;
+    });
   }
   async function startRecording() {
-    if (acquiring.current || recorder.current?.state === 'recording' || submitting.current) return;
+    if (pending.current || acquiring.current || recorder.current?.state === 'recording' || submitting.current) return;
     acquiring.current = true; setPreparing(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -115,19 +151,25 @@ export function YelanVoiceCall({ session, characters, onEnd }: { session: ChatSe
   }
   return <section style={{ position: 'absolute', inset: 0, zIndex: 100, background: '#f6f5ef', color: '#222', padding: 24, overflow: 'auto' }}>
     <h2>夜阑通话</h2>
-    <select aria-label="通话角色" value={characterId} disabled={busy || recording || preparing} onChange={e => { void closeSession(); setCharacterId(e.target.value); }}>
+    <select aria-label="通话角色" value={characterId} disabled={busy || recording || preparing || !!pendingJob} onChange={e => { void closeSession(); setCharacterId(e.target.value); }}>
       {characters.map(character => <option key={character.id} value={character.id}>{character.name}</option>)}
     </select>
-    <select aria-label="通话方式" value={kind} disabled={busy || recording || preparing} onChange={e => { void closeSession(); setKind(e.target.value as typeof kind); }}>
+    <select aria-label="通话方式" value={kind} disabled={busy || recording || preparing || !!pendingJob} onChange={e => { void closeSession(); setKind(e.target.value as typeof kind); }}>
       <option value="voice">普通通话</option><option value="voice-hq">高质量通话</option>
     </select>
     <p>继续当前聊天，通话记录会回到这个聊天窗口。</p>
-    <button disabled={busy || preparing} onClick={() => recording ? recorder.current?.stop() : void startRecording()}>{preparing ? '正在打开麦克风…' : recording ? '结束录音并发送' : '开始录音（最长 60 秒）'}</button>
-    {kind === 'voice' && <div><textarea aria-label="文字说话" value={text} onChange={e => setText(e.target.value)} maxLength={4000} /><button disabled={busy || recording || preparing || !text.trim()} onClick={() => void submit()}>发送文字，听语音回复</button></div>}
+    <button disabled={busy || preparing || !!pendingJob} onClick={() => recording ? recorder.current?.stop() : void startRecording()}>{preparing ? '正在打开麦克风…' : recording ? '结束录音并发送' : '开始录音（最长 60 秒）'}</button>
+    {kind === 'voice' && <div><textarea aria-label="文字说话" value={text} onChange={e => setText(e.target.value)} maxLength={4000} /><button disabled={busy || recording || preparing || !!pendingJob || !text.trim()} onClick={() => void submit()}>发送文字，听语音回复</button></div>}
+    {pendingJob && !busy && <div><p>本轮记录已保存，可继续获取结果。</p>
+      <button onClick={() => void resume()}>继续查询本轮</button>
+      {pendingJob.turn?.canRetryTts && <button onClick={() => void resume('retry-tts')}>重试本轮语音合成</button>}
+      {pendingJob.turn?.canResumeAsr && <button onClick={() => void resume('resume-asr')}>继续本轮转写</button>}
+      <button onClick={() => void cancelPending()}>取消本轮</button>
+    </div>}
     {busy && <p role="status">正在等待回复…</p>}
     {error && <p role="alert">{error}</p>}
     {transcript && <p>{transcript}</p>}
     {audioUrl && <audio controls autoPlay src={audioUrl} />}
-    <p><button onClick={onEnd}>结束通话</button></p>
+    <p><button onClick={onEnd}>{pendingJob || busy ? '返回聊天，稍后继续' : '结束通话'}</button></p>
   </section>;
 }

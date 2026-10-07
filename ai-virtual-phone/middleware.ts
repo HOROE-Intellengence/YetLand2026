@@ -58,6 +58,18 @@ function rewriteToHome(request: NextRequest): NextResponse {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Hosted by Yelan: the original account/configuration and arbitrary proxy
+  // control plane is unavailable, even when legacy self-hosted mode is enabled.
+  if (process.env.YELAN_PHONE_MANAGED === 'true') {
+    const retired = ['/api/yelan', '/api/auth', '/api/verify', '/api/supabase-admin',
+      '/api/push', '/api/weixin', '/api/tool-proxy', '/api/oauth-callback',
+      '/api/image-generation', '/api/voice', '/api/tripo'];
+    if (retired.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+      return NextResponse.json({ code: 'YELAN_MANAGED_ONLY' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
+    if (pathname.startsWith('/api/host/') || pathname === '/api/managed-status') return NextResponse.next();
+  }
+
   if (isSelfHostedModeEnabled()) {
     return NextResponse.next();
   }
@@ -88,6 +100,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/api/:path*',
     "/((?!_next/static|_next/image|.*\\.(?:avif|bin|css|gif|glb|gltf|hdr|ico|jpeg|jpg|js|json|map|mjs|mp3|ogg|otf|png|svg|ttf|txt|wasm|wav|webmanifest|webp|woff|woff2)$).*)",
   ],
 };
