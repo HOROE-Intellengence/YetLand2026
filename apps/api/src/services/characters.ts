@@ -1,3 +1,4 @@
+import type { HqVoiceProfileId } from '@yelan/shared';
 // 角色卡 service — BE-101 角色卡 DB 化
 // 真理源：state.json 的 characters 字段；首次启动若空则从 packages/prompts/characters/*.yaml seed
 // 改字段无需重启：list/get 直接读 state；upsert 落 store.save()
@@ -5,8 +6,8 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import type { Character, CharacterProfileSection, UserCharacterCreate } from '@yelan/shared';
-import { compileUserCharacter } from '@yelan/shared';
+import type { Character, CharacterProfileSection, UserCharacterCreate, VoiceName } from '@yelan/shared';
+import { compileUserCharacter, DEFAULT_VOICE_NAME } from '@yelan/shared';
 import { store, type CharacterRow } from '../store/persistence';
 import { parseTinyYaml } from '../prompts/yaml';
 
@@ -35,13 +36,14 @@ function asRarity(s: unknown): 'free' | 'paid' | 'hidden' {
   return s === 'paid' || s === 'hidden' ? s : 'free';
 }
 
-function normalizeProfileSections(value: unknown): CharacterProfileSection[] {
+export function normalizeProfileSections(value: unknown): CharacterProfileSection[] {
   if (!Array.isArray(value)) return [];
   return value
     .map((item, index) => {
       if (!item || typeof item !== 'object') return null;
       const row = item as Partial<CharacterProfileSection>;
-      const key = typeof row.key === 'string' ? row.key.trim() : '';
+      // 脱敏备份可能误删业务 key；保留正文，用明确的占位标题兜底。
+      const key = (typeof row.key === 'string' ? row.key.trim() : '') || `未命名设定 ${index + 1}`;
       const sectionValue = typeof row.value === 'string' ? row.value.trim() : '';
       const order = Number.isInteger(row.order) ? Number(row.order) : index;
       if (!key || !sectionValue) return null;
@@ -126,6 +128,8 @@ function rowToCharacter(row: CharacterRow): Character {
     styleTags: row.styleTags,
     promptCardKey: row.promptCardKey,
     preludeCardId: row.preludeCardId ?? null,
+    voiceName: row.voiceName ?? DEFAULT_VOICE_NAME,
+    hqVoiceProfileId: row.hqVoiceProfileId,
     boundaryDefault: row.boundaryDefault,
     isActive: row.isActive,
     openingLines: {
@@ -167,6 +171,8 @@ export interface CharacterUpsertInput {
   priceCandle: number;
   styleTags?: string[];
   preludeCardId?: string | null;
+  voiceName?: VoiceName;
+  hqVoiceProfileId?: HqVoiceProfileId;
   boundaryDefault: 1 | 2 | 3 | 4 | 5;
   openingFirstVisit?: string;
   openingReturnVisit?: string;
@@ -238,6 +244,8 @@ export const charactersService = {
       styleTags: input.styleTags ?? prev?.styleTags ?? [],
       promptCardKey: prev?.promptCardKey ?? `characters/${input.slug}.yaml`,
       preludeCardId: input.preludeCardId === undefined ? (prev?.preludeCardId ?? null) : input.preludeCardId,
+      voiceName: input.voiceName ?? prev?.voiceName ?? DEFAULT_VOICE_NAME,
+      hqVoiceProfileId: input.hqVoiceProfileId ?? prev?.hqVoiceProfileId,
       boundaryDefault: input.boundaryDefault,
       isActive: input.isActive ?? prev?.isActive ?? true,
       openingFirstVisit: input.openingFirstVisit ?? prev?.openingFirstVisit ?? '',
@@ -266,6 +274,8 @@ export const charactersService = {
       id,
       slug: id,
       name: payload.name,
+      voiceName: payload.voiceName ?? DEFAULT_VOICE_NAME,
+      hqVoiceProfileId: payload.hqVoiceProfileId,
       rarity: 'free',
       priceCandle: 0,
       styleTags: [],

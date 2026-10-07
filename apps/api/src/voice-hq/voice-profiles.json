@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "mode": "voice-hq",
+  "selectionDate": "2026-10-01",
+  "selectionSource": "User confirmed: mature female 15; mature male 11; young male 4; young female 17.",
+  "profiles": [
+    {
+      "id": "mature-female",
+      "label": "成熟女",
+      "gender": "female",
+      "agePresentation": "mature",
+      "sampleNumber": 15,
+      "voiceName": "Despina",
+      "model": "gemini-3.8-flash-tts",
+      "style": "Speak in natural Mandarin Chinese. Mature adult female in her thirties, warm composed big-sister presence, natural medium-low register, affectionate and reassuring one-to-one conversation. Natural Mandarin Chinese, relaxed pacing and soft phrase endings, no girlish squeak, baby voice, exaggerated seduction, or announcer delivery. Smooth velvety medium-low voice, elegant and easygoing, calm warmth without stiffness.",
+      "sampleText": "今天过得怎么样？别急，先坐下来喝口水。窗外的风很轻，我就在这里陪着你。开心的事慢慢讲，不开心的事也可以放心告诉我。",
+      "sampleSource": "round2/15-Despina.wav",
+      "sampleSha256": "2a0538c16ee2ff465441caec54197be8d8b2122dd7a907bf3edf940d070ad310",
+      "sampleDurationSeconds": 12.88,
+      "sampleRate": 24000,
+      "revision": 1
+    },
+    {
+      "id": "mature-male",
+      "label": "成熟男",
+      "gender": "male",
+      "agePresentation": "mature",
+      "sampleNumber": 11,
+      "voiceName": "Alnilam",
+      "model": "gemini-3.8-flash-tts",
+      "style": "Speak in natural Mandarin Chinese. Mature adult male in his thirties or forties, low-pitched resonant chest voice, warm and tender, patient reassuring intimate conversation. Natural Mandarin Chinese, relaxed unhurried pacing and soft phrase endings. Fully voiced and clearly articulated, never stern, booming, newsreader-like, exaggeratedly breathy, or artificially pitch-shifted. Solid mellow low register, restrained emotion, softly reassuring and protective without sounding commanding.",
+      "sampleText": "今天过得怎么样？别急，先坐下来喝口水。窗外的风很轻，我就在这里陪着你。开心的事慢慢讲，不开心的事也可以放心告诉我。",
+      "sampleSource": "round2/11-Alnilam.wav",
+      "sampleSha256": "bf205f19688c6d2b1fed222e6ced0b92d0c90083699b431f9c72cbee1acdd878",
+      "sampleDurationSeconds": 13.8,
+      "sampleRate": 24000,
+      "revision": 1
+    },
+    {
+      "id": "young-male",
+      "label": "少年",
+      "gender": "male",
+      "agePresentation": "young-adult",
+      "sampleNumber": 4,
+      "voiceName": "Puck",
+      "model": "gemini-3.8-flash-tts",
+      "style": "Speak in natural Mandarin Chinese. Young adult male, youthful bright and upbeat, playful friendly energy, smiling voice with light lively inflection, conversational, not shouting or childish.",
+      "sampleText": "今天过得怎么样？别急，先坐下来喝口水。窗外的风很轻，我就在这里陪着你。开心的事慢慢讲，不开心的事也可以放心告诉我。",
+      "sampleSource": "04-Puck.wav",
+      "sampleSha256": "d10eb7e98b03736ba7fff5a0cb395681161b05abe8ef5009d38412d00e2543ad",
+      "sampleDurationSeconds": 11.16,
+      "sampleRate": 24000,
+      "revision": 1
+    },
+    {
+      "id": "young-female",
+      "label": "少女",
+      "gender": "female",
+      "agePresentation": "young-adult",
+      "sampleNumber": 17,
+      "voiceName": "Leda",
+      "model": "gemini-3.8-flash-tts",
+      "style": "Speak in natural Mandarin Chinese. Young adult female with a youthful sweet voice. Use a clearly noticeable Chinese jiazi-yin delivery: elevated light head-register pitch, delicately narrowed bright resonance with a hint of nasality, soft airy onsets, cute gently coaxing intonation, a smiling tone, slightly elongated vowels and lilting upward phrase endings. Sweet, playful and affectionate in natural conversational Mandarin. Keep words intelligible and the pace relaxed. A young adult woman, not a child or baby. No cartoon squealing, no shouting, and no artificial chipmunk effect. Read the provided text verbatim without adding interjections or extra words.",
+      "sampleText": "今天过得怎么样？别急，先坐下来喝口水。窗外的风很轻，我就在这里陪着你。开心的事慢慢讲，不开心的事也可以放心告诉我。",
+      "sampleSource": "leda-sweet/17-Leda.wav",
+      "sampleSha256": "bc853daad5dc9a3a67556f89c883dd38d949a37c0fb2fb5cc76bfaffe6adf3b4",
+      "sampleDurationSeconds": 11.48,
+      "sampleRate": 24000,
+      "revision": 1
+    }
+  ]
+}

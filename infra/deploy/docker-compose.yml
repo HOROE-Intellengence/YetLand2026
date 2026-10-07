@@ -73,6 +73,22 @@ services:
 
       # 信任反向代理
       TRUST_PROXY: "true"
+
+      # Google Live outbound relay; Google key exists only in Worker Secrets.
+      VOICE_RELAY_URL: ${VOICE_RELAY_URL:-}
+      VOICE_RELAY_TOKEN: ${VOICE_RELAY_TOKEN:-}
+      VOICE_DATA_DIR: /app/apps/api/.local/voice
+      VOICE_FFMPEG_PATH: /usr/bin/ffmpeg
+      VOICE_ASR_PUBLIC_ORIGIN: ${VOICE_ASR_PUBLIC_ORIGIN:-}
+      VOICE_ASR_SIGNING_KEY: ${VOICE_ASR_SIGNING_KEY:-}
+      VOICE_ASR_SIGNING_TTL_SECONDS: ${VOICE_ASR_SIGNING_TTL_SECONDS:-900}
+      VOICE_HQ_FISH_API_KEY: ${VOICE_HQ_FISH_API_KEY:-}
+      VOICE_HQ_FISH_BASE_URL: ${VOICE_HQ_FISH_BASE_URL:-https://api.fish.audio}
+      VOICE_HQ_ASR_API_KEY: ${VOICE_HQ_ASR_API_KEY:-}
+      VOICE_HQ_ASR_BASE_URL: ${VOICE_HQ_ASR_BASE_URL:-https://ws-imp5vxamz4ohf5kp.cn-beijing.maas.aliyuncs.com/api/v1}
+      VOICE_HQ_ASR_MODEL: ${VOICE_HQ_ASR_MODEL:-qwen-audio-3.0-asr-flash-filetrans}
+      VOICE_HQ_CONTEXT_MAX_CHARS: ${VOICE_HQ_CONTEXT_MAX_CHARS:-48000}
+      API_GATEWAY_DATA_DIR: /app/apps/api/.local/gateway
     volumes:
       - ./_data:/app/apps/api/.local
     networks:

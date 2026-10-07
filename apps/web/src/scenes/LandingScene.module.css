@@ -91,15 +91,18 @@
   gap: clamp(18px, 2.5vw, 34px);
 }
 
-.navLinks button {
+.navLinks button,
+.navLinks a {
   color: var(--paper-dim);
   font-size: 13px;
   letter-spacing: 0.16em;
   white-space: nowrap;
+  text-decoration: none;
   transition: color 0.25s ease, text-shadow 0.25s ease;
 }
 
-.navLinks button:hover {
+.navLinks button:hover,
+.navLinks a:hover {
   color: var(--paper);
   text-shadow: 0 0 14px rgba(200, 168, 120, 0.28);
 }
@@ -202,13 +205,15 @@
   align-items: center;
 }
 
-.mobileMenu button {
+.mobileMenu button,
+.mobileMenu a {
   border: 0;
   background: none;
   color: var(--paper);
   font-family: var(--font-serif);
   font-size: 24px;
   letter-spacing: 0.18em;
+  text-decoration: none;
 }
 
 .main,

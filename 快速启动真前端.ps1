@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 $OutputEncoding = [System.Text.UTF8Encoding]::new()
@@ -100,27 +100,23 @@ function Start-PnpmBackground {
     [Parameter(Mandatory = $true)][string]$LogPath
   )
 
-  $escapedRoot = $root.Replace("'", "''")
-  $escapedLog = $LogPath.Replace("'", "''")
-  $command = @"
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-`$OutputEncoding = [System.Text.UTF8Encoding]::new()
-Set-Location -LiteralPath '$escapedRoot'
-`$env:DEPLOY_MODE = 'local'
-pnpm.cmd $Arguments 2>&1 | Tee-Object -FilePath '$escapedLog'
-"@
-
+  if ($Arguments -eq 'dev') {
+    Start-PnpmBackground -Name 'backend' -Arguments 'dev:mock' -LogPath $mockLog
+    Start-PnpmBackground -Name 'frontend' -Arguments 'dev:web' -LogPath $webLog
+    return
+  }
+  $appDir = if ($Arguments -eq 'dev:web') { 'apps/web' } else { 'apps/api' }
+  $entryArgs = if ($Arguments -eq 'dev:web') {
+    @('node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--strictPort')
+  } else {
+    @('node_modules/tsx/dist/cli.mjs', 'src/index.ts')
+  }
+  $env:DEPLOY_MODE = 'local'
+  $env:VITE_API_BASE = 'http://127.0.0.1:8787'
   Write-Host "[START] $Name"
-  Write-Host "        pnpm $Arguments"
-  Write-Host "        log: $LogPath"
-
-  $process = Start-Process `
-    -FilePath 'powershell.exe' `
-    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $command) `
-    -WorkingDirectory $root `
-    -WindowStyle Hidden `
-    -PassThru
-
+  $process = Start-Process -FilePath $nodePath -ArgumentList $entryArgs `
+    -WorkingDirectory (Join-Path $root $appDir) -WindowStyle Hidden `
+    -RedirectStandardOutput $LogPath -RedirectStandardError "$LogPath.stderr" -PassThru
   Set-Content -Encoding UTF8 -Path $pidPath -Value $process.Id
 }
 
@@ -154,11 +150,12 @@ function Test-WorkspaceDepsReady {
 Set-Location $root
 New-Item -ItemType Directory -Force -Path $serverDir | Out-Null
 
-if ($null -eq (Get-Command pnpm.cmd -ErrorAction SilentlyContinue)) {
-  Write-Host "[FAIL] pnpm not found. Install it first: npm i -g pnpm" -ForegroundColor Red
-  exit 1
+$nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
+$nodePath = if ($nodeCommand) { $nodeCommand.Source } else {
+  Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
 }
-
+if (-not (Test-Path -LiteralPath $nodePath)) { throw 'Node.js not found. Install Node.js 20 or newer.' }
+$env:Path = (Split-Path $nodePath) + ';' + $env:Path
 if (-not (Test-Path (Join-Path $root 'node_modules')) -or -not (Test-WorkspaceDepsReady)) {
   Write-Host "[SETUP] workspace dependencies missing or stale; rebuilding pnpm links..." -ForegroundColor Yellow
   pnpm.cmd install --frozen-lockfile --force

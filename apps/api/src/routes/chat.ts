@@ -48,6 +48,8 @@ mockChatRoute.post(
   async (c) => {
     const userId = c.get('userId') as string;
     const body = c.req.valid('json');
+    // HQ sessions share prompt/temperature persistence, but must never enter text sidecar hooks.
+    if (body.sessionId.startsWith('hq_')) return c.json({ code: 'SESSION_MODE_MISMATCH' }, 409);
 
     const character = charactersService.get(body.characterId);
     if (!character) return c.json({ code: 'CHARACTER_NOT_FOUND', message: 'character not found' }, 400);
@@ -119,9 +121,9 @@ mockChatRoute.post(
       const writeEv = (ev: ChatStreamEvent) => stream.writeSSE({ data: JSON.stringify({ ...ev, requestId }) });
 
       // 心跳机制：每 20 秒发送一次注释保持连接活跃
-      const heartbeatInterval = setInterval(() => {
+      const heartbeatInterval = setInterval(async () => {
         try {
-          stream.writeSSE({ comment: 'keepalive' });
+          await stream.write(': keepalive\n\n');
         } catch (e) {
           // 连接已断开，清除定时器
           clearInterval(heartbeatInterval);
@@ -239,6 +241,9 @@ mockChatRoute.post(
 
       runAfterDoneSidecars(userId, body.characterId, body.sessionId);
       void getQuotaToday(userId);
+      } finally {
+        clearInterval(heartbeatInterval);
+      }
     });
   },
 );

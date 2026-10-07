@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { AdminPreludeCardCreateSchema, AdminPreludeCardPatchSchema } from '@yelan/shared';
-import { preludeCardsService } from '../../services/prelude-cards';
+import { preludeCardsService, VOICE_PRELUDE_ID } from '../../services/prelude-cards';
 import { audit } from './_audit';
 import { validationHook } from '../../middleware/validation';
 
@@ -22,6 +22,10 @@ adminPreludeCardsRoute.post(
   zValidator('json', AdminPreludeCardCreateSchema, validationHook),
   async (c) => {
     const body = c.req.valid('json');
+    if ((body.scope === 'voice' && (body.id !== VOICE_PRELUDE_ID || body.characterId)) ||
+        (body.id === VOICE_PRELUDE_ID && body.scope !== 'voice')) {
+      return c.json({ code: 'VOICE_PRELUDE_RESERVED', message: 'Edit voice-global for voice conversations' }, 400);
+    }
     if (body.id && preludeCardsService.get(body.id)) {
       return c.json({ code: 'EXISTS', message: 'prelude card already exists' }, 409);
     }
@@ -45,6 +49,10 @@ adminPreludeCardsRoute.patch(
   async (c) => {
     const id = c.req.param('id');
     const body = c.req.valid('json');
+    if ((id === VOICE_PRELUDE_ID && ((body.scope && body.scope !== 'voice') || body.characterId)) ||
+        (id !== VOICE_PRELUDE_ID && body.scope === 'voice')) {
+      return c.json({ code: 'VOICE_PRELUDE_RESERVED', message: 'voice-global must keep voice scope and no character binding' }, 400);
+    }
     const updated = preludeCardsService.patch(id, {
       name: body.name,
       content: body.content,

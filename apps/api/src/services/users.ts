@@ -1,4 +1,5 @@
 // 用户域 — 创建用户 / 按 token 查 / 按 phone 查 / 烛账增减
+import { mockOtpForTestsOnly, SMS_UNAVAILABLE_MESSAGE } from './sms-placeholder';
 // 注：本文件是 apps/api 本地/当前 Docker 路线用，不替代未来 Workers 生产 services/auth
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_USER_BOUNDARY } from '@yelan/shared';
@@ -120,6 +121,7 @@ export function getOrCreateUserByPhone(phone: string, guestDeviceId?: string): P
   const guest = findConvertibleGuestByDevice(guestDeviceId);
   if (guest) {
     guest.phone = phone;
+    guest.registrationIdentity = { name: guest.name, phone, registeredAt: now };
     deGuest(guest);
     grantRegisterCandle(guest, grant, now);
     s.phoneIndex[phone] = guest.id;
@@ -132,6 +134,7 @@ export function getOrCreateUserByPhone(phone: string, guestDeviceId?: string): P
   const user: PersistedUser = {
     id,
     phone,
+    registrationIdentity: { phone, registeredAt: now },
     token,
     ageVerified: false,
     narrativeBoundary: DEFAULT_USER_BOUNDARY,
@@ -435,6 +438,7 @@ export async function registerWithEmail(
   if (guest) {
     guest.email = email;
     if (name?.trim()) guest.name = name.trim();
+    guest.registrationIdentity = { name: guest.name, email, registeredAt: now };
     guest.passwordHash = passwordHash;
     guest.passwordUpdatedAt = now;
     // bump 到 v1，与新注册用户一致（游客行原 token 无版本号，登录后换新版 token）
@@ -456,6 +460,7 @@ export async function registerWithEmail(
     token,
     email,
     name: name?.trim() || undefined,
+    registrationIdentity: { name: name?.trim() || undefined, email, registeredAt: now },
     passwordHash,
     passwordUpdatedAt: now,
     tokenVersion: 1,
@@ -579,6 +584,7 @@ export async function resetPasswordViaOtp(
   _code: string,
   newPassword: string,
 ): Promise<{ user: PersistedUser; token: string }> {
+  if (!mockOtpForTestsOnly()) throw new PasswordError('WRONG', SMS_UNAVAILABLE_MESSAGE);
   const s = store.state();
   const id = s.phoneIndex[phone];
   if (!id) throw new PasswordError('NOT_FOUND', '账号不存在');
@@ -627,6 +633,7 @@ export async function changePhone(
   newPhone: string,
   _code: string, // mock：任意 4-8 位数字都通过；prod 在 apps/server 验
 ): Promise<PersistedUser> {
+  if (!mockOtpForTestsOnly()) throw new AccountError('NEEDS_CONFIRMATION', SMS_UNAVAILABLE_MESSAGE);
   const s = store.state();
   const u = s.users[userId];
   if (!u) throw new AccountError('NOT_FOUND', 'user not found');
@@ -673,7 +680,7 @@ export async function deleteAccount(
     const passOk = confirmation.currentPassword
       ? await verifyPassword(confirmation.currentPassword, u.passwordHash)
       : false;
-    const otpOk = Boolean(confirmation.code);
+    const otpOk = mockOtpForTestsOnly() && Boolean(confirmation.code);
     if (!passOk && !otpOk) {
       if (confirmation.currentPassword && !passOk) {
         throw new AccountError('WRONG_PASSWORD', '当前密码不正确');
@@ -681,7 +688,7 @@ export async function deleteAccount(
       throw new AccountError('NEEDS_CONFIRMATION', '需要密码或验证码二次确认');
     }
   } else {
-    if (!confirmation.code) throw new AccountError('NEEDS_CONFIRMATION', '需要验证码二次确认');
+    if (!mockOtpForTestsOnly() || !confirmation.code) throw new AccountError('NEEDS_CONFIRMATION', '需要有效的验证码二次确认；短信验证暂未开放');
   }
   u.deletedAt = new Date().toISOString();
   u.tokenVersion = (u.tokenVersion ?? 0) + 1;

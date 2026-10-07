@@ -26,8 +26,16 @@ import { toMe } from './me';
 import { requireAuth } from '../middleware/auth';
 import { getUserById } from '../services/users';
 import { validationHook } from '../middleware/validation';
+import { mockOtpForTestsOnly, SMS_UNAVAILABLE_MESSAGE } from '../services/sms-placeholder';
 
 export const mockAuthRoute = new Hono();
+// Fail closed while SMS is a placeholder: these legacy routes previously accepted any code.
+mockAuthRoute.use('*', async (c, next) => {
+  if (!mockOtpForTestsOnly() && c.req.method === 'POST' && /\/(otp|verify|password\/reset)\/?$/.test(c.req.path)) {
+    return c.json({ code: 'SMS_UNAVAILABLE', message: SMS_UNAVAILABLE_MESSAGE }, 503);
+  }
+  await next();
+});
 
 function passwordErrorToHttp(e: PasswordError): { status: 400 | 401 | 403 | 404 | 423; body: { code: string; message: string } } {
   switch (e.code) {

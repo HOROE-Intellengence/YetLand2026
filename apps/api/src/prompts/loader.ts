@@ -6,7 +6,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { charactersService } from '../services/characters';
+import { charactersService, normalizeProfileSections } from '../services/characters';
 import { preludeCardsService } from '../services/prelude-cards';
 import { store } from '../store/persistence';
 
@@ -86,9 +86,7 @@ export function loadCharacterCard(characterId: string): string {
     console.warn(`[prompts] character not found: ${characterId}`);
     return '';
   }
-  const profileSections = (row.profileSections ?? [])
-    .filter((section) => section.key.trim() && section.value.trim())
-    .sort((a, b) => a.order - b.order);
+  const profileSections = normalizeProfileSections(row.profileSections);
   const sectionBlock = profileSections.length
     ? ['设定细节：', ...profileSections.map((section) => `- ${section.key.trim()}：${section.value.trim()}`)].join('\n')
     : '';

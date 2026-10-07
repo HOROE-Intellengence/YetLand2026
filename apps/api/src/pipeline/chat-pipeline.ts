@@ -434,6 +434,7 @@ export async function* streamMainLLM(
   recentHistory: Array<{ role: string; content: string }>,
   bodyText: string,
   reasoningEffort?: ReasoningEffort,
+  signal?: AbortSignal,
 ): AsyncGenerator<{ chunk?: StreamChunk; providerUsage?: { inputTokens: number; outputTokens: number }; sanitizerStats?: SanitizerStats; actualProviderId?: string; actualModel?: string }> {
   let assistantBuffer = '';
   let sentenceBuffer = '';
@@ -449,7 +450,7 @@ export async function* streamMainLLM(
       ...recentHistory.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       { role: 'user' as const, content: bodyText },
     ];
-    for await (const chunk of router.stream(stage, { model: '', messages, reasoningEffort }, undefined, (st) => {
+    for await (const chunk of router.stream(stage, { model: '', messages, reasoningEffort }, signal, (st) => {
       sanitizerStats = st;
     })) {
       if (chunk.providerId) { actualProviderId = chunk.providerId; actualModel = chunk.model; }

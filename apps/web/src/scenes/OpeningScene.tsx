@@ -2,16 +2,12 @@
 import { useSessionStore } from '../stores/sessionStore';
 import styles from './OpeningScene.module.css';
 
-const GREETINGS = [
-  '今晚，想和谁说话？',
-  '有些事，只想说给一个人听。',
-  '夜还长，慢慢来。',
-  '又见面了。',
-];
-
 export function OpeningScene() {
   const setGreeting = useSessionStore((s) => s.setGreeting);
   const goLogin = useSessionStore((s) => s.goLogin);
+  const goVoice = useSessionStore((s) => s.goVoice);
+  const goHqVoice = useSessionStore((s) => s.goHqVoice);
+  const goApi = useSessionStore((s) => s.goApi);
 
   return (
     <div className={styles.root}>
@@ -20,19 +16,17 @@ export function OpeningScene() {
         夜深了。这里有一段等着你的对白。
       </p>
       <div className={styles.greetings}>
-        {GREETINGS.map((g) => (
-          <button
-            key={g}
-            className={styles.greetBtn}
-            onClick={() => setGreeting(g)}
-          >
-            {g}
-          </button>
-        ))}
+        <button className={styles.greetBtn} onClick={() => setGreeting('夜还长，慢慢来')}>夜还长，慢慢来</button>
+        <button className={styles.greetBtn} onClick={goVoice}>
+          如枕边语
+          <svg className={styles.micIcon} width="16" height="20" viewBox="0 0 24 30" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <rect x="8" y="2" width="8" height="16" rx="4" />
+            <path d="M4 13v2a8 8 0 0 0 16 0v-2M12 23v5M7 28h10" />
+          </svg>
+        </button>
+        <button className={styles.greetBtn} type="button" onClick={goHqVoice}>语音（高质量）</button>
+        <button className={styles.greetBtn} type="button" onClick={goApi}>API调用</button>
       </div>
-      <button className={styles.enterBtn} onClick={() => setGreeting('')}>
-        直接进入
-      </button>
       <button
         className={styles.enterBtn}
         onClick={goLogin}

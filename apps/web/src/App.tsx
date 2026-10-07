@@ -10,6 +10,9 @@ import { fullSync, startSyncTimer, stopSyncTimer } from './memory/sync';
 import { LandingScene } from './scenes/LandingScene';
 import { IntroScene } from './scenes/IntroScene';
 import { OpeningScene } from './scenes/OpeningScene';
+import { VoiceHqScene } from './scenes/VoiceHqScene';
+import { VoiceScene } from './scenes/VoiceScene';
+import { ApiScene } from './scenes/ApiScene';
 import { LoginScene } from './scenes/LoginScene';
 import { NameScene } from './scenes/NameScene';
 import { CharacterSelect } from './scenes/CharacterSelect';
@@ -53,6 +56,9 @@ export default function App() {
       {scene === 'home' && <LandingScene />}
       {scene === 'intro' && <IntroScene />}
       {scene === 'opening' && <OpeningScene />}
+      {scene === 'voice' && <VoiceScene />}
+      {scene === 'voice-hq' && <VoiceHqScene />}
+      {scene === 'api' && <ApiScene />}
       {scene === 'login' && <LoginScene />}
       {scene === 'name' && <NameScene />}
       {scene === 'select' && <CharacterSelect />}
@@ -66,7 +72,7 @@ export default function App() {
       <DrawerShell />
 
       {/* 仅 dev 环境挂载 */}
-      {import.meta.env.DEV && <TweaksPanel />}
+      {import.meta.env.DEV && scene !== 'voice' && scene !== 'voice-hq' && <TweaksPanel />}
     </div>
   );
 }

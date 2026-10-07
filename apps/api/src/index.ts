@@ -8,13 +8,19 @@
 // 路由签名与 apps/server 1:1 对齐；真实 LLM 走 ./llm/router 的三家 provider。
 import './bootstrap-env'; // 必须最先执行：把 .env 注入 process.env
 import { serve } from '@hono/node-server';
+import { Server } from 'node:http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { mockChatRoute } from './routes/chat';
+import { apiGatewayRoute } from './routes/api-gateway';
+import { developerRoute } from './routes/developer';
 import { mockAuthRoute } from './routes/auth';
 import { mockBillingRoute } from './routes/billing';
 import { mockCharactersRoute } from './routes/characters';
 import { mockSessionsRoute } from './routes/sessions';
+import { voiceRoute } from './routes/voice';
+import { voiceAsrAssetsRoute } from './routes/voice-asr-assets';
+import { hqVoiceRoute } from './routes/voice-hq';
 import { mockAchievementsRoute } from './routes/achievements';
 import { mockSurveysRoute } from './routes/surveys';
 import { mockEventsRoute } from './routes/events';
@@ -88,7 +94,8 @@ app.use(
       return profile.corsOrigins.includes(origin) ? origin : '';
     },
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'x-request-id', 'Accept', 'X-Device-Id'],
+    allowHeaders: ['Content-Type', 'Authorization', 'x-request-id', 'Accept', 'X-Device-Id', 'Idempotency-Key', 'Range'],
+    exposeHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
     credentials: true,
     maxAge: 86400,
   }),
@@ -126,10 +133,16 @@ app.get('/health', (c) => {
 });
 
 app.route('/api/chat', mockChatRoute);
+app.route('/v1', apiGatewayRoute);
+app.route('/api/developer', developerRoute);
 app.route('/api/auth', mockAuthRoute);
 app.route('/api/billing', mockBillingRoute);
 app.route('/api/characters', mockCharactersRoute);
 app.route('/api/sessions', mockSessionsRoute);
+// 签名下载由短效 HMAC 鉴权，必须先于 voiceRoute 的全局登录中间件挂载。
+app.route('/api/voice/asr-assets', voiceAsrAssetsRoute);
+app.route('/api/voice-hq', hqVoiceRoute);
+app.route('/api/voice', voiceRoute);
 app.route('/api/achievements', mockAchievementsRoute);
 app.route('/api/surveys', mockSurveysRoute);
 app.route('/api/events', mockEventsRoute);
@@ -201,9 +214,11 @@ const server = serve({ fetch: app.fetch, port: profile.port, hostname: profile.h
 
 // 配置超时 - SSE 流式响应需要更长的超时时间，避免长对话被截断
 // Node.js 默认 headersTimeout=60s 会导致长对话在 60 秒时静默断开连接
-server.headersTimeout = 0;  // 0 = 无限制，适合 SSE 长连接
-server.requestTimeout = 0;  // 0 = 无限制
-server.keepAliveTimeout = 65000;  // 65秒，比 Caddy 的 30s 更大，避免提前关闭
+if (server instanceof Server) {
+  server.headersTimeout = 0;  // 0 = 无限制，适合 SSE 长连接
+  server.requestTimeout = 0;  // 0 = 无限制
+  server.keepAliveTimeout = 65000;  // 65秒，比 Caddy 的 30s 更大，避免提前关闭
+}
 
 if (profile.verboseStartup) {
   console.log('  超时配置: headersTimeout=0 (无限制), keepAliveTimeout=65s');

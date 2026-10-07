@@ -10,3 +10,6 @@ export * from './survey';
 export * from './if-codes';
 export * from './logs';
 export * from './sessions';
+export * from './voice';
+export * from './voice-hq';
+export * from './api-gateway';

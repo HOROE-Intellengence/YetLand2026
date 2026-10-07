@@ -9,8 +9,8 @@ const NAV_LINKS = [
   { label: '设计理念', target: 'philosophy' },
   { label: '关于我们', target: 'about' },
   { label: '反馈中心', target: 'feedback' },
-  { label: '开发组 2 计划', target: 'roadmap' },
-];
+  { label: '鸿绒云', href: 'https://horoe.com/' },
+] as const;
 
 const FEATURES = [
   { number: '01', title: '角色对话', description: '与不同气质的角色展开私人对话。不论倾诉或是沉默，总有回音。' },
@@ -183,7 +183,11 @@ export function LandingScene() {
         </button>
 
         <div className={styles.navLinks}>
-          {NAV_LINKS.map((link) => (
+          {NAV_LINKS.map((link) => 'href' in link ? (
+            <a href={link.href} key={link.href} rel="noopener noreferrer" target="_blank">
+              {link.label}
+            </a>
+          ) : (
             <button key={link.target} onClick={() => handleNavClick(link.target)} type="button">
               {link.label}
             </button>
@@ -217,7 +221,11 @@ export function LandingScene() {
               ×
             </button>
             <div className={styles.mobileMenuInner}>
-              {NAV_LINKS.map((link) => (
+              {NAV_LINKS.map((link) => 'href' in link ? (
+                <a href={link.href} key={link.href} onClick={() => setMenuOpen(false)} rel="noopener noreferrer" target="_blank">
+                  {link.label}
+                </a>
+              ) : (
                 <button key={link.target} onClick={() => handleNavClick(link.target)} type="button">
                   {link.label}
                 </button>

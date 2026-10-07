@@ -30,6 +30,7 @@
 
 .greetings {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
@@ -49,6 +50,19 @@
 .greetBtn:hover {
   color: var(--paper);
   text-shadow: 0 0 12px rgba(220, 188, 130, 0.2);
+}
+
+.micIcon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 10px;
+}
+
+.greetBtn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  color: var(--paper-dim);
+  text-shadow: none;
 }
 
 .enterBtn {

@@ -8,6 +8,8 @@ import {
   type AdminCharactersPatch,
   type AdminCharacterJsonResponse,
   type CharacterProfileSection,
+  type VoiceName, type HqVoiceProfileId, HQ_VOICE_OPTIONS, defaultHqVoiceProfile,
+  VOICE_OPTIONS, DEFAULT_VOICE_NAME,
 } from '@yelan/shared';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
@@ -21,6 +23,8 @@ interface Character {
   id: string; slug: string; name: string; rarity: string;
   priceCandle: number; styleTags: string[]; boundaryDefault: number; isActive: boolean;
   preludeCardId?: string | null;
+  voiceName?: VoiceName;
+  hqVoiceProfileId?: HqVoiceProfileId;
   openingLines: { firstVisit: string; returnVisit: string };
   description?: string; forbiddenPhrases?: string[]; updatedAt?: string;
   profileSections: CharacterProfileSection[];
@@ -268,7 +272,7 @@ export function Characters() {
 function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
   initial: Character | null;
   preludeCards: PreludeCardOption[];
-  onSave: (body: { reason: string; slug: string; name: string; rarity: 'free' | 'paid' | 'hidden'; priceCandle: number; boundaryDefault: 1 | 2 | 3 | 4 | 5; preludeCardId: string | null; styleTags: string[]; forbiddenPhrases: string[]; description: string; profileSections: CharacterProfileSection[]; openingFirstVisit: string; openingReturnVisit: string }) => void;
+  onSave: (body: { reason: string; slug: string; name: string; rarity: 'free' | 'paid' | 'hidden'; priceCandle: number; boundaryDefault: 1 | 2 | 3 | 4 | 5; preludeCardId: string | null; voiceName: VoiceName; hqVoiceProfileId: HqVoiceProfileId; styleTags: string[]; forbiddenPhrases: string[]; description: string; profileSections: CharacterProfileSection[]; openingFirstVisit: string; openingReturnVisit: string }) => void;
   onCancel: () => void;
 }) {
   const splitList = (value: string) => value
@@ -283,6 +287,8 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
   const [priceCandle, setPriceCandle] = useState(initial?.priceCandle ?? 0);
   const [boundaryDefault, setBoundaryDefault] = useState<1 | 2 | 3 | 4 | 5>((initial?.boundaryDefault as 1 | 2 | 3 | 4 | 5) ?? 2);
   const [preludeCardId, setPreludeCardId] = useState(initial?.preludeCardId ?? '');
+  const [voiceName, setVoiceName] = useState<VoiceName>(initial?.voiceName ?? DEFAULT_VOICE_NAME);
+  const [hqVoiceProfileId, setHqVoiceProfileId] = useState<HqVoiceProfileId>(initial?.hqVoiceProfileId ?? defaultHqVoiceProfile(initial?.voiceName ?? DEFAULT_VOICE_NAME));
   const [styleTags, setStyleTags] = useState((initial?.styleTags ?? []).join(', '));
   const [forbiddenPhrases, setForbiddenPhrases] = useState((initial?.forbiddenPhrases ?? []).join('、'));
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -308,6 +314,7 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
     onSave({
       slug, name, rarity, priceCandle, boundaryDefault, description,
       preludeCardId: preludeCardId || null,
+      voiceName, hqVoiceProfileId,
       styleTags: splitList(styleTags),
       forbiddenPhrases: splitList(forbiddenPhrases),
       profileSections: profileSections
@@ -340,6 +347,17 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
               <option value="paid">付费</option>
               <option value="hidden">隐藏</option>
             </select>
+          </div>
+          <div className="field">
+            <label htmlFor="character-voice">普通语音音色</label>
+            <select id="character-voice" value={voiceName} onChange={e => setVoiceName(e.target.value as VoiceName)}>
+              {VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+            </select>
+            <label htmlFor="character-hq-voice">高质量语音音色</label>
+            <select id="character-hq-voice" value={hqVoiceProfileId} onChange={e => setHqVoiceProfileId(e.target.value as HqVoiceProfileId)}>
+              {HQ_VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+            </select>
+            <p className="muted">四类默认音色在「语音配置与测试」中填写 Fish ID，保存后下一轮生效。</p>
           </div>
           <div className="field">
             <label>烛价</label>

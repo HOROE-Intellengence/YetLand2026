@@ -1,0 +1,10 @@
+.voice-settings h3 { margin: 24px 0 12px; }
+.voice-settings > p { margin: 8px 0 14px; }
+.voice-settings input:not([type="checkbox"]), .voice-settings textarea {
+  background: var(--bg); color: var(--paper); border: 1px solid var(--border);
+  border-radius: 6px; padding: 9px 11px; font: inherit; box-sizing: border-box;
+}
+.voice-settings input:not([type="checkbox"]):focus, .voice-settings textarea:focus { outline: none; border-color: var(--gold); }
+.voice-settings > label { display: block; margin: 14px 0; }
+.voice-settings > label input { margin-left: 12px; width: min(380px, 80%); }
+.voice-settings form > input { min-width: 240px; }

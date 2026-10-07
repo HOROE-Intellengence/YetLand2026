@@ -11,6 +11,9 @@ export interface RouteDef {
 }
 
 export const ROUTES: Record<string, RouteDef> = {
+  'api-overview': { hash: 'api-overview', label: 'API 聊天记录', component: lazy(() => import('./ApiGateway').then(m => ({ default: m.ApiGatewayOverview }))) },
+  'api-keys': { hash: 'api-keys', label: 'Key 管理', component: lazy(() => import('./ApiGateway').then(m => ({ default: m.ApiGatewayKeys }))) },
+  'api-prelude': { hash: 'api-prelude', label: '高级版前置', component: lazy(() => import('./ApiGateway').then(m => ({ default: m.ApiGatewayPrelude }))) },
   // ── Native React panels ──────────────────────────────────────────────
   overview: {
     hash: 'overview', label: '总览',
@@ -20,6 +23,7 @@ export const ROUTES: Record<string, RouteDef> = {
     hash: 'config', label: 'API 仓库',
     component: lazy(() => import('./ServiceConfig').then((m) => ({ default: m.ServiceConfig }))),
   },
+  'voice-settings': { hash: 'voice-settings', label: '语音配置与测试', component: lazy(() => import('./VoiceSettings').then(m => ({ default: m.VoiceSettings }))) },
   characters: {
     hash: 'characters', label: '角色卡',
     component: lazy(() => import('./Characters').then((m) => ({ default: m.Characters }))),
@@ -89,6 +93,11 @@ export const ROUTES: Record<string, RouteDef> = {
     hash: 'sessions', label: '会话',
     component: lazy(() => import('./Sessions').then((m) => ({ default: m.Sessions }))),
     description: '查看会话与消息记录。',
+  },
+  'voice-records': {
+    hash: 'voice-records', label: '语音记录',
+    component: lazy(() => import('./VoiceRecords').then((m) => ({ default: m.VoiceRecords }))),
+    description: '查看语音会话、转写与双向录音。',
   },
   costs: {
     hash: 'costs', label: '成本统计',

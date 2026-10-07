@@ -11,6 +11,14 @@ interface NavItem { label: string; hash: string; icon: ReactNode }
 
 const groups: { label: string; items: NavItem[] }[] = [
   {
+    label: 'API 管理',
+    items: [
+      { label: '聊天记录', hash: 'api-overview', icon: <LayoutDashboard /> },
+      { label: 'Key 管理', hash: 'api-keys', icon: <Key /> },
+      { label: '高级版前置', hash: 'api-prelude', icon: <FileText /> },
+    ],
+  },
+  {
     label: '监控',
     items: [
       { label: '一键向导', hash: 'setup', icon: <CheckCircle /> },
@@ -28,6 +36,7 @@ const groups: { label: string; items: NavItem[] }[] = [
       { label: 'LLM 测试', hash: 'llm', icon: <Cpu /> },
       { label: '策略', hash: 'policy', icon: <ScrollText /> },
       { label: '会员', hash: 'membership', icon: <CreditCard /> },
+      { label: '语音配置与测试', hash: 'voice-settings', icon: <MessageSquare /> },
       { label: '角色卡', hash: 'characters', icon: <UserCheck /> },
       { label: '星座编辑器', hash: 'constellations', icon: <Sparkles /> },
       { label: '前置提示卡', hash: 'prelude-cards', icon: <Wrench /> },
@@ -40,6 +49,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: '用户管理', hash: 'users', icon: <Users /> },
       { label: '会话', hash: 'sessions', icon: <MessageSquare /> },
+      { label: '语音记录', hash: 'voice-records', icon: <MessageSquare /> },
       { label: '烛账', hash: 'candle', icon: <Flame /> },
       { label: '配额', hash: 'quota', icon: <Gauge /> },
       { label: 'IF 暗号', hash: 'if-codes', icon: <Key /> },

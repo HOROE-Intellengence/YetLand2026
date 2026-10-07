@@ -114,6 +114,13 @@
 | BE-149 | P1 | 🟡 | 温度乐观异步/同步切换（`TEMPERATURE_OPTIMISTIC`） | 后端 | ✅ done（2026-06-17）|
 | BE-150 | P2 | 🟡 | 遥测日志保留护栏（`pushBounded`/`LOG_RETENTION`，ADR-0010 前过渡） | 后端 | ✅ done（2026-06-17）|
 | BE-151 | P2 | 🔵 | 成就发放后端（`achievementRepo.unlock` 当前无生产调用方，线上只读测试 seed；配 FE-119 成就闪屏） | 后端 | 待办（审计 2026-06-17 发现） |
+| BE-152 | P1 | 🔵 | 高质量语音：服务器专用 ASR 输入录音签名能力 | 后端 | 已实现，服务器实测见 TEST-111/112 |
+| BE-154 | P1 | 🔵 | 高质量 TTS 改 Fish s2.1-pro-free；后台四类默认 ID 手填，独立语音测试含搜索/试听 | 后端/后台 | ✅ 已实现；四类正式 ID 待填，服务器 ASR/签名仍见 TEST-111/112 |
+| BE-153 | P1 | 🔵 | 高质量语音：独立会话、阿里 ASR、文字内核仅氛围、Gemini TTS 与失败恢复 | 后端 | ✅ 本地完成；服务器真实 ASR 见 TEST-112 |
+| FE-123 | P1 | 🔵 | 高质量语音入口、按住录音、自动播放、恢复状态、角色音色绑定，无重播 | 前端/后台 | ✅ 本地验收完成（2026-10-01） |
+| TEST-113 | P1 | 🔴 | 高质量语音本地回归及真实主模型/TTS 两轮验收 | 测试 | ✅ 完成；签名/真实 ASR 明确 SKIPPED，见 docs/voice-backend.md |
+| TEST-111 | P0 | 🔴 | 服务器环境构建前：ASR 音频签名配置与权限测试 | 部署验收 | 待办；local 跳过不算通过 |
+| TEST-112 | P0 | 🔴 | 服务器环境构建后：公网签名下载及阿里拉取闭环 | 部署验收 | 待办；local 跳过不算通过 |
 | INFRA-109 | P1 | 🟡 | 控制台秘密入口防扫描（`ADMIN_PATH` + Caddy 装死） | 运维 | ✅ done（2026-06-11）|
 | OPT-131 | P2 | 🟡 | 非支付接口共享契约收口 + `check-api-contracts` 改 apps/api 口径 | 重构 | ✅ done（2026-06-11）|
 | DEFER-001 | — | — | 应用商店打包（Capacitor / Tauri） | 暂缓 | 不做 |
@@ -128,6 +135,27 @@
 ---
 
 ## §三　P0 详细（阻塞当前阶段定位 = 网页端可上服务器运营）
+
+### TEST-111 / TEST-112 高质量语音签名上线检查（2026-10-01）
+
+关联：BE-152。高质量语音沿用文字内核，仅保留氛围侧袋；**不做重播**。
+本地功能与主模型/TTS 验收已完成（BE-153 / FE-123 / TEST-113）。`DEPLOY_MODE=local` 明确跳过签名和依赖公网 URL 的真实 ASR，不能伪造识别成功；本地可用显式文字测试后续链路。
+
+**TEST-111：在服务器环境构建前完成**
+
+- [ ] 确认 `DEPLOY_MODE=server`、`VOICE_ASR_PUBLIC_ORIGIN` 为真实公网 HTTPS 域名、独立签名密钥至少 32 字符，TTL 为 60–3600 秒（默认 900）。密钥从部署环境注入，不烘入镜像。
+- [ ] 在隔离测试库执行 `apps/api/src/voice/asr-signing.test.ts`；验证本人输入录音才能签发，其他用户/输出音频不能签发，过期、参数篡改、文件替换、密钥轮换均失效。
+- [ ] 检查 Caddy >= 2.8 的配置，签名路径不写完整访问日志；CDN 不缓存；签名 URL 的 query、GET/HEAD/Range 能完整转发。若走 Worker edge，确认内部 token 由代理注入，不能要求阿里提供用户登录 token。
+- [ ] 若已有运行版本，执行 `node scripts/asr-signature-check.mjs pre-build`；首次部署无该路由时，此项标记“首次部署，构建后必测”，不可写成通过。
+
+**TEST-112：在服务器环境构建后、开放功能前完成**
+
+- [ ] 用自己的合成测试录音取得输入 assetId，设置 `YELAN_API_BASE`、`YELAN_USER_TOKEN`、`VOICE_ASR_TEST_ASSET_ID`，执行 `DEPLOY_MODE=server node scripts/asr-signature-check.mjs post-build`；保存脱敏结果。不得使用真实用户私密录音。
+- [ ] 从服务器外部网络确认签名 GET/HEAD/Range 成功、文件校验一致；无签名/篡改/过期/错误资源均拒绝；普通音频接口仍需登录。等待到期再测拒绝，不能仅以“改过期字段”替代真实到期测试。
+- [ ] 阿里 ASR 使用该短效 URL：提交一次 → 保存 task_id → 轮询原任务 → 下载并持久化非空转写；检查子任务成功，测量耗时，刷新/重试不得重复提交原任务。
+- [ ] 验证容器重启、持久卷恢复后音频仍可读取；密钥稳定时有效链接可在 TTL 内继续下载，轮换密钥后旧链接立即失效。
+- [ ] 确认本地检查报告是 `SKIPPED/LOCAL_SIGNATURE_SKIPPED`，不得充当上述服务器测试记录。服务器签名配置缺失应报 503，不能回退为跳过或永久公开音频。
+
 
 ### 2026-05-10 复审新增 P0
 
@@ -445,6 +473,8 @@
 ---
 
 ## §六　已完成（参考 — 历史变更见 structure.md）
+
+- ✅ **ASR 输入录音短效签名基础能力**（2026-10-01，BE-152）— 仅 server 签发；local 返回显式跳过；HMAC 绑定资产与时效，GET/HEAD/Range 下载，部署变量与访问日志处理已接入。服务器构建前后实测仍待 TEST-111/112，不因本地隔离测试通过而勾选。
 
 - ✅ **温度乐观异步/同步切换 + 日志护栏**（2026-06-17，BE-149/BE-150）— 后台「策略」加 `TEMPERATURE_OPTIMISTIC`（乐观异步=不阻塞首字、judge 异步供下一轮 / 同步阻塞=回复前 await、实时反应本轮）；`store/persistence.ts` 加 `pushBounded`/`LOG_RETENTION`（conversationLogs 5000 上限）给只追加遥测数组上界，财务/审计不自动修剪（ADR-0010 迁 PG 前过渡）。详见 `docs/changelog/structure.md` 0.8.7
 - ✅ **角色卡推荐版粘贴导入**（2026-06-07，BE-148/AD-112）— shared `AdminCharacterImport*` schema + 归一化；`/api/admin/characters/import/preview`（不写库）+ `/import`（写库 + `character.import` 审计）；create/update/upsert 三模式，tier2 识别但不入库；后台角色卡面板「导入角色包」弹窗。详见 [`docs/audit/2026-06-07-character-import.md`](audit/2026-06-07-character-import.md)

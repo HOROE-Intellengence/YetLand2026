@@ -116,6 +116,7 @@ adminCharactersRoute.post(
       description: preview.character.description,
       profileSections: preview.character.profileSections,
       isActive: preview.character.isActive,
+      hqVoiceProfileId: preview.character.hqVoiceProfileId,
     });
     audit('character.import', imported.id, body.reason, {
       mode: body.mode,
@@ -202,6 +203,8 @@ adminCharactersRoute.post(
       priceCandle: body.priceCandle,
       styleTags: body.styleTags,
       preludeCardId: body.preludeCardId ?? null,
+      voiceName: body.voiceName,
+      hqVoiceProfileId: body.hqVoiceProfileId,
       boundaryDefault: body.boundaryDefault,
       openingFirstVisit: body.openingFirstVisit,
       openingReturnVisit: body.openingReturnVisit,
@@ -231,6 +234,8 @@ adminCharactersRoute.patch(
       priceCandle: body.priceCandle ?? existing.priceCandle,
       styleTags: body.styleTags ?? existing.styleTags,
       preludeCardId: body.preludeCardId === undefined ? (existing.preludeCardId ?? null) : body.preludeCardId,
+      voiceName: body.voiceName ?? existing.voiceName,
+      hqVoiceProfileId: body.hqVoiceProfileId ?? existing.hqVoiceProfileId,
       boundaryDefault: body.boundaryDefault ?? existing.boundaryDefault,
       openingFirstVisit: body.openingFirstVisit ?? existing.openingLines.firstVisit,
       openingReturnVisit: body.openingReturnVisit ?? existing.openingLines.returnVisit,

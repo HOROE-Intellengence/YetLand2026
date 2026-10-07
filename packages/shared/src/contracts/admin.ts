@@ -1,6 +1,8 @@
+import { HqVoiceProfileIdSchema } from './voice-hq';
 import { z } from 'zod';
 import { ConstellationPointSchema, ConstellationEdgeSchema, ConstellationSchema } from './characters';
 import { SidecarPromptKeySchema } from '../schemas/sidecar';
+import { VoiceNameSchema } from './voice';
 
 const Boundary = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 const Rarity = z.enum(['free', 'paid', 'hidden']);
@@ -21,6 +23,8 @@ export const AdminCharactersCreateSchema = z.object({
   priceCandle: z.number().int().min(0),
   styleTags: z.array(z.string()).optional(),
   preludeCardId: z.string().min(1).nullable().optional(),
+  voiceName: VoiceNameSchema.optional(),
+  hqVoiceProfileId: HqVoiceProfileIdSchema.optional(),
   boundaryDefault: Boundary,
   openingFirstVisit: z.string().max(200).optional(),
   openingReturnVisit: z.string().max(200).optional(),
@@ -44,6 +48,7 @@ const CharacterImportProfileSectionInputSchema = z.object({
 }).passthrough();
 
 const CharacterImportCardSchema = z.object({
+  hqVoiceProfileId: HqVoiceProfileIdSchema.optional(),
   id: z.string().min(1).optional(),
   slug: z.string(),
   name: z.string(),
@@ -139,6 +144,8 @@ export const AdminCharactersListResponseSchema = z.object({
     priceCandle: z.number(),
     styleTags: z.array(z.string()),
     promptCardKey: z.string().optional(),
+    voiceName: VoiceNameSchema.optional(),
+    hqVoiceProfileId: HqVoiceProfileIdSchema.optional(),
     preludeCardId: z.string().nullable().optional(),
     boundaryDefault: Boundary,
     isActive: z.boolean(),
@@ -286,6 +293,7 @@ export function normalizeCharacterImportBundle(input: unknown): {
     forbiddenPhrases: normalizeStringList(card.forbiddenPhrases ?? card.forbidden_phrases),
     description: cleanString(card.description),
     profileSections: normalizeProfileSections(card.profileSections ?? card.profile_sections, warnings),
+    hqVoiceProfileId: card.hqVoiceProfileId,
     isActive: card.isActive ?? card.is_active,
   };
 
@@ -489,7 +497,7 @@ export const AdminMembershipCancelSchema = z.object({
 });
 
 // ── Prelude / 前置提示卡 ──
-export const PreludeCardScopeSchema = z.enum(['global', 'character', 'if']);
+export const PreludeCardScopeSchema = z.enum(['global', 'character', 'if', 'voice']);
 
 export const AdminPreludeCardCreateSchema = z.object({
   id: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/).optional(),

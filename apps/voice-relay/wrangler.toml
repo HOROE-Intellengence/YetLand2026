@@ -1,0 +1,7 @@
+name = "yelan-voice-relay"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+# Configure GOOGLE_API_KEY and RELAY_TOKEN using wrangler secret put.
+# No Google key or relay token belongs in this file.

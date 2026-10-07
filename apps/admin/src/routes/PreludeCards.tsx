@@ -96,6 +96,7 @@ export function PreludeCards() {
         </button>
       </div>
 
+      <p className="muted">语音固定使用 voice-global 提示卡与所选角色卡。编辑保存后下一轮生效；语音作用域不参与文字聊天。</p>
       <div className="card" style={{ padding: 0 }}>
         <table>
           <thead>
@@ -186,6 +187,7 @@ function PreludeCardForm({ initial, onSave, onCancel }: {
               <option value="if">IF 解锁</option>
               <option value="character">指定角色</option>
               <option value="global">全局</option>
+              <option value="voice">语音专用</option>
             </select>
           </div>
           <div className="field">

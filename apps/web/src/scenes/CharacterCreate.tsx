@@ -2,7 +2,7 @@
 // 流程：表单 → 两步确认（是否公开 / 公序良俗）→ 呼吸灯条 5s → 结束语 → 进入故事 / 完成
 import { useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Character, UserCharacterCreate } from '@yelan/shared';
+import { DEFAULT_VOICE_NAME, VOICE_OPTIONS, type VoiceName, type HqVoiceProfileId, HQ_VOICE_OPTIONS, defaultHqVoiceProfile, type Character, type UserCharacterCreate } from '@yelan/shared';
 import { createMyCharacter } from '../api/my-characters';
 import { useSessionStore } from '../stores/sessionStore';
 import styles from './CharacterCreate.module.css';
@@ -27,6 +27,8 @@ export function CharacterCreate() {
 
   // —— 表单：世界书 ——
   const [name, setName] = useState('');
+  const [voiceName, setVoiceName] = useState<VoiceName>(DEFAULT_VOICE_NAME);
+  const [hqVoiceProfileId, setHqVoiceProfileId] = useState<HqVoiceProfileId>(defaultHqVoiceProfile(DEFAULT_VOICE_NAME));
   const [background, setBackground] = useState('');
   const [corePrinciples, setCorePrinciples] = useState('');
   const [rules, setRules] = useState('');
@@ -63,6 +65,7 @@ export function CharacterCreate() {
 
   const buildPayload = useCallback((): UserCharacterCreate => ({
     name: name.trim(),
+    voiceName, hqVoiceProfileId,
     worldbook: {
       background: background.trim() || undefined,
       corePrinciples: corePrinciples.trim() || undefined,
@@ -81,7 +84,7 @@ export function CharacterCreate() {
     },
     makePublic,
     consent: true,
-  }), [name, background, corePrinciples, rules, forbiddenRules, triggers, notes,
+  }), [name, voiceName, hqVoiceProfileId, background, corePrinciples, rules, forbiddenRules, triggers, notes,
     relationshipByUser, relationshipByChar, location, action, taboo, makePublic]);
 
   const submit = async () => {
@@ -93,6 +96,7 @@ export function CharacterCreate() {
       createdRef.current = resp.character;
       // 让"选择一扇门"重新拉取，本人立即能看到这张私有卡
       void queryClient.invalidateQueries({ queryKey: ['characters'] });
+      void queryClient.invalidateQueries({ queryKey: ['voice-characters'] });
       setStep('breathing');
       window.setTimeout(() => setStep('done'), 5000);
     } catch (e) {
@@ -163,6 +167,18 @@ export function CharacterCreate() {
             autoFocus
           />
         </label>
+
+        <div className={styles.field}>
+          <label htmlFor="custom-character-voice">普通语音音色</label>
+          <select id="custom-character-voice" value={voiceName} onChange={e => setVoiceName(e.target.value as VoiceName)}>
+            {VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+          </select>
+            <label htmlFor="character-hq-voice">高质量语音音色</label>
+            <select id="character-hq-voice" value={hqVoiceProfileId} onChange={e => setHqVoiceProfileId(e.target.value as HqVoiceProfileId)}>
+              {HQ_VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+            </select>
+          <span className={styles.nameLabel}>两种语音模式分别使用对应音色。</span>
+        </div>
 
         {/* —— 世界书 —— */}
         <section className={styles.block}>

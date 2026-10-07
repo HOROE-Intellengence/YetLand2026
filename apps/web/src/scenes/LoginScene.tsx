@@ -1,330 +1,127 @@
-// 登录场景 — 邮箱+密码（默认） / 邮箱+密码注册 / 手机号 3 模式（legacy 折叠）
-// 由 OpeningScene 与 YouPanel 触发，跨 scene 流入
-import { useState } from 'react';
+// 邮箱注册/登录及已有手机号账号的密码登录。短信服务尚未开放。
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  loginWithEmail,
-  loginWithPassword,
-  registerWithEmail,
-  requestOtp,
-  resetPassword,
-  verifyOtp,
-} from '../api/auth';
+import { loginWithEmail, loginWithPassword, registerWithEmail } from '../api/auth';
 import { useSessionStore } from '../stores/sessionStore';
 import styles from './NameScene.module.css';
+import loginStyles from './LoginScene.module.css';
 
-type Mode = 'email-login' | 'email-register' | 'phone-password' | 'phone-otp' | 'phone-reset';
-
+type Mode = 'email-login' | 'email-register' | 'phone-password';
 const PHONE_RE = /^\+?\d{8,15}$/;
-const CODE_RE = /^\d{4,8}$/;
 const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,128}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const isPhoneMode = (m: Mode) => m === 'phone-password' || m === 'phone-otp' || m === 'phone-reset';
-
 export function LoginScene() {
-  const setUserName = useSessionStore((s) => s.setUserName);
-  const restart = useSessionStore((s) => s.restart);
+  const finishLogin = useSessionStore((s) => s.finishLogin);
+  const cancelLogin = useSessionStore((s) => s.cancelLogin);
   const queryClient = useQueryClient();
-
   const [mode, setMode] = useState<Mode>('email-login');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [legacyOpen, setLegacyOpen] = useState(false);
-
-  const sendOtp = async () => {
-    if (!PHONE_RE.test(phone)) {
-      setError('请输入有效的手机号');
-      return;
-    }
-    setError(null);
-    try {
-      await requestOtp(phone);
-      setOtpSent(true);
-    } catch (e) {
-      setError((e as Error).message || '验证码发送失败');
-    }
-  };
+  const submitting = useRef(false);
+  const registering = mode === 'email-register';
+  const phoneMode = mode === 'phone-password';
+  const action = registering ? '注册并进入' : '登录';
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy) return;
+    if (submitting.current) return;
     setError(null);
-
+    const cleanEmail = email.trim();
+    const cleanPhone = phone.trim();
+    if (phoneMode ? !PHONE_RE.test(cleanPhone) : !EMAIL_RE.test(cleanEmail)) {
+      setError(phoneMode ? '请输入有效的手机号' : '请输入有效的邮箱');
+      return;
+    }
+    if (!password) { setError('请输入密码'); return; }
+    if (registering && !PASSWORD_RE.test(password)) {
+      setError('密码至少 8 位，需包含字母与数字'); return;
+    }
+    if (!registering && password.length < 8) {
+      setError('账号或密码不正确'); return;
+    }
+    submitting.current = true;
     setBusy(true);
     try {
-      let result;
-      if (mode === 'email-login') {
-        if (!EMAIL_RE.test(email)) { setError('请输入有效的邮箱'); return; }
-        if (!password) { setError('请输入密码'); return; }
-        result = await loginWithEmail(email, password);
-      } else if (mode === 'email-register') {
-        if (!EMAIL_RE.test(email)) { setError('请输入有效的邮箱'); return; }
-        if (!PASSWORD_RE.test(password)) { setError('密码至少 8 位，需包含字母与数字'); return; }
-        result = await registerWithEmail(email, password, name.trim() || undefined);
-      } else {
-        if (!PHONE_RE.test(phone)) { setError('请输入有效的手机号'); return; }
-        if (mode === 'phone-password') {
-          if (!password) { setError('请输入密码'); return; }
-          result = await loginWithPassword(phone, password);
-        } else if (mode === 'phone-otp') {
-          if (!CODE_RE.test(code)) { setError('请输入有效的验证码'); return; }
-          result = await verifyOtp(phone, code);
-        } else {
-          if (!CODE_RE.test(code)) { setError('请输入有效的验证码'); return; }
-          if (!PASSWORD_RE.test(newPassword)) { setError('新密码至少 8 位，需包含字母与数字'); return; }
-          result = await resetPassword(phone, code, newPassword);
-        }
-      }
+      const result = phoneMode
+        ? await loginWithPassword(cleanPhone, password)
+        : registering
+          ? await registerWithEmail(cleanEmail, password, name.trim() || undefined)
+          : await loginWithEmail(cleanEmail, password);
+      // 身份切换后不可沿用上个账户的查询缓存。
+      await queryClient.cancelQueries();
+      queryClient.clear();
       queryClient.setQueryData(['me'], result.me);
-      if (result.me.name) setUserName(result.me.name);
-      restart();
+      finishLogin(result.me.name);
     } catch (e) {
       const err = e as { code?: string; message?: string; status?: number };
-      const msg = err.message || '';
-      if (err.status === 423 || /锁定/.test(msg)) {
-        setError('账号已锁定，请稍后再试');
-      } else if (err.code === 'PASSWORD_NOT_SET' || err.code === 'NO_PASSWORD') {
-        setError('此账号尚未设置密码');
-      } else if (err.code === 'EMAIL_TAKEN' || err.status === 409) {
-        setError('该邮箱已被注册');
-      } else if (err.status === 401) {
-        setError('账号或密码不正确');
-      } else if (err.status === 410 || err.code === 'ACCOUNT_DELETED') {
-        setError('该账号已注销');
-      } else {
-        setError(msg || '登录失败，请重试');
-      }
+      if (err.status === 423) setError('账号已锁定，请稍后再试');
+      else if (err.code === 'PASSWORD_NOT_SET' || err.code === 'NO_PASSWORD') setError('此账号尚未设置密码');
+      else if (err.code === 'EMAIL_TAKEN') setError('该邮箱已被注册，请直接登录');
+      else if (err.status === 401 || err.code === 'NOT_FOUND') setError('账号或密码不正确');
+      else if (err.status === 410 || err.code === 'ACCOUNT_DELETED') setError('该账号已注销');
+      else if (err.code === 'VALIDATION_ERROR') setError('请检查邮箱、手机号及密码格式');
+      else if (e instanceof TypeError) setError('暂时无法连接服务，请稍后重试');
+      else setError(err.message || '登录失败，请重试');
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   };
 
-  // 切换模式时清理无关字段 + 错误 + OTP 发送态
   const switchMode = (next: Mode) => {
+    if (submitting.current) return;
     setError(null);
-    setOtpSent(false);
-    setCode('');
-    setNewPassword('');
+    setPassword('');
     setMode(next);
-    if (isPhoneMode(next)) setLegacyOpen(true);
   };
 
-  const title = mode === 'email-register'
-    ? '加入夜阑'
-    : mode === 'phone-reset'
-      ? '重置密码'
-      : '回到夜阑';
-
   return (
-    <div className={styles.root}>
-      <form className={styles.form} onSubmit={submit}>
-        <div className={styles.prompt}>
-          <span>{title}</span>
-        </div>
-
-        {(mode === 'email-login' || mode === 'email-register') && (
-          <>
-            <input
-              className={styles.input}
-              inputMode="email"
-              maxLength={120}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="邮箱"
-              type="email"
-              value={email}
-            />
-            {mode === 'email-register' && (
-              <input
-                className={styles.input}
-                maxLength={24}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="希望被怎样称呼（可选）"
-                value={name}
-              />
-            )}
-            <input
-              className={styles.input}
-              maxLength={128}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === 'email-register' ? '设置密码（≥8 位，字母+数字）' : '密码'}
-              type="password"
-              value={password}
-            />
-            <p className={styles.subtitle}>
-              {mode === 'email-login' ? '还没有账户？' : '已有账户？'}
-              {' '}
-              <button
-                onClick={() => switchMode(mode === 'email-login' ? 'email-register' : 'email-login')}
-                style={{
-                  background: 'none', border: 0, color: 'var(--gold-light)',
-                  cursor: 'pointer', textDecoration: 'underline',
-                }}
-                type="button"
-              >
-                {mode === 'email-login' ? '注册' : '直接登录'}
-              </button>
-            </p>
-          </>
+    <div className={`${styles.root} ${loginStyles.root}`}>
+      <form className={styles.form} onSubmit={submit} noValidate aria-label={registering ? '注册账号' : '账号登录'}>
+        <div className={styles.prompt}><span>{registering ? '加入夜阑' : '回到夜阑'}</span></div>
+        {phoneMode ? (
+          <input className={styles.input} aria-label="手机号" autoComplete="username" inputMode="tel" maxLength={20}
+            disabled={busy} onChange={(e) => setPhone(e.target.value)} placeholder="手机号" type="tel" value={phone} />
+        ) : (
+          <input className={styles.input} aria-label="邮箱" autoComplete="username" inputMode="email" maxLength={120}
+            disabled={busy} onChange={(e) => setEmail(e.target.value)} placeholder="邮箱" type="email" value={email} />
         )}
-
-        {isPhoneMode(mode) && (
-          <>
-            <input
-              className={styles.input}
-              inputMode="tel"
-              maxLength={20}
-              onChange={(event) => setPhone(event.target.value)}
-              placeholder="手机号"
-              value={phone}
-            />
-
-            {mode === 'phone-password' && (
-              <input
-                className={styles.input}
-                maxLength={128}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="密码"
-                type="password"
-                value={password}
-              />
-            )}
-
-            {(mode === 'phone-otp' || mode === 'phone-reset') && (
-              <>
-                <input
-                  className={styles.input}
-                  inputMode="numeric"
-                  maxLength={8}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder="验证码"
-                  value={code}
-                />
-                <button
-                  className={styles.input}
-                  disabled={!PHONE_RE.test(phone) || otpSent}
-                  onClick={sendOtp}
-                  style={{ cursor: 'pointer', textAlign: 'center', borderBottomStyle: 'dashed' }}
-                  type="button"
-                >
-                  {otpSent ? '验证码已发送' : '发送验证码'}
-                </button>
-              </>
-            )}
-
-            {mode === 'phone-reset' && (
-              <input
-                className={styles.input}
-                maxLength={128}
-                onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="新密码（≥8 位，字母+数字）"
-                type="password"
-                value={newPassword}
-              />
-            )}
-
-            <p className={styles.subtitle}>
-              {mode === 'phone-password' ? '没有密码？' : mode === 'phone-otp' ? '已设密码？' : '想起密码了？'}
-              {' '}
-              <button
-                onClick={() => switchMode(mode === 'phone-password' ? 'phone-otp' : 'phone-password')}
-                style={{
-                  background: 'none', border: 0, color: 'var(--gold-light)',
-                  cursor: 'pointer', textDecoration: 'underline',
-                }}
-                type="button"
-              >
-                {mode === 'phone-password' ? '用验证码登录' : '用密码登录'}
-              </button>
-              {' · '}
-              <button
-                onClick={() => switchMode(mode === 'phone-reset' ? 'phone-password' : 'phone-reset')}
-                style={{
-                  background: 'none', border: 0, color: 'var(--gold-light)',
-                  cursor: 'pointer', textDecoration: 'underline',
-                }}
-                type="button"
-              >
-                {mode === 'phone-reset' ? '取消' : '忘记密码'}
-              </button>
-            </p>
-          </>
+        {registering && (
+          <input className={styles.input} aria-label="称呼（可选）" autoComplete="nickname" maxLength={24}
+            disabled={busy} onChange={(e) => setName(e.target.value)} placeholder="希望被怎样称呼（可选）" value={name} />
         )}
-
-        {/* 其他登录方式 —— 旧 phone 链路收在折叠区 */}
-        <details
-          open={legacyOpen}
-          onToggle={(e) => setLegacyOpen((e.target as HTMLDetailsElement).open)}
-          style={{ marginTop: 12, opacity: 0.7 }}
-        >
-          <summary style={{ cursor: 'pointer', fontSize: 13 }}>
-            其他登录方式（手机号）
-          </summary>
-          <div style={{ marginTop: 8, display: 'flex', gap: 12, fontSize: 13, justifyContent: 'center' }}>
-            <button
-              onClick={() => switchMode('phone-password')}
-              style={{
-                background: 'none', border: 0, color: 'var(--gold-light)',
-                cursor: 'pointer', textDecoration: mode === 'phone-password' ? 'underline' : 'none',
-              }}
-              type="button"
-            >
-              手机号 + 密码
+        <input className={styles.input} aria-label="密码" autoComplete={registering ? 'new-password' : 'current-password'}
+          maxLength={128} disabled={busy} onChange={(e) => setPassword(e.target.value)}
+          placeholder={registering ? '设置密码（≥8 位，字母+数字）' : '密码'} type="password" value={password} />
+        {!phoneMode && (
+          <p className={styles.subtitle}>
+            {registering ? '已有账户？' : '还没有账户？'}{' '}
+            <button className={loginStyles.link} disabled={busy} type="button"
+              onClick={() => switchMode(registering ? 'email-login' : 'email-register')}>
+              {registering ? '直接登录' : '注册'}
             </button>
-            <button
-              onClick={() => switchMode('phone-otp')}
-              style={{
-                background: 'none', border: 0, color: 'var(--gold-light)',
-                cursor: 'pointer', textDecoration: mode === 'phone-otp' ? 'underline' : 'none',
-              }}
-              type="button"
-            >
-              手机号 + 验证码
+          </p>
+        )}
+        <details className={loginStyles.alternatives}>
+          <summary>其他登录方式</summary>
+          <div className={loginStyles.options}>
+            <button className={loginStyles.link} disabled={busy} type="button" onClick={() => switchMode(phoneMode ? 'email-login' : 'phone-password')}>
+              {phoneMode ? '回到邮箱登录' : '手机号 + 密码'}
             </button>
-            {!isPhoneMode(mode) && (
-              <button
-                onClick={() => switchMode('email-login')}
-                style={{
-                  background: 'none', border: 0, color: 'var(--gold-light)',
-                  cursor: 'pointer', textDecoration: 'none',
-                }}
-                type="button"
-              >
-                回到邮箱登录
-              </button>
-            )}
-            {isPhoneMode(mode) && (
-              <button
-                onClick={() => switchMode('email-login')}
-                style={{
-                  background: 'none', border: 0, color: 'var(--gold-light)',
-                  cursor: 'pointer', textDecoration: 'none',
-                }}
-                type="button"
-              >
-                回到邮箱登录
-              </button>
-            )}
+            <p className={styles.subtitle}>短信验证暂未开放，暂不支持验证码登录和短信找回密码。</p>
           </div>
         </details>
-
-        {error && <p className={styles.error}>{error}</p>}
-
-        <button
-          className={styles.enterBtn}
-          disabled={busy}
-          type="submit"
-        >
-          {busy ? <span className={styles.spin}>...</span> : '>'}
+        {error && <p className={styles.error} role="alert">{error}</p>}
+        <button className={`${styles.enterBtn} ${loginStyles.submit}`} disabled={busy} type="submit">
+          {busy ? '请稍候…' : action}
         </button>
+        <button className={loginStyles.link} disabled={busy} onClick={cancelLogin} type="button">返回</button>
       </form>
     </div>
   );

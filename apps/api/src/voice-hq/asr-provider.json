@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "provider": "aliyun-filetrans",
+  "model": "qwen-audio-3.0-asr-flash-filetrans",
+  "baseUrl": "https://ws-imp5vxamz4ohf5kp.cn-beijing.maas.aliyuncs.com/api/v1",
+  "apiKeyEnv": "VOICE_HQ_ASR_API_KEY",
+  "submit": {
+    "method": "POST",
+    "path": "/services/audio/asr/transcription",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-DashScope-Async": "enable"
+    },
+    "parameters": {
+      "channel_id": [
+        0
+      ]
+    }
+  },
+  "query": {
+    "method": "GET",
+    "path": "/tasks/{task_id}"
+  },
+  "input": {
+    "type": "file_urls",
+    "maxFilesPerRequest": 1,
+    "requiresProviderReachableUrl": true
+  },
+  "integrationStatus": "integrated-local-verified-server-acceptance-pending",
+  "signedAudio": {
+    "enabledDeployMode": "server",
+    "issuePath": "/api/voice/asr-assets/{assetId}/sign",
+    "localBehavior": "skip-signing-and-real-asr",
+    "serverAcceptanceTasks": [
+      "TEST-111",
+      "TEST-112"
+    ]
+  },
+  "credentialStorage": "server-only environment; no credentials in this file"
+}

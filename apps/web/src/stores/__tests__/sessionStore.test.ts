@@ -28,6 +28,36 @@ describe('sessionStore', () => {
     expect(useSessionStore.getState().scene).toBe('intro');
   });
 
+  it('login keeps the account name and proceeds directly to character selection', () => {
+    useSessionStore.getState().goLogin();
+    useSessionStore.getState().finishLogin('登录验收');
+    expect(useSessionStore.getState()).toMatchObject({ scene: 'select', userName: '登录验收' });
+  });
+
+  it('registration without a name asks for a name instead of replaying intro', () => {
+    useSessionStore.getState().setUserName('上个账号');
+    useSessionStore.getState().goLogin();
+    useSessionStore.getState().finishLogin();
+    expect(useSessionStore.getState()).toMatchObject({ scene: 'name', userName: '' });
+  });
+
+  it.each(['api', 'voice', 'voice-hq'] as const)('login resumes %s and clears the return flags', (scene) => {
+    const s = useSessionStore.getState();
+    if (scene === 'api') s.goApiLogin(); else if (scene === 'voice-hq') s.goHqVoiceLogin(); else s.goVoiceLogin();
+    s.finishLogin('登录验收');
+    expect(useSessionStore.getState()).toMatchObject({ scene, userName: '登录验收', apiLogin: false, voiceLogin: false });
+    s.goLogin();
+    s.finishLogin('另一个账号');
+    expect(useSessionStore.getState().scene).toBe('select');
+  });
+
+  it.each(['opening', 'api', 'voice', 'voice-hq'] as const)('cancelling login returns to %s', (scene) => {
+    const s = useSessionStore.getState();
+    if (scene === 'api') s.goApiLogin(); else if (scene === 'voice') s.goVoiceLogin(); else if (scene === 'voice-hq') s.goHqVoiceLogin(); else s.goLogin();
+    s.cancelLogin();
+    expect(useSessionStore.getState()).toMatchObject({ scene, apiLogin: false, voiceLogin: false });
+  });
+
   it('enters intro from landing scene', () => {
     useSessionStore.setState({ scene: 'home' });
     useSessionStore.getState().goIntro();

@@ -16,15 +16,21 @@
 FROM node:20-alpine AS base
 WORKDIR /app
 
+# libopus audio conversion; native SQLite builds if a musl prebuild is unavailable.
+RUN apk add --no-cache ffmpeg python3 make g++
+
 # corepack 启用 pnpm（Node 20 自带）
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 # 先 copy 配置文件（layer 缓存优化）
 COPY pnpm-workspace.yaml package.json ./
+COPY tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 COPY packages/prompts/package.json packages/prompts/
 COPY packages/llm/package.json packages/llm/
+COPY apps/admin/package.json apps/admin/
+COPY packages/design-tokens/package.json packages/design-tokens/
 
 # 注：production 仍装 dev deps（因为 apps/api 用 tsx 直接跑 .ts）
 # 想瘦身可以加一步 esbuild bundle，但现阶段保持简单
@@ -36,6 +42,10 @@ COPY packages/shared  ./packages/shared
 COPY packages/prompts ./packages/prompts
 COPY packages/llm     ./packages/llm
 COPY apps/admin       ./apps/admin
+COPY packages/design-tokens ./packages/design-tokens
+
+# Always serve the admin built from this checkout, never a stale local dist.
+RUN pnpm --filter @yelan/admin build
 
 # 烘 prompts（apps/api 现在直接读 yaml/md，但留着不亏）
 RUN pnpm prompts:build || true

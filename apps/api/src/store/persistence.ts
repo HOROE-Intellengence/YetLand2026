@@ -1,9 +1,10 @@
+import type { HqVoiceProfileId } from '@yelan/shared';
 // JSON 文件持久化 — 让 candle/quota/sessions 跨进程重启
 // 落盘点：apps/api/.local/state.json（写在 api 自己目录下，gitignore 友好）
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ConstellationEdge, ConstellationPoint, Plan, PreferenceCategory, SidecarPromptKey, Subscription } from '@yelan/shared';
+import type { ConstellationEdge, ConstellationPoint, Plan, PreferenceCategory, SidecarPromptKey, Subscription, VoiceName } from '@yelan/shared';
 import type { ReasoningEffort } from '@yelan/llm';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,8 @@ const SNAPSHOT_MIN_INTERVAL_MS = 30 * 60 * 1000;
 
 export interface PersistedUser {
   id: string;
+  /** Immutable signup identity; absent on accounts created before API gateway rollout. */
+  registrationIdentity?: { name?: string; phone?: string; email?: string; registeredAt: string };
   name?: string;
   // phone 现在 optional —— email-auth phase 后，新用户可只用邮箱注册；
   // 老 phone 用户字段保留不变，UI 优先显示 email > phone。
@@ -150,6 +153,8 @@ export interface CharacterRow {
   styleTags: string[];
   promptCardKey?: string;
   preludeCardId?: string | null;
+  voiceName?: VoiceName;
+  hqVoiceProfileId?: HqVoiceProfileId;
   boundaryDefault: 1 | 2 | 3 | 4 | 5;
   isActive: boolean;
   openingFirstVisit: string;
@@ -227,7 +232,7 @@ export interface PreludeCardRow {
   id: string;
   name: string;
   content: string;
-  scope: 'global' | 'character' | 'if';
+  scope: 'global' | 'character' | 'if' | 'voice';
   characterId?: string | null;
   priority: number;
   isActive: boolean;
@@ -684,6 +689,12 @@ export const store = {
   },
   save(): void {
     scheduleSave();
+  },
+  /** Prompt edits must not report success if durable persistence failed. */
+  saveStrict(): void {
+    if (process.env.NODE_ENV === 'test') return;
+    if (!existsSync(STATE_DIR)) mkdirSync(STATE_DIR, { recursive: true });
+    writeStateAtomic(JSON.stringify(ensureLoaded(), null, 2));
   },
   /** 同步落盘 — 退出钩子用 */
   saveNow(): void {

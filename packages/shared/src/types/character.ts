@@ -1,5 +1,7 @@
+import type { HqVoiceProfileId } from '../contracts/voice-hq';
 import type { Boundary } from '../enums/boundary';
 import type { Constellation } from './constellation';
+import type { VoiceName } from '../contracts/voice';
 
 export type CharacterRarity = 'free' | 'paid' | 'hidden';
 
@@ -23,6 +25,8 @@ export interface Character {
   styleTags: string[];
   promptCardKey?: string;
   preludeCardId?: string | null;
+  voiceName?: VoiceName;
+  hqVoiceProfileId?: HqVoiceProfileId;
   boundaryDefault: Boundary;
   isActive: boolean;
   openingLines: CharacterOpeningLines;

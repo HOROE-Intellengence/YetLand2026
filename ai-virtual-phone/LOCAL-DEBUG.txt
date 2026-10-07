@@ -1,0 +1,36 @@
+夜阑小手机：本地玩法调试
+
+打开 http://localhost:3001 。双击 start-local.cmd 可启动或复用现有服务。
+仅监听 127.0.0.1:3001，暂未并入夜阑主站。
+首次进入点 Enter；设置 → API 设置已有“夜阑共用 · 本地调试”。
+创建/导入角色卡后，可以在聊天中体验角色对话。
+
+接口与模型
+- 服务端每次请求读取 ../apps/api/.local/state.json 的 llmApiInventory.mainApiId。
+- 当前主模型：gemini-3.5-flash-lite，OpenAI 兼容接口。
+- 浏览器使用 /api/yelan/v1；API Key 栏是本地占位标记，真实密钥只在服务端读取。
+- 刷新页面同步模型名称；已保存的其他 API 和绑定不覆盖。
+- 不修改夜阑配置、角色、聊天记录或账号。
+- 语音、生图、音乐、云服务需要各自接口，本次未接通。
+
+仓库功能与结构
+- Next.js + React；入口 components/main-app.tsx，桌面 components/desktop-shell.tsx。
+- 角色卡、世界书、预设、正则、全局/角色/应用配置绑定。
+- 私聊、群聊、朋友圈、红包/转账卡片、角色记忆和主动消息。
+- 查手机、日记、剧情、视觉小说、地图冒险及自定义应用。
+- 主题、壁纸、小组件、PWA；媒体及 Supabase 云能力可选。
+- 数据主要保存在浏览器 IndexedDB，换浏览器/端口不会自动共享。
+- lib/llm-prompt-assembler.ts 组装角色与记忆提示词，
+  lib/llm-provider-adapter.ts 适配模型协议。
+
+本地改动
+- app/api/yelan/[...path]/route.ts：配置、模型列表、普通/流式聊天代理。
+- lib/yelan-local-bootstrap.ts：在存储初始化后自动填入默认接口。
+- start-local.ps1 / start-local.cmd：Windows 隐藏后台启动。
+- 补齐 meshoptimizer、three-stdlib 直接依赖及 npm 锁文件声明。
+- .local/ 保存日志、PID 和连接验证截图，并已忽略 Git。
+
+后续集成建议
+先挑聊天、朋友圈、查手机三个入口；适配夜阑角色和关系记忆，复用现有账号。
+不要直接导入原项目整套账号、Supabase 云服务和独立存储体系。
+当前只是独立的玩法调试环境，尚未完成夜阑业务数据互通。

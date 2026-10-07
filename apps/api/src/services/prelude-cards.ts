@@ -8,12 +8,14 @@ import { charactersService } from './characters';
 const here = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_IF_CARD = resolve(here, '..', '..', '..', '..', 'packages', 'prompts', 'prelude-cards', 'if-default.md');
 const DEFAULT_DAILY_CARD = resolve(here, '..', '..', '..', '..', 'packages', 'prompts', 'prelude-cards', 'daily-default.md');
+const DEFAULT_VOICE_CARD = resolve(here, '..', '..', '..', '..', 'packages', 'prompts', 'prelude-cards', 'voice-global.md');
+export const VOICE_PRELUDE_ID = 'voice-global';
 
 export interface PreludeCardUpsertInput {
   id?: string;
   name: string;
   content: string;
-  scope: 'global' | 'character' | 'if';
+  scope: 'global' | 'character' | 'if' | 'voice';
   characterId?: string | null;
   priority?: number;
   isActive?: boolean;
@@ -29,6 +31,15 @@ function hydrateIfNeeded(): void {
   if (_hydrated) return;
   const s = store.state();
   let dirty = false;
+
+  if (!s.preludeCards[VOICE_PRELUDE_ID] && existsSync(DEFAULT_VOICE_CARD)) {
+    s.preludeCards[VOICE_PRELUDE_ID] = {
+      id: VOICE_PRELUDE_ID, name: '语音专用全局前置提示卡',
+      content: readFileSync(DEFAULT_VOICE_CARD, 'utf8').trim(),
+      scope: 'voice', characterId: null, priority: 100, isActive: true, updatedAt: now(),
+    };
+    dirty = true;
+  }
 
   // IF 默认卡
   if (!s.preludeCards['if-default'] && existsSync(DEFAULT_IF_CARD)) {
@@ -96,7 +107,11 @@ export const preludeCardsService = {
       updatedAt: now(),
     };
     store.state().preludeCards[id] = row;
-    store.save();
+    try { store.saveStrict(); } catch (error) {
+      if (prev) store.state().preludeCards[id] = prev;
+      else delete store.state().preludeCards[id];
+      throw error;
+    }
     return row;
   },
 
@@ -106,14 +121,17 @@ export const preludeCardsService = {
     if (!prev) return null;
     const row: PreludeCardRow = {
       ...prev,
-      ...patch,
+      ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
       characterId: patch.characterId === undefined ? prev.characterId : patch.characterId,
       priority: patch.priority ?? prev.priority,
       isActive: patch.isActive ?? prev.isActive,
       updatedAt: now(),
     };
     store.state().preludeCards[id] = row;
-    store.save();
+    try { store.saveStrict(); } catch (error) {
+      store.state().preludeCards[id] = prev;
+      throw error;
+    }
     return row;
   },
 
@@ -127,7 +145,7 @@ export const preludeCardsService = {
 
   resolveForChat(characterId: string, ifActive: boolean): PreludeCardRow | null {
     hydrateIfNeeded();
-    const rows = this.listAll().filter((row) => row.isActive);
+    const rows = this.listAll().filter((row) => row.isActive && row.scope !== 'voice');
 
     // 暗号激活时 IF 卡最优先（角色专属 IF 卡 > 全局 IF 卡），压过角色绑定卡。
     if (ifActive) {
@@ -140,7 +158,7 @@ export const preludeCardsService = {
     if (character?.preludeCardId) {
       const bound = this.get(character.preludeCardId);
       // 非激活态下不让绑定的 IF 卡泄露 IF 内容。
-      if (bound?.isActive && !(bound.scope === 'if' && !ifActive)) return bound;
+      if (bound?.isActive && bound.scope !== 'voice' && !(bound.scope === 'if' && !ifActive)) return bound;
     }
 
     const characterCard = rows.find((row) => row.scope === 'character' && row.characterId === characterId);

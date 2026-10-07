@@ -16,6 +16,9 @@ const B = '\x1b[1m';
 // ── 权威映射：业务域 → contract 文件 ──────────────────────────────────────
 // null = 暂无契约（待补充）；'__internal__' = 运维端点，不做 API 契约
 const DOMAIN_CONTRACT_MAP = {
+  'api-gateway': 'api-gateway',
+  'admin/api-gateway': 'api-gateway',
+  'developer': '__internal__',
   'achievements': 'achievements',
   'admin/candle': 'admin',
   'admin/characters': 'admin',
@@ -53,6 +56,10 @@ const DOMAIN_CONTRACT_MAP = {
   'pay/stripe': null,
   'pay/wechat': null,
   'sessions': 'sessions',
+  'voice': 'voice',
+  'voice-asr-assets': 'voice',
+  'voice-hq': 'voice-hq',
+  'admin/voice-hq': 'voice-hq',
   'surveys': 'survey',
 };
 

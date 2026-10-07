@@ -21,6 +21,8 @@
 # ============================================================================
 
 {$DOMAIN} {
+	# 签名 URL 是短效访问凭证，不把它写入访问日志（Caddy >= 2.8）。
+	log_skip /api/voice/asr-assets/*
 	# 可选：HSTS / 安全头
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -28,6 +30,13 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 		# 删掉 Server 头别让对方猜版本
 		-Server
+	}
+
+	# Public Gemini gateway, including trailing-slash requests and SSE.
+	handle /v1/* {
+		reverse_proxy api:8787 {
+			flush_interval -1
+		}
 	}
 
 	# /api/* → apps/api

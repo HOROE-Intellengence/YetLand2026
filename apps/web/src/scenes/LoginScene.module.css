@@ -1,0 +1,17 @@
+.root {
+  overflow-y: auto;
+  align-items: safe center;
+}
+.link {
+  background: none;
+  border: 0;
+  color: var(--gold-light);
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
+.link:disabled { opacity: .5; cursor: default; }
+.alternatives { font-size: 13px; text-align: center; }
+.alternatives summary { cursor: pointer; }
+.options { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.submit { width: auto; min-width: 120px; padding: 0 24px; }

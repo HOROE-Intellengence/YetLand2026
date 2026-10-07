@@ -16,7 +16,7 @@ mockSessionsRoute.use('*', softAuth());
 mockSessionsRoute.get('/recent', (c) => {
   const userId = c.get('userId') as string;
   const sessions = Object.values(store.state().sessions)
-    .filter((s) => s.userId === userId)
+    .filter((s) => s.userId === userId && !s.id.startsWith('hq_'))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
   return c.json(RecentSessionResponseSchema.parse(sessions[0] ?? null));
 });

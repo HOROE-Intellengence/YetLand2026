@@ -1,5 +1,6 @@
+import { HqVoiceProfileIdSchema } from './voice-hq';
 import { z } from 'zod';
-import { ApiErrorCodeSchema } from '../schemas/error';
+import { VoiceNameSchema } from './voice';
 
 // ── 星座 ──
 // x 横向 0..100；y 纵向 -40..100（负值浮于卡片上边界之上，与渲染 viewBox "0 -40 100 140" 对齐）。
@@ -52,6 +53,8 @@ const CharacterResponseSchema = z.object({
   priceCandle: z.number(),
   styleTags: z.array(z.string()),
   promptCardKey: z.string().optional(),
+  voiceName: VoiceNameSchema.optional(),
+  hqVoiceProfileId: HqVoiceProfileIdSchema.optional(),
   boundaryDefault: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   isActive: z.boolean(),
   openingLines: z.object({

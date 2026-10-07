@@ -1,3 +1,4 @@
+import { HqVoiceProfileIdSchema } from './voice-hq';
 // 用户自定义角色卡 —— 结构化输入契约 + 编译纯函数
 // ----------------------------------------------------------------------------
 // 设计要点（见 docs/superpowers/specs/2026-05-19-character-profile-sections-design.md 的延伸）：
@@ -8,6 +9,7 @@
 //   · 触发词本期做"扁平常驻注入"（≤30 条一起拼），不做条件命中。
 import { z } from 'zod';
 import type { CharacterProfileSection } from '../types/character';
+import { VoiceNameSchema } from './voice';
 
 // ── 长度上限（与 admin.ts 的 profileSection 上限对齐：value ≤ 2000）──
 const WB_TEXT_MAX = 2000;
@@ -49,6 +51,8 @@ export const UserCharacterCardBlockSchema = z.object({
 // ── 创建请求（除角色名外全选填；两步确认 = makePublic + consent）──
 export const UserCharacterCreateSchema = z.object({
   name: z.string().min(1).max(40),
+  voiceName: VoiceNameSchema.optional(),
+  hqVoiceProfileId: HqVoiceProfileIdSchema.optional(),
   worldbook: UserCharacterWorldbookSchema.optional(),
   card: UserCharacterCardBlockSchema.optional(),
   // 第一步确认：是否希望角色卡被公开

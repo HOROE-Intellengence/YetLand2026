@@ -92,6 +92,7 @@
   color: var(--paper-dim);
 }
 .field input,
+.field select,
 .field textarea {
   background: rgba(0, 0, 0, 0.16);
   border: 1px solid rgba(200, 168, 120, 0.16);
