@@ -832,7 +832,11 @@ function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSetti
 
 export function loadImageGenerationSettings(): ImageGenerationSettings {
     if (typeof window === "undefined") return { ...DEFAULT_IMAGE_GENERATION_SETTINGS };
-    if (isYelanManaged) return { ...DEFAULT_IMAGE_GENERATION_SETTINGS, enabled: kvGet('yelan-image-enabled') === 'true' };
+    if (isYelanManaged) {
+        let characterReferences = {};
+        try { characterReferences = normalizeImageGenerationSettings(JSON.parse(kvGet(IMAGE_GENERATION_SETTINGS_KEY) || '{}')).characterReferences; } catch { /* no local reference images */ }
+        return { ...DEFAULT_IMAGE_GENERATION_SETTINGS, characterReferences, enabled: kvGet('yelan-image-enabled') === 'true' };
+    }
     try {
         const raw = kvGet(IMAGE_GENERATION_SETTINGS_KEY);
         if (!raw) return { ...DEFAULT_IMAGE_GENERATION_SETTINGS };

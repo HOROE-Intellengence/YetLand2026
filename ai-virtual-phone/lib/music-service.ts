@@ -2,6 +2,7 @@
 
 import { loadAllTracks, type MusicTrack } from "./music-storage";
 import { kvGet, kvSet, kvRemove, registerKvMigration } from "./kv-db";
+import { isYelanManaged } from './yelan-managed-client';
 import {
     DEFAULT_NETEASE_API_BASE,
     isDefaultNeteaseApiBase,
@@ -27,6 +28,7 @@ function normalizeStoredMusicApiBaseUrl(baseUrl: string | undefined): string {
 }
 
 export function loadMusicApiConfig(): MusicApiConfig {
+    if (isYelanManaged) return { baseUrl: DEFAULT_NETEASE_API_BASE, enabled: Boolean(DEFAULT_NETEASE_API_BASE), version: MUSIC_API_CONFIG_VERSION };
     if (typeof window === "undefined") return { baseUrl: DEFAULT_NETEASE_API_BASE, enabled: true, version: MUSIC_API_CONFIG_VERSION };
     try {
         const raw = kvGet(MUSIC_API_KEY);
@@ -43,6 +45,7 @@ export function loadMusicApiConfig(): MusicApiConfig {
 }
 
 export function saveMusicApiConfig(config: MusicApiConfig): void {
+    if (isYelanManaged) return;
     try {
         kvSet(MUSIC_API_KEY, JSON.stringify({
             baseUrl: normalizeStoredMusicApiBaseUrl(config.baseUrl),

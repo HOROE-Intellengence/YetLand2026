@@ -9,6 +9,7 @@ import {
 } from "@/lib/music-storage";
 import { useMusicControls, type MusicControlsValue } from "@/lib/music-context";
 import { SessionCustomCSS } from "@/components/ui/session-custom-css";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 import {
     isNeteaseConfigured, loadMusicApiConfig, saveMusicApiConfig,
     searchNetease, getNeteasePlayInfo, getNeteaseLyrics, getNeteaseSongDetail,
@@ -1665,6 +1666,10 @@ function MusicSettingsTab({ onBack, onSaved }: { onBack: () => void; onSaved: ()
             </div>
 
             <div className="music-settings-body">
+                {isYelanManaged ? <div className="music-settings-section">
+                    <div className="music-settings-label">夜阑音乐服务</div>
+                    <div className="music-settings-hint">{config.baseUrl ? '在线音乐服务由夜阑统一配置。' : '在线音乐暂未接入，你仍可导入并播放本地音乐。'}</div>
+                </div> : <>
                 <div className="music-settings-section">
                     <div className="music-settings-label">网易云 API 地址</div>
                     <div className="music-settings-hint">默认使用公共服务，也可以改成自己的 NeteaseCloudMusicApi 地址</div>
@@ -1690,6 +1695,7 @@ function MusicSettingsTab({ onBack, onSaved }: { onBack: () => void; onSaved: ()
                         {testResult.ok ? "✓ " : "✗ "}{testResult.message}
                     </div>
                 )}
+                </>}
 
                 {/* QR Login Section */}
                 {config.baseUrl.trim() && (

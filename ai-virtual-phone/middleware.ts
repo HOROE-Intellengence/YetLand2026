@@ -61,6 +61,9 @@ export async function middleware(request: NextRequest) {
   // Hosted by Yelan: the original account/configuration and arbitrary proxy
   // control plane is unavailable, even when legacy self-hosted mode is enabled.
   if (process.env.YELAN_PHONE_MANAGED === 'true') {
+    if (pathname === '/world-builder' || pathname.startsWith('/world-builder/')) {
+      return new NextResponse('3D 功能暂未开放，请返回夜阑小手机。', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+    }
     const retired = ['/api/yelan', '/api/auth', '/api/verify', '/api/supabase-admin',
       '/api/push', '/api/weixin', '/api/tool-proxy', '/api/oauth-callback',
       '/api/image-generation', '/api/voice', '/api/tripo'];

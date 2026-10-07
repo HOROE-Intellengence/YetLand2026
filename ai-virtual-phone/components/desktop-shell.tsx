@@ -2169,6 +2169,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
   }, [customAppMap]);
 
   const getDesktopIconMeta = useCallback((iconId: DesktopIconId) => {
+    if (isYelanManaged && iconId === 'worldbuilder') return null;
     const customApp = getCustomAppForIcon(iconId);
     if (customApp) {
       return {
@@ -2321,7 +2322,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
   }
 
   function openApp(iconId: DesktopIconId): void {
-    if (isYelanManaged && ['settings', 'resources', 'realitybridge'].includes(iconId)) return;
+    if (isYelanManaged && ['settings', 'resources', 'realitybridge', 'worldbuilder'].includes(iconId)) return;
     if (isFolderIconId(iconId)) return; // 文件夹 tile 由点击处打开面板，不走这里
     if (customAppIdFromIconId(iconId)) {
       openCustomAppWithBackgroundUpdateCheck(iconId);
@@ -3947,7 +3948,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
   }, []);
 
   function renderAppBody() {
-    if (isYelanManaged && activeApp && ['settings', 'resources', 'realitybridge'].includes(activeApp)) {
+    if (isYelanManaged && activeApp && ['settings', 'resources', 'realitybridge', 'worldbuilder'].includes(activeApp)) {
       return <div style={{ padding: 24 }}>此功能由夜阑统一托管。<button onClick={() => setActiveApp(null)}>返回桌面</button></div>;
     }
     if (!activeApp || !activeIcon) {
@@ -4585,7 +4586,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
 
                             {/* Render icons with explicit positions for this page */}
                             {pageIcons.map((iconPos) => {
-                              if (isYelanManaged && ['settings', 'resources', 'realitybridge'].includes(iconPos.id)) return null;
+                              if (isYelanManaged && ['settings', 'resources', 'realitybridge', 'worldbuilder'].includes(iconPos.id)) return null;
                               const iconId = iconPos.id;
                               const pos = pageIconPositions.get(iconId);
                               if (!pos) return null;
@@ -4761,7 +4762,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
                     <span className="dock-skin-layer" style={{ backgroundImage: `url("${dockSkinUrl}")` }} />
                   )}
                   {dock.map((iconId) => {
-                    if (isYelanManaged && ['settings', 'resources', 'realitybridge'].includes(iconId)) return null;
+                    if (isYelanManaged && ['settings', 'resources', 'realitybridge', 'worldbuilder'].includes(iconId)) return null;
                     const icon = getDesktopIconMeta(iconId);
                     if (!icon) return null;
                     const customApp = icon.customApp;

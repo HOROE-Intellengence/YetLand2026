@@ -24,7 +24,10 @@ export const PhoneRoleRulesSchema = z.object({
 }).strict();
 export type PhoneRoleRules = z.infer<typeof PhoneRoleRulesSchema>;
 
-export const PhoneImageRequestSchema = z.object({ prompt: z.string().trim().min(1).max(4000), characterId: z.string().max(128).optional() }).strict();
+export const PhoneImageRequestSchema = z.object({
+  prompt: z.string().trim().min(1).max(4000), characterId: z.string().max(128).optional(),
+  referenceImageDataUrl: z.string().max(3_000_000).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/).optional(),
+}).strict();
 export const PhoneSpeechRequestSchema = z.object({ text: z.string().trim().min(1).max(16000) });
 export const PhoneMemoryScopeSchema = z.object({
   characterId: z.string().min(1).max(128), mode: z.enum(['main', 'if']).default('main'),

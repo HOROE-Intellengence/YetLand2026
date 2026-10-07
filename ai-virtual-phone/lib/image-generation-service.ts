@@ -735,16 +735,20 @@ export async function generateImageFromConfiguredApi(params: {
   if (isYelanManaged) {
     const prompt = params.description.trim();
     if (!prompt) return null;
-    if (params.useReferenceImage) throw new Error('托管参考图编辑尚未开放，请使用文字描述生成');
+    const settings = params.settings ?? loadImageGenerationSettings();
+    const reference = params.characterId ? settings.characterReferences[params.characterId] : undefined;
+    const rawReference = params.useReferenceImage && reference?.assetId ? await getChatImageFromIndexedDB(reference.assetId) : null;
+    const referenceImageDataUrl = rawReference ? await normalizeReferenceImageForEdit(rawReference) : undefined;
+    throwIfAborted(params.signal);
     const data = await yelanRequest<{ b64: string; mimeType: string }>('/phone/images/generations', {
       method: 'POST', signal: params.signal,
-      body: JSON.stringify({ prompt, ...(params.characterId ? { characterId: params.characterId } : {}) }),
+      body: JSON.stringify({ prompt, ...(params.characterId ? { characterId: params.characterId } : {}), ...(referenceImageDataUrl ? { referenceImageDataUrl } : {}) }),
     });
     throwIfAborted(params.signal);
     const blob = base64ToBlob(data.b64, data.mimeType);
     const mediaRef = await storeMediaBlob(blob, data.mimeType, 'image');
     return { mediaRef, dataUrl: `data:${data.mimeType};base64,${data.b64}`, blob,
-      mimeType: data.mimeType, prompt, usedReferenceImage: false };
+      mimeType: data.mimeType, prompt, usedReferenceImage: Boolean(referenceImageDataUrl) };
   }
   const settings = params.settings ?? loadImageGenerationSettings();
   if (!settings.enabled) return null;

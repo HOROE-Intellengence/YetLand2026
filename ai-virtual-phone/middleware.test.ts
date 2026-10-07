@@ -4,7 +4,7 @@ import { middleware } from './middleware';
 
 describe('managed phone control-plane boundary', () => {
   afterEach(() => vi.unstubAllEnvs());
-  it.each(['/api/auth/login', '/api/tool-proxy', '/api/push/deploy-personal', '/api/supabase-admin', '/api/yelan/config'])('disables retired route %s even in self-hosted mode', async path => {
+  it.each(['/api/auth/login', '/api/tool-proxy', '/api/push/deploy-personal', '/api/supabase-admin', '/api/yelan/config', '/world-builder', '/world-builder/nested', '/api/tripo/generate'])('disables retired route %s even in self-hosted mode', async path => {
     vi.stubEnv('YELAN_PHONE_MANAGED', 'true');
     vi.stubEnv('NEXT_PUBLIC_SELF_HOSTED_MODE', 'true');
     const response = await middleware(new NextRequest(`http://localhost:3001${path}`));

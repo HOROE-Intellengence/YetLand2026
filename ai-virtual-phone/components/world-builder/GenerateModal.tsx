@@ -5,6 +5,7 @@ import { saveModel } from "./model-db";
 import { optimizeModelBlob } from "./model-optimize";
 import { kvGet, kvSet } from "@/lib/kv-db";
 import type { Character } from "@/lib/character-types";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 
 interface Props {
   open: boolean;
@@ -17,7 +18,20 @@ interface Props {
 
 const API_KEY_STORAGE = "wb-tripo-api-key";
 
-export default function GenerateModal({ open, categories, characters = [], onClose, onModelAdded }: Props) {
+export default function GenerateModal(props: Props) {
+  if (isYelanManaged) return props.open ? (
+    <div className="wb-modal-overlay">
+      <div className="wb-modal" role="dialog" aria-modal="true" aria-label="3D 生成暂未接入">
+        <h3>3D 生成暂未接入</h3>
+        <p>夜阑尚未接入 3D 生成服务，后续由平台统一提供。你仍可使用已有模型搭建场景。</p>
+        <button className="wb-modal-btn" onClick={props.onClose}>知道了</button>
+      </div>
+    </div>
+  ) : null;
+  return <StandaloneGenerateModal {...props} />;
+}
+
+function StandaloneGenerateModal({ open, categories, characters = [], onClose, onModelAdded }: Props) {
   const [apiKey, setApiKey] = useState("");
   const [keyStatus, setKeyStatus] = useState<"" | "checking" | "ok" | "fail">("");
   const [mode, setMode] = useState<"text" | "image" | "avatar">("text");

@@ -12,7 +12,8 @@ import { resolveIfUnlockFromText, isSessionIfActive } from '../services/if-unloc
 import { checkTokenBudget } from '../services/token-guard';
 import { store } from '../store/persistence';
 import { VoiceError } from '../voice/config';
-import { readPhoneMemory, rememberVoiceTurn } from '../phone/memory';
+import { rememberVoiceTurn } from '../phone/memory';
+import { voiceMemoryContext, voiceMemoryScope } from '../services/voice-memory';
 
 export interface MainInput {
   userId: string; sessionId: string; characterId: string; text: string;
@@ -40,8 +41,8 @@ export async function generateHqReply(input: MainInput): Promise<MainOutput> {
   const temperature = await resolveTemperature({ sessionId, characterName: character.name,
     characterDescription: character.description || '', styleTags: character.styleTags ?? [], userInput: text,
     boundary, stage, round, ifUnlock });
-  const phoneScope = store.state().phoneVoiceSessions?.[sessionId];
-  const sharedMemory = phoneScope?.userId === userId ? [readPhoneMemory(userId, phoneScope), phoneScope.context].filter(Boolean).join('\n') : undefined;
+  const memoryScope = voiceMemoryScope(userId, characterId, sessionId, ifActive);
+  const sharedMemory = voiceMemoryContext(userId, characterId, sessionId, memoryScope);
   const prompt = assembleSystemPrompt({ characterId, stage, boundary, ifActive,
     atmosphereBlock: buildSidecarBlock(temperature, sharedMemory, undefined) });
   if (historyChars + prompt.length > maxChars) throw new VoiceError('HQ_CONTEXT_LIMIT', 409);
@@ -59,8 +60,8 @@ export async function generateHqReply(input: MainInput): Promise<MainOutput> {
   if (!reply.trim()) throw new VoiceError('HQ_MAIN_EMPTY', 502);
   persistAssistantMessage(sessionId, reply);
   const messageId = store.state().messages[sessionId]?.at(-1)?.id;
-  if (phoneScope?.userId === userId && messageId) rememberVoiceTurn({ userId, characterId, id: messageId,
-    inputText: text, outputText: reply, mode: phoneScope.mode, branchId: phoneScope.branchId });
+  if (messageId) rememberVoiceTurn({ userId, characterId, id: messageId,
+    inputText: text, outputText: reply, mode: memoryScope.mode, branchId: memoryScope.branchId });
   recordTurnCost({ assistantBuffer: reply, providerUsage: usage ?? null, body: { text, history },
     sessionId, modelId: model, actualProviderId: provider });
   return { text: reply, model, usage };
