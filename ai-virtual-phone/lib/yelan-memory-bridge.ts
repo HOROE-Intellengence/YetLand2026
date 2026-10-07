@@ -1,7 +1,8 @@
 import { isYelanManaged, yelanRequest } from './yelan-managed-client';
 import { loadCharacters } from './character-storage';
-import { loadNativeTimeline, type NativeTimelineEntry } from './short-term-assembler';
+import { loadNativeTimeline } from './short-term-assembler';
 import { kvGet, kvSet } from './kv-db';
+import { memoryParts } from './yelan-memory-parts';
 
 let busy = false;
 export async function flushYelanMemory() {
@@ -12,26 +13,32 @@ export async function flushYelanMemory() {
       const key = `yelan-memory-ack:${character.id}`;
       const ack = new Set<string>(JSON.parse(kvGet(key) || '[]'));
       const pending = loadNativeTimeline(character.id).filter(entry => !ack.has(entry.id));
-      const groups = new Map<string, NativeTimelineEntry[]>();
+      let remaining = 10;
       for (const entry of pending) {
+        if (remaining <= 0) break;
         const narrative = ['story', 'vn', 'map', 'game'].includes(entry.sourceApp);
-        const branch = narrative ? `${entry.sourceApp}:${entry.sessionId || entry.id}` : '';
-        const groupKey = `${entry.sourceApp}\n${branch}`;
-        const entries = groups.get(groupKey) || [];
-        if (entries.length < 5 && entries.reduce((n, item) => n + item.content.length, 0) < 4000) entries.push(entry);
-        groups.set(groupKey, entries);
-      }
-      for (const [groupKey, entries] of groups) {
-        const [source, branchId] = groupKey.split('\n');
-        const text = entries.map(entry => `[${entry.timestamp}] ${entry.content}`).join('\n').slice(0, 6000);
-        if (!text.trim()) continue;
-        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([character.id, groupKey, entries.map(entry => entry.id), text])));
-        const eventId = `phone:${Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('')}`;
-        await yelanRequest('/phone/memory/events', { method: 'POST', body: JSON.stringify({
-          eventId, characterId: character.id, sourceApp: source === 'map' ? 'adventure' : source,
-          mode: 'main', ...(branchId ? { branchId } : {}), text,
-        }) });
-        entries.forEach(entry => ack.add(entry.id));
+        const branchId = narrative ? `${entry.sourceApp}:${entry.sessionId || entry.id}` : '';
+        const parts = memoryParts(entry);
+        let complete = true;
+        for (let index = 0; index < parts.length; index++) {
+          const text = parts[index];
+          const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([character.id, entry.sourceApp, branchId, entry.id, index, text])));
+          const eventId = `phone:${Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('')}`;
+          if (ack.has(eventId)) continue;
+          if (remaining-- <= 0) { complete = false; break; }
+          try {
+            await yelanRequest('/phone/memory/events', { method: 'POST', body: JSON.stringify({
+              eventId, characterId: character.id, sourceApp: entry.sourceApp === 'map' ? 'adventure' : entry.sourceApp,
+              mode: 'main', ...(branchId ? { branchId } : {}), text,
+            }) });
+            ack.add(eventId);
+            kvSet(key, JSON.stringify(Array.from(ack)));
+          } catch {
+            // One failed upload must not starve other roles or sources.
+            complete = false; break;
+          }
+        }
+        if (complete) ack.add(entry.id);
         kvSet(key, JSON.stringify(Array.from(ack)));
       }
     }
