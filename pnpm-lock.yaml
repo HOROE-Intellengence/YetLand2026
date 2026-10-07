@@ -93,9 +93,15 @@ importers:
       hono:
         specifier: ^4.5.0
         version: 4.12.18
+      https-proxy-agent:
+        specifier: '7'
+        version: 7.0.6
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.1
+      undici:
+        specifier: '6'
+        version: 6.29.0
       ws:
         specifier: 8.18.3
         version: 8.18.3
@@ -1344,6 +1350,10 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  agent-base@7.1.4:
+    resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
+    engines: {node: '>= 14'}
+
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
@@ -1703,6 +1713,10 @@ packages:
   hono@4.12.18:
     resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
     engines: {node: '>=16.9.0'}
+
+  https-proxy-agent@7.0.6:
+    resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
+    engines: {node: '>= 14'}
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -2142,6 +2156,10 @@ packages:
   undici@5.29.0:
     resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
     engines: {node: '>=14.0'}
+
+  undici@6.29.0:
+    resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
+    engines: {node: '>=18.17'}
 
   unenv@2.0.0-rc.14:
     resolution: {integrity: sha512-od496pShMen7nOy5VmVJCnq8rptd45vh6Nx/r2iPbrba6pa6p+tS2ywuIHRZ/OBvSbQZB0kWvpO9XBNVFXHD3Q==}
@@ -3143,6 +3161,8 @@ snapshots:
 
   acorn@8.16.0: {}
 
+  agent-base@7.1.4: {}
+
   ajv@6.15.0:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -3536,6 +3556,13 @@ snapshots:
   has-flag@4.0.0: {}
 
   hono@4.12.18: {}
+
+  https-proxy-agent@7.0.6:
+    dependencies:
+      agent-base: 7.1.4
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
 
   ieee754@1.2.1: {}
 
@@ -3988,6 +4015,8 @@ snapshots:
   undici@5.29.0:
     dependencies:
       '@fastify/busboy': 2.1.1
+
+  undici@6.29.0: {}
 
   unenv@2.0.0-rc.14:
     dependencies:

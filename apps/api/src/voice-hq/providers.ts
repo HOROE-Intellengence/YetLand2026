@@ -3,6 +3,7 @@ import { VoiceError, MAX_OUTPUT_SECONDS } from '../voice/config';
 import { decodeAudio } from '../voice/audio';
 import type { HqProfile } from './profiles';
 import asrDefault from './asr-provider.json';
+import { voiceFetch } from '../voice/local-proxy';
 
 export type Fetch = typeof fetch;
 async function json(url: string, init: RequestInit, fetcher: Fetch, limit = 24 * 1024 * 1024): Promise<Record<string, unknown>> {
@@ -38,7 +39,7 @@ export function asrConfig() {
   return { key, base: httpsBase(process.env.VOICE_HQ_ASR_BASE_URL || asrDefault.baseUrl),
     model: process.env.VOICE_HQ_ASR_MODEL || asrDefault.model };
 }
-export async function synthesize(text: string, profile: HqProfile, signal: AbortSignal, fetcher: Fetch = fetch): Promise<Buffer> {
+export async function synthesize(text: string, profile: HqProfile, signal: AbortSignal, fetcher: Fetch = voiceFetch): Promise<Buffer> {
   if (!text.trim() || text.length > 16000) throw new VoiceError('HQ_TTS_TEXT_LIMIT', 422);
   if (profile.provider !== 'fish' || profile.model !== FISH_TTS_MODEL) throw new VoiceError('HQ_TTS_LEGACY_SNAPSHOT', 409);
   const cfg = ttsConfig();
@@ -65,7 +66,7 @@ export async function synthesize(text: string, profile: HqProfile, signal: Abort
   if (bytes.subarray(0, 4).toString() !== 'RIFF' || bytes.subarray(8, 12).toString() !== 'WAVE') throw new VoiceError('HQ_TTS_FORMAT', 502);
   return decodeAudio(bytes, 24000, MAX_OUTPUT_SECONDS);
 }
-export async function listFishVoices(query: { title?: string; page?: number; self?: boolean }, signal: AbortSignal, fetcher: Fetch = fetch) {
+export async function listFishVoices(query: { title?: string; page?: number; self?: boolean }, signal: AbortSignal, fetcher: Fetch = voiceFetch) {
   const cfg = ttsConfig(), params = new URLSearchParams({ page_size: '20', page_number: String(query.page ?? 1), self: String(query.self ?? false), sort_by: 'score' });
   if (query.title) params.set('title', query.title);
   const result = await json(`${cfg.base}/model?${params}`, { headers: { Authorization: `Bearer ${cfg.key}` },
@@ -82,7 +83,7 @@ function output(data: Record<string, unknown>): Record<string, unknown> {
   if (data.output_result && typeof data.output_result === 'object') return output(data.output_result as Record<string, unknown>);
   return data;
 }
-export async function submitAsr(url: string, signal: AbortSignal, fetcher: Fetch = fetch): Promise<string> {
+export async function submitAsr(url: string, signal: AbortSignal, fetcher: Fetch = voiceFetch): Promise<string> {
   const cfg = asrConfig();
   const data = await json(`${cfg.base}/services/audio/asr/transcription`, {
     method: 'POST', headers: { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json', 'X-DashScope-Async': 'enable' },
@@ -93,7 +94,7 @@ export async function submitAsr(url: string, signal: AbortSignal, fetcher: Fetch
   if (typeof taskId !== 'string' || !/^[\w-]{1,150}$/.test(taskId)) throw new VoiceError('HQ_ASR_SUBMISSION_UNKNOWN', 502);
   return taskId;
 }
-export async function pollAsr(taskId: string, signal: AbortSignal, fetcher: Fetch = fetch, intervalMs = 2000): Promise<string> {
+export async function pollAsr(taskId: string, signal: AbortSignal, fetcher: Fetch = voiceFetch, intervalMs = 2000): Promise<string> {
   const cfg = asrConfig();
   const bounded = AbortSignal.any([signal, AbortSignal.timeout(180000)]);
   while (!bounded.aborted) {

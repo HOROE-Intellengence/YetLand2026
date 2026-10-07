@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import { voiceWebSocketAgent } from './local-proxy';
 import { MAX_OUTPUT_SECONDS, relayConfig, VOICE_MODEL, VoiceError } from './config';
 import type { VoiceName } from '@yelan/shared';
 
@@ -23,6 +24,7 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
   const config = relayConfig();
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(config.url, {
+      agent: voiceWebSocketAgent(config.url),
       headers: { Authorization: `Bearer ${config.token}` },
       handshakeTimeout: 25_000, maxPayload: 2 * 1024 * 1024,
       perMessageDeflate: false, followRedirects: false,

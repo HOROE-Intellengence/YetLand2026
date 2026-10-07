@@ -17,7 +17,9 @@
     "@yelan/shared": "workspace:*",
     "better-sqlite3": "12.4.1",
     "hono": "^4.5.0",
+    "https-proxy-agent": "7",
     "js-yaml": "^4.1.0",
+    "undici": "6",
     "ws": "8.18.3",
     "zod": "^3.23.0"
   },
