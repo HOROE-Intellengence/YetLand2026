@@ -11,7 +11,7 @@ export function YelanManagedEntry() {
     const fitPhone = () => {
       // The original desktop shell is 844px tall; an embedded window can be
       // shorter. Scale the complete shell so its bottom controls remain reachable.
-      const scale = Math.min(1, Math.max(0.25, (window.innerHeight - 32) / 866));
+      const scale = Math.min(1, Math.max(0.1, (window.innerHeight - 32) / 866), Math.max(0.1, (window.innerWidth - 16) / 420));
       document.documentElement.style.setProperty('--yelan-phone-scale', String(scale));
     };
     fitPhone(); window.addEventListener('resize', fitPhone);

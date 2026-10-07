@@ -68,7 +68,7 @@ a {
   width: var(--phone-total-width);
 }
 
-@media (min-width: 501px) {
+@media (min-width: 501px), (hover: hover), (pointer: fine) {
   html[data-yelan-managed="true"] .app-root {
     width: 100%;
     padding: 12px 0;
