@@ -2267,9 +2267,19 @@ function synthesizeVoiceForMessage(msgId: string, characterId: string, speechTex
     if (existing) return existing;
     const task = (async () => {
         const { resolveVoiceConfig, synthesizeSpeech } = await import("@/lib/tts-service");
-        const vc = resolveVoiceConfig(characterId);
-        if (!vc) throw new Error("未绑定语音配置");
-        const blob = await synthesizeSpeech(speechText, vc);
+        const { isYelanManaged, yelanHeaders } = await import('@/lib/yelan-managed-client');
+        let blob: Blob | null;
+        if (isYelanManaged) {
+            const response = await fetch(`/api/host/phone/characters/${encodeURIComponent(characterId)}/speech`, {
+                method: 'POST', headers: yelanHeaders(), body: JSON.stringify({ text: speechText }),
+            });
+            if (!response.ok) throw new Error('夜阑语音合成暂不可用');
+            blob = await response.blob();
+        } else {
+            const vc = resolveVoiceConfig(characterId);
+            if (!vc) throw new Error("未绑定语音配置");
+            blob = await synthesizeSpeech(speechText, vc);
+        }
         if (!blob) throw new Error("合成失败");
         const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();

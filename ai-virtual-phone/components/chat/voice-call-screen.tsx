@@ -1,4 +1,6 @@
 "use client";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
+import { YelanVoiceCall } from './yelan-voice-call';
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatSession, ChatMessage, loadChatMessages, pushChatMessage, getLatestCharacterStateValues } from "@/lib/chat-storage";
@@ -62,7 +64,11 @@ function stripBilingualForSpeech(text: string): string {
 
 // ── Component ───────────────────────────────────────
 
-export function VoiceCallScreen({ session, character, onEnd, onConnect, initiator = "user", minimized = false, onMinimize, onRestore }: VoiceCallScreenProps) {
+export function VoiceCallScreen(props: VoiceCallScreenProps) {
+    return isYelanManaged ? <YelanVoiceCall session={props.session} characters={[props.character]} onEnd={props.onEnd} /> : <LegacyVoiceCallScreen {...props} />;
+}
+
+function LegacyVoiceCallScreen({ session, character, onEnd, onConnect, initiator = "user", minimized = false, onMinimize, onRestore }: VoiceCallScreenProps) {
     // iOS 保留 Web Speech 免提 + Web Audio 播放（麦克风会话共存的老方案）；
     // 其余设备改「按住说话 + 云端转写」，播放走媒体元素（音量键可控、无静音拨键坑）。
     // 没配 OpenAI 兼容识别时回落旧行为（安卓=文字输入）。

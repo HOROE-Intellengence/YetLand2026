@@ -14,6 +14,7 @@ import { MusicProvider } from "@/lib/music-context";
 import { hydrateKvDb, isKvHydrated } from "@/lib/kv-db";
 import { bootstrapYelanLocal } from "@/lib/yelan-local-bootstrap";
 import { startYelanMemoryBridge } from '@/lib/yelan-memory-bridge';
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 import { getThemeAssetMap, readThemeProfile } from "@/lib/theme-storage";
 import { resolveActiveIconSkins, type ThemeProfile } from "@/lib/theme-types";
 import { hasPendingMcpOAuthCallback } from "@/lib/tool-executor";
@@ -234,6 +235,7 @@ export function MainApp() {
   const [hydrated, setHydrated] = useState(false);
   const [splashDismissed, setSplashDismissed] = useState(false);
   const [kvHydrateFailed, setKvHydrateFailed] = useState(false);
+  const [managedInitError, setManagedInitError] = useState(false);
   const [initAttempt, setInitAttempt] = useState(0);
 
   useEffect(() => {
@@ -255,8 +257,10 @@ export function MainApp() {
       setKvHydrateFailed(false);
       try {
         await bootstrapYelanLocal();
+        if (!cancelled) setManagedInitError(false);
       } catch (error) {
         console.error("[Yelan local]", error);
+        if (isYelanManaged) { if (!cancelled) setManagedInitError(true); return; }
       }
 
       let nextPreparedTheme: PreparedDesktopTheme | null = null;
@@ -293,6 +297,11 @@ export function MainApp() {
     };
   }, [initAttempt]);
 
+  if (managedInitError) return <main style={{ padding: 28, color: '#222', background: '#faf9f5', minHeight: '100dvh' }}>
+    <p>暂时无法读取夜阑角色与托管配置，请重试；登录失效时请返回夜阑重新登录。</p>
+    <button onClick={() => { setManagedInitError(false); setInitAttempt(n => n + 1); }}>重试</button>
+  </main>;
+
   if (kvHydrateFailed) {
     return (
       <main className="app-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", padding: "0 28px", background: "#0c0c12", color: "#e8e8ef" }}>
@@ -325,9 +334,9 @@ export function MainApp() {
               initialThemeProfile={preparedDesktopTheme?.profile}
               initialThemeAssets={preparedDesktopTheme?.assets}
             />
-            <OfflinePushRevampAnnouncement />
-            <CloudBackupScheduler />
-            <RealityBridgeScheduler />
+            {!isYelanManaged && <OfflinePushRevampAnnouncement />}
+            {!isYelanManaged && <CloudBackupScheduler />}
+            {!isYelanManaged && <RealityBridgeScheduler />}
             <MediaMaintenanceScheduler />
           </MusicProvider>
         </main>

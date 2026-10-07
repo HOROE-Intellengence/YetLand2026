@@ -143,6 +143,7 @@ function rowToCharacter(row: CharacterRow): Character {
 }
 
 export type AdminCharacter = Character & {
+  phoneRules?: import('@yelan/shared').PhoneRoleRules;
   profileSections: CharacterProfileSection[];
   origin: 'admin' | 'user';
   ownerUserId: string | null;
@@ -153,6 +154,7 @@ export type AdminCharacter = Character & {
 
 function rowToAdminCharacter(row: CharacterRow): AdminCharacter {
   return {
+    phoneRules: row.phoneRules,
     ...rowToCharacter(row),
     profileSections: normalizeProfileSections(row.profileSections),
     origin: rowOrigin(row),
@@ -164,6 +166,7 @@ function rowToAdminCharacter(row: CharacterRow): AdminCharacter {
 }
 
 export interface CharacterUpsertInput {
+  phoneRules?: import('@yelan/shared').PhoneRoleRules;
   id?: string;
   slug: string;
   name: string;
@@ -253,6 +256,7 @@ export const charactersService = {
       forbiddenPhrases: input.forbiddenPhrases ?? prev?.forbiddenPhrases ?? [],
       description: input.description ?? prev?.description ?? '',
       profileSections: normalizeProfileSections(input.profileSections ?? prev?.profileSections),
+      phoneRules: input.phoneRules ?? prev?.phoneRules,
       origin: input.origin ?? prev?.origin ?? 'admin',
       ownerUserId: input.ownerUserId === undefined ? (prev?.ownerUserId ?? null) : input.ownerUserId,
       visibility: input.visibility ?? prev?.visibility ?? 'public',

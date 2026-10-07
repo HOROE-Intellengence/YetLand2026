@@ -1,5 +1,6 @@
 "use client";
 import { isYelanManaged } from '@/lib/yelan-managed-client';
+import { YelanRoleApp } from './yelan-role-app';
 
 import { Component, memo, useCallback, useEffect, useInsertionEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ErrorInfo, type ReactNode } from "react";
 
@@ -4007,6 +4008,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     }
 
     if (activeApp === "characters") {
+      if (isYelanManaged) return <YelanRoleApp onClose={() => setActiveApp(null)} />;
       return (
         <PhoneCharacterApp
           onClose={() => setActiveApp(null)}
@@ -4817,7 +4819,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
                 </footer>
               ) : null}
               <DebugPromptPanel />
-              <QuickActionFloat />
+              {!isYelanManaged && <QuickActionFloat />}
               <MascotFloat />
               {/* 预览弹窗宿主：独立于桌宠的展开/收起状态，否则桌宠收成小球时弹不出来 */}
               <MascotPreviewHost />

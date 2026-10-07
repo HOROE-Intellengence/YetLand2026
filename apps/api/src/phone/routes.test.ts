@@ -10,6 +10,7 @@ vi.mock('../services/characters', () => ({ charactersService: {
   get: (id: string) => ({ id, isActive: true }),
   canAccess: (id: string) => id === 'public',
   listVisibleTo: () => [{ id: 'public', name: '可见角色', isActive: true }],
+  getRow: () => ({ origin: 'admin', visibility: 'public' }),
 } }));
 vi.mock('../prompts/loader', () => ({ loadCharacterCard: () => '服务端角色设定', loadPreludeCard: () => '服务端前置卡' }));
 vi.mock('../services/llm-api-inventory', () => ({ getLlmApiConfig: () => ({

@@ -72,10 +72,10 @@ export function readPhoneMemory(userId: string, input: { characterId: string; mo
   return [profile, ...rows.map(row => `- ${row.text}`)].filter(Boolean).join('\n').slice(0, 6000);
 }
 
-export function rememberVoiceTurn(input: { userId: string; characterId: string; id: string; inputText: string; outputText: string; mode?: 'main' | 'if' }): void {
+export function rememberVoiceTurn(input: { userId: string; characterId: string; id: string; inputText: string; outputText: string; mode?: 'main' | 'if'; branchId?: string }): void {
   if (!input.inputText.trim() && !input.outputText.trim()) return;
   void ingestPhoneMemory(input.userId, {
     eventId: `voice:${input.id}`, characterId: input.characterId, sourceApp: 'voice',
-    mode: input.mode ?? 'main', text: `用户：${input.inputText}\n角色：${input.outputText}`.slice(0, 6000),
+    mode: input.mode ?? 'main', branchId: input.branchId, text: `用户：${input.inputText}\n角色：${input.outputText}`.slice(0, 6000),
   }).catch(() => { /* Failed receipt remains retryable; speech playback is unaffected. */ });
 }

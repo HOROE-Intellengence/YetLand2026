@@ -13,3 +13,4 @@ export * from './sessions';
 export * from './voice';
 export * from './voice-hq';
 export * from './api-gateway';
+export * from './phone';

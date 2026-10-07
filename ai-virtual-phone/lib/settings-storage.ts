@@ -41,6 +41,7 @@ import {
 } from "./settings-db";
 import { kvGet, kvSet, kvRemove, registerKvMigration } from "./kv-db";
 import { isGenerationParameterKey } from "./generation-parameters";
+import { isYelanManaged } from './yelan-managed-client';
 
 // --- Unsupported import format detection ---
 export const UNSUPPORTED_IMPORT_FORMAT = "UNSUPPORTED_IMPORT_FORMAT";
@@ -636,7 +637,13 @@ export function loadApiConfigs(): ApiConfig[] {
         const raw = kvGet(API_CONFIGS_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw) as LegacyApiConfig[];
-        return Array.isArray(parsed) ? parsed.map(normalizeApiConfig) : [];
+        if (!Array.isArray(parsed)) return [];
+        if (isYelanManaged) return parsed.filter(config => config.id.startsWith('yelan:')).map(config => normalizeApiConfig({
+            id: config.id, name: '夜阑托管', provider: 'Custom', apiKey: 'server-managed',
+            baseUrl: `/api/host/phone/characters/${encodeURIComponent(config.id.slice('yelan:'.length))}`,
+            defaultModel: 'yelan-managed', enableNativeTools: false, enableImageRecognition: true, enableImageGeneration: false,
+        }));
+        return parsed.map(normalizeApiConfig);
     } catch {
         return [];
     }
@@ -1010,6 +1017,14 @@ export function resolveBinding(
     characterId?: string,
     appId?: string
 ): BindingSlot {
+    if (isYelanManaged && characterId) return {
+        apiConfigId: `yelan:${characterId}`,
+        presetId: `yelan:${characterId}:preset`,
+        worldBookIds: [`yelan:${characterId}:worldbook`],
+        regexIds: [`yelan:${characterId}:regex`],
+        userIdentityId: config.characterBindings.find(binding => binding.characterId === characterId)?.defaults.userIdentityId
+            || config.globalDefaults.userIdentityId,
+    };
     const global = config.globalDefaults;
 
     // Start with global defaults

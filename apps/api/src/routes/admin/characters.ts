@@ -211,6 +211,7 @@ adminCharactersRoute.post(
       forbiddenPhrases: body.forbiddenPhrases,
       description: body.description,
       profileSections: body.profileSections,
+      phoneRules: body.phoneRules,
       isActive: body.isActive,
     });
     audit('character.create', id, body.reason, created);
@@ -242,6 +243,7 @@ adminCharactersRoute.patch(
       forbiddenPhrases: body.forbiddenPhrases ?? existing.forbiddenPhrases ?? [],
       description: body.description ?? existing.description,
       profileSections: body.profileSections ?? existing.profileSections,
+      phoneRules: body.phoneRules ?? existing.phoneRules,
       isActive: body.isActive ?? existing.isActive,
     });
     audit('character.update', existing.id, body.reason, merged);

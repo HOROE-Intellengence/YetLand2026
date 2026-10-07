@@ -41,7 +41,7 @@ export async function generateHqReply(input: MainInput): Promise<MainOutput> {
     characterDescription: character.description || '', styleTags: character.styleTags ?? [], userInput: text,
     boundary, stage, round, ifUnlock });
   const phoneScope = store.state().phoneVoiceSessions?.[sessionId];
-  const sharedMemory = phoneScope?.userId === userId ? readPhoneMemory(userId, phoneScope) : undefined;
+  const sharedMemory = phoneScope?.userId === userId ? [readPhoneMemory(userId, phoneScope), phoneScope.context].filter(Boolean).join('\n') : undefined;
   const prompt = assembleSystemPrompt({ characterId, stage, boundary, ifActive,
     atmosphereBlock: buildSidecarBlock(temperature, sharedMemory, undefined) });
   if (historyChars + prompt.length > maxChars) throw new VoiceError('HQ_CONTEXT_LIMIT', 409);
@@ -60,7 +60,7 @@ export async function generateHqReply(input: MainInput): Promise<MainOutput> {
   persistAssistantMessage(sessionId, reply);
   const messageId = store.state().messages[sessionId]?.at(-1)?.id;
   if (phoneScope?.userId === userId && messageId) rememberVoiceTurn({ userId, characterId, id: messageId,
-    inputText: text, outputText: reply, mode: ifActive ? 'if' : 'main' });
+    inputText: text, outputText: reply, mode: phoneScope.mode, branchId: phoneScope.branchId });
   recordTurnCost({ assistantBuffer: reply, providerUsage: usage ?? null, body: { text, history },
     sessionId, modelId: model, actualProviderId: provider });
   return { text: reply, model, usage };

@@ -10,12 +10,17 @@ import { getLlmApiConfig } from '../services/llm-api-inventory';
 import { phoneBilling } from '../phone/billing';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { phoneRole, savePhoneRoleRules } from '../phone/role-rules';
+import { store } from '../store/persistence';
+import { VoiceError } from '../voice/config';
 
 export const phoneRoute = new Hono();
 phoneRoute.use('*', requireAuth());
 phoneRoute.use('*', bodyLimit({ maxSize: 4 * 1024 * 1024 }));
 phoneRoute.use('*', async (c, next) => { c.header('Cache-Control', 'private, no-store'); await next(); });
-phoneRoute.onError((error, c) => error instanceof PhoneError
+phoneRoute.onError((error, c) => error instanceof VoiceError
+  ? c.json({ code: error.code }, error.status as 400 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503)
+  : error instanceof PhoneError
   ? c.json({ code: error.code }, error.status)
   : c.json({ code: 'PHONE_INTERNAL_ERROR' }, 500));
 
@@ -35,10 +40,51 @@ phoneRoute.get('/bootstrap', c => {
   const userId = c.get('userId') as string;
   return c.json({ userId, managed: true, billing: { implemented: false }, characters:
     charactersService.listVisibleTo(userId).filter(character => character.isActive).map(character => ({
-      id: character.id, name: character.name, persona: loadCharacterCard(character.id),
+      id: character.id, name: character.name, persona: character.description || '',
       updatedAt: character.updatedAt, avatar: null,
+      ...phoneRole(userId, character.id),
     })),
   });
+});
+
+phoneRoute.get('/characters/:id/rules', c => c.json(phoneRole(c.get('userId') as string, c.req.param('id'))));
+phoneRoute.put('/characters/:id/rules', async c => c.json(savePhoneRoleRules(c.get('userId') as string,
+  c.req.param('id'), await c.req.json().catch(() => null))));
+
+phoneRoute.post('/voice/sessions', async c => {
+  const body = PhoneMemoryScopeSchema.extend({ kind: z.enum(['voice', 'voice-hq']).default('voice'), context: z.string().max(12000).default('') })
+    .safeParse(await c.req.json().catch(() => null));
+  if (!body.success) return c.json({ code: 'INVALID_PHONE_VOICE' }, 400);
+  const userId = c.get('userId') as string;
+  const characterId = accessibleCharacter(userId, body.data.characterId);
+  let session: { id: string };
+  if (body.data.kind === 'voice-hq') {
+    const { hqVoiceService } = await import('../voice-hq/service');
+    session = hqVoiceService().create(userId, characterId);
+  } else {
+    const { voiceService } = await import('../voice/service');
+    const service = voiceService(); await service.ready;
+    session = service.create(userId, characterId);
+  }
+  (store.state().phoneVoiceSessions ??= {})[session.id] = {
+    userId, characterId, mode: body.data.mode, branchId: body.data.branchId, context: body.data.context,
+  };
+  store.save();
+  return c.json({ id: session.id, kind: body.data.kind }, 201);
+});
+
+phoneRoute.post('/characters/:id/speech', async c => {
+  const userId = c.get('userId') as string;
+  const characterId = accessibleCharacter(userId, c.req.param('id'));
+  const body = z.object({ text: z.string().trim().min(1).max(16000) }).safeParse(await c.req.json().catch(() => null));
+  if (!body.success) return c.json({ code: 'INVALID_SPEECH_TEXT' }, 400);
+  const [{ synthesize }, { characterProfile }, { voiceDatabase }, { encodeOpus }] = await Promise.all([
+    import('../voice-hq/providers'), import('../voice-hq/profiles'), import('../voice/database'), import('../voice/audio'),
+  ]);
+  const profile = characterProfile(voiceDatabase(), characterId);
+  const pcm = await synthesize(body.data.text, profile, c.req.raw.signal);
+  const audio = await encodeOpus(pcm, 24000);
+  return new Response(new Uint8Array(audio), { headers: { 'Content-Type': 'audio/ogg', 'Cache-Control': 'private, no-store' } });
 });
 
 const CompletionSchema = z.object({

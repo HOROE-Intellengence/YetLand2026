@@ -10,6 +10,7 @@ import {
   type CharacterProfileSection,
   type VoiceName, type HqVoiceProfileId, HQ_VOICE_OPTIONS, defaultHqVoiceProfile,
   VOICE_OPTIONS, DEFAULT_VOICE_NAME,
+  PhoneRoleRulesSchema, type PhoneRoleRules,
 } from '@yelan/shared';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
@@ -28,6 +29,7 @@ interface Character {
   openingLines: { firstVisit: string; returnVisit: string };
   description?: string; forbiddenPhrases?: string[]; updatedAt?: string;
   profileSections: CharacterProfileSection[];
+  phoneRules?: PhoneRoleRules;
   origin?: Origin;
   ownerUserId?: string | null;
   visibility?: 'private' | 'public';
@@ -272,7 +274,7 @@ export function Characters() {
 function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
   initial: Character | null;
   preludeCards: PreludeCardOption[];
-  onSave: (body: { reason: string; slug: string; name: string; rarity: 'free' | 'paid' | 'hidden'; priceCandle: number; boundaryDefault: 1 | 2 | 3 | 4 | 5; preludeCardId: string | null; voiceName: VoiceName; hqVoiceProfileId: HqVoiceProfileId; styleTags: string[]; forbiddenPhrases: string[]; description: string; profileSections: CharacterProfileSection[]; openingFirstVisit: string; openingReturnVisit: string }) => void;
+  onSave: (body: AdminCharactersCreate) => void;
   onCancel: () => void;
 }) {
   const splitList = (value: string) => value
@@ -293,6 +295,10 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
   const [forbiddenPhrases, setForbiddenPhrases] = useState((initial?.forbiddenPhrases ?? []).join('、'));
   const [description, setDescription] = useState(initial?.description ?? '');
   const [profileSections, setProfileSections] = useState<CharacterProfileSection[]>(initial?.profileSections ?? []);
+  const [phonePreset, setPhonePreset] = useState(initial?.phoneRules?.preset ?? '');
+  const [phoneWorldBook, setPhoneWorldBook] = useState(JSON.stringify(initial?.phoneRules?.worldBook ?? [], null, 2));
+  const [phoneRegexes, setPhoneRegexes] = useState(JSON.stringify(initial?.phoneRules?.regexes ?? [], null, 2));
+  const [phoneRulesError, setPhoneRulesError] = useState('');
   const [firstVisit, setFirstVisit] = useState(initial?.openingLines?.firstVisit ?? '');
   const [returnVisit, setReturnVisit] = useState(initial?.openingLines?.returnVisit ?? '');
 
@@ -311,7 +317,13 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason) return;
+    let phoneRules: PhoneRoleRules;
+    try {
+      phoneRules = PhoneRoleRulesSchema.parse({ preset: phonePreset, worldBook: JSON.parse(phoneWorldBook), regexes: JSON.parse(phoneRegexes) });
+      setPhoneRulesError('');
+    } catch { setPhoneRulesError('小手机规则格式有误，请检查 JSON、触发词或正则表达式。'); return; }
     onSave({
+      phoneRules,
       slug, name, rarity, priceCandle, boundaryDefault, description,
       preludeCardId: preludeCardId || null,
       voiceName, hqVoiceProfileId,
@@ -438,6 +450,18 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
             <label>变更原因（必填）</label>
             <input value={reason} onChange={(e) => setReason(e.target.value)} required placeholder="例如：新增付费角色 江白" />
           </div>
+          <details className="field">
+            <summary>小手机规则（所有小手机玩法共用此角色卡）</summary>
+            <label>补充预设</label>
+            <textarea value={phonePreset} onChange={e => setPhonePreset(e.target.value)} maxLength={12000} placeholder="补充角色在小手机中的表达规则；不影响原聊天入口" />
+            <label>世界书条目（JSON 数组）</label>
+            <p>例：{JSON.stringify([{ key: '咖啡', content: '习惯喝无糖咖啡', constant: false, position: 'after_char' }])}</p>
+            <textarea value={phoneWorldBook} onChange={e => setPhoneWorldBook(e.target.value)} rows={6} />
+            <label>正则规则（JSON 数组）</label>
+            <p>例：{JSON.stringify([{ name: '替换称呼', pattern: '小朋友', replacement: '朋友', target: 'output' }])}</p>
+            <textarea value={phoneRegexes} onChange={e => setPhoneRegexes(e.target.value)} rows={6} />
+            {phoneRulesError && <p role="alert">{phoneRulesError}</p>}
+          </details>
           </div>
           <div className="modal-actions">
             <button type="button" className="btn" onClick={onCancel}>取消</button>

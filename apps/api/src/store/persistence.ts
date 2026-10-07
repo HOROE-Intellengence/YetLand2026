@@ -145,6 +145,7 @@ export interface AdminAuditRow {
 }
 
 export interface CharacterRow {
+  phoneRules?: import('@yelan/shared').PhoneRoleRules;
   id: string;
   slug: string;
   name: string;
@@ -366,7 +367,7 @@ interface PersistedState {
   // Shared across apps, isolated by user + character + mode + narrative branch.
   scopedMemoryProfiles?: Record<string, { markdown: string; updatedAt: string }>;
   phoneMemoryReceipts?: Record<string, import('../phone/contracts').PhoneMemoryReceipt>;
-  phoneVoiceSessions?: Record<string, { userId: string; characterId: string; mode: 'main' | 'if'; branchId?: string }>;
+  phoneVoiceSessions?: Record<string, { userId: string; characterId: string; mode: 'main' | 'if'; branchId?: string; context?: string }>;
   userProfileFacts: Record<string, UserProfileFactRow>;
   userProfileChangelog: UserProfileChangelogRow[];
   // 侧袋 AI 产出：上下文概要

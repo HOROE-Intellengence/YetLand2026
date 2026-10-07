@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ConstellationPointSchema, ConstellationEdgeSchema, ConstellationSchema } from './characters';
 import { SidecarPromptKeySchema } from '../schemas/sidecar';
 import { VoiceNameSchema } from './voice';
+import { PhoneRoleRulesSchema } from './phone';
 
 const Boundary = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 const Rarity = z.enum(['free', 'paid', 'hidden']);
@@ -16,6 +17,7 @@ export const CharacterProfileSectionSchema = z.object({
 
 // ── Characters ──
 export const AdminCharactersCreateSchema = z.object({
+  phoneRules: PhoneRoleRulesSchema.optional(),
   id: z.string().min(1).optional(),
   slug: z.string().min(2).max(40).regex(/^[a-z0-9-]+$/),
   name: z.string().min(1).max(40),
@@ -137,6 +139,7 @@ export const AdminCharacterImportPreviewResponseSchema = z.object({
 
 export const AdminCharactersListResponseSchema = z.object({
   characters: z.array(z.object({
+    phoneRules: PhoneRoleRulesSchema.optional(),
     id: z.string(),
     slug: z.string(),
     name: z.string(),
