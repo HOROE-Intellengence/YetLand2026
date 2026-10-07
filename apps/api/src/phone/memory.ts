@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { store } from '../store/persistence';
 import { charactersService } from '../services/characters';
-import { getUserProfile, recordPreference } from '../sidecar-ai/preference-recorder';
+import { recordPreference } from '../sidecar-ai/preference-recorder';
+import { readCharacterMemory } from '../services/character-memory';
 import { sidecarReady } from '../sidecar-ai/client';
 import type { PhoneMemoryEvent } from './contracts';
 
@@ -64,12 +65,7 @@ export async function ingestPhoneMemory(userId: string, event: PhoneMemoryEvent)
 // service is needed for the initial shared-memory integration.
 export function readPhoneMemory(userId: string, input: { characterId: string; mode: 'main' | 'if'; branchId?: string }): string {
   const characterId = accessibleCharacter(userId, input.characterId);
-  const s = store.state();
-  const rows = [...Object.values(s.userPreferences), ...Object.values(s.userEvents)]
-    .filter(row => row.userId === userId && row.characterId === characterId && row.mode === input.mode && row.branchId === input.branchId && !row.tombstone)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 12);
-  const profile = getUserProfile(userId, characterId, input);
-  return [profile, ...rows.map(row => `- ${row.text}`)].filter(Boolean).join('\n').slice(0, 6000);
+  return readCharacterMemory(userId, characterId, input);
 }
 
 export function rememberVoiceTurn(input: { userId: string; characterId: string; id: string; inputText: string; outputText: string; mode?: 'main' | 'if'; branchId?: string }): void {

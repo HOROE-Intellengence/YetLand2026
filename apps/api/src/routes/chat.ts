@@ -32,7 +32,7 @@ import {
   streamMainLLM,
 } from '../pipeline/chat-pipeline';
 import { fallbackStructure, OUTPUT_STRUCTURER_TIMEOUT_MS } from '../sidecar-ai/output-structurer';
-import { getUserProfile } from '../sidecar-ai/preference-recorder';
+import { readCharacterMemory } from '../services/character-memory';
 import { getSummary, getExpiredTurns } from '../sidecar-ai/context-compressor';
 import { getMainReasoningEffort } from '../services/llm-api-inventory';
 
@@ -96,7 +96,9 @@ mockChatRoute.post(
     const throttleEnabled = flag('FEATURE_MEMORY_THROTTLE');
     const skipMemory = throttleEnabled && !memoryDecision.inject;
 
-    const profile = getUserProfile(userId);
+    const profile = readCharacterMemory(userId, body.characterId, {
+      mode: sessionIfActive ? 'if' : 'main',
+    });
     const summary = getSummary(body.sessionId);
     const { recent: recentHistory } = getExpiredTurns(
       body.history.map((m) => ({ role: m.role, content: m.content })),

@@ -6,7 +6,6 @@ import { useToast } from '../components/Toast';
 
 interface PolicyRow { key: string; value: unknown; label: string; group: string; updatedAt?: string }
 interface PolicyGrouped { groups: Record<string, PolicyRow[]> }
-interface PolicyList { policies: PolicyRow[] }
 
 export function Policy() {
   const { success, error: toastErr } = useToast();

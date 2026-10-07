@@ -47,7 +47,7 @@ async function extractPreference(
   const scoped = Boolean(scope);
   scope ??= { mode: 'main' };
   const profileKey = memoryScopeKey(userId, characterId, scope);
-  const prompt = getPrompt('preferenceRecorder');
+  const prompt = getPrompt('preferenceRecorder') + '\n\n身份归属规则：user/真实用户是正在使用产品的人；assistant/AI角色是虚拟角色，两者不是同一个人。按每条事件明确标注的发言者和动作主体提取，保留谁赠送、谁领取、谁支付。AI角色的偏好不得写成用户偏好；AI角色发送的红包或礼物不得写成用户发送。昵称只是称呼，不得据此交换身份。无法确定主体的事件省略，不要猜测。';
   const existingProfile = scoped ? getUserProfile(userId, characterId, scope) : getUserProfile(userId);
   const conversation = scoped ? recentConversation : recentConversation.slice(0, 3000);
   const userContent = existingProfile?.trim()

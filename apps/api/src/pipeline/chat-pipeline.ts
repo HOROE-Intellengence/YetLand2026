@@ -10,7 +10,7 @@ import { mockChatStream } from '../stream/mock-sse';
 import { sidecarReady } from '../sidecar-ai/client';
 import { judgeAtmosphere, getCurrentTemperature, getTemperatureLog, recordTemperature } from '../sidecar-ai/atmosphere-judge';
 import { structureOutput, fallbackStructure } from '../sidecar-ai/output-structurer';
-import { bumpInputCounter, shouldRecordPreference, recordPreference, getUserProfile } from '../sidecar-ai/preference-recorder';
+import { bumpInputCounter, shouldRecordPreference, recordPreference } from '../sidecar-ai/preference-recorder';
 import { generateQuotaEnding, fallbackQuotaEnding } from '../sidecar-ai/quota-ending';
 import {
   compressContext,
@@ -315,7 +315,10 @@ export function runAfterDoneSidecars(userId: string, characterId: string, sessio
         .map((m) => `${m.role}: ${m.content}`)
         .join('\n');
       if (sidecarReady('preferenceRecorder')) {
-        preferenceWork = recordPreference(userId, characterId, recentForPref, sessionId).catch((e) => {
+        preferenceWork = recordPreference(userId, characterId, recentForPref, sessionId, {
+          mode: s.sessions[sessionId]?.mode === 'if' ? 'if' : 'main',
+          sourceApp: 'chat',
+        }).catch((e) => {
           console.warn('[sidecar] preferenceRecorder failed:', (e as Error).message);
         });
       }

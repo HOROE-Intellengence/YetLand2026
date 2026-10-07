@@ -26,10 +26,12 @@ import { adminLlmApisRoute } from './llm-apis';
 import { adminMembershipRoute } from './membership';
 import { requireAdmin } from '../../middleware/auth';
 import { adminApiGatewayRoute } from './api-gateway';
+import { adminMaterialsRoute } from './materials';
 
 export const mockAdminRoute = new Hono();
 mockAdminRoute.use('*', requireAdmin());
 mockAdminRoute.route('/api-gateway', adminApiGatewayRoute);
+mockAdminRoute.route('/materials', adminMaterialsRoute);
 
 mockAdminRoute.route('/health', adminHealthRoute);
 mockAdminRoute.route('/diagnostics', adminDiagnosticsRoute);

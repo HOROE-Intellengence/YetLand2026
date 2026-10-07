@@ -112,8 +112,8 @@ export function SidecarPrompts() {
       success('顺序已更新');
       setReason('');
       await load();
-    } catch (e: any) {
-      const msg = e?.message ?? String(e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
       toastErr(msg.includes('400') || msg.includes('INVALID') ? '顺序不合法：需包含全部 5 个不重复 key' : msg);
     }
   }

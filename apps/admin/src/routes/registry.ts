@@ -11,6 +11,7 @@ export interface RouteDef {
 }
 
 export const ROUTES: Record<string, RouteDef> = {
+  materials: { hash: 'materials', label: '素材库', component: lazy(() => import('./Materials').then(m => ({ default: m.Materials }))) },
   'api-overview': { hash: 'api-overview', label: 'API 聊天记录', component: lazy(() => import('./ApiGateway').then(m => ({ default: m.ApiGatewayOverview }))) },
   'api-keys': { hash: 'api-keys', label: 'Key 管理', component: lazy(() => import('./ApiGateway').then(m => ({ default: m.ApiGatewayKeys }))) },
   'api-prelude': { hash: 'api-prelude', label: '高级版前置', component: lazy(() => import('./ApiGateway').then(m => ({ default: m.ApiGatewayPrelude }))) },

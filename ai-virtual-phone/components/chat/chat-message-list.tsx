@@ -366,7 +366,9 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                                         className="menu-item"
                                         onClick={() => {
                                             const chars = loadCharacters();
-                                            const found = chars.find(c => c.wechatID === searchQuery.trim() || c.id === searchQuery.trim());
+                                            const query = searchQuery.trim().toLocaleLowerCase();
+                                            const found = chars.find(c => c.wechatID === searchQuery.trim() || c.id === searchQuery.trim())
+                                                ?? chars.find(c => c.name?.toLocaleLowerCase() === query);
                                             setSearchResult(found || null);
                                         }}
                                     >

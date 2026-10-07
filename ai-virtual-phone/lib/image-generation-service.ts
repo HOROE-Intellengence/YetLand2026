@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { getChatImageFromIndexedDB } from "./chat-asset-storage";
 import { storeMediaBlob } from "./media-cache-storage";
 import { throwIfAborted } from "./abort-utils";
+import { isYelanManaged, yelanRequest } from './yelan-managed-client';
 import {
   NOVELAI_COMMON_MODELS,
   getNovelAiResolution,
@@ -731,6 +732,20 @@ export async function generateImageFromConfiguredApi(params: {
   settings?: ImageGenerationSettings;
   signal?: AbortSignal;
 }): Promise<ImageGenerationResult | null> {
+  if (isYelanManaged) {
+    const prompt = params.description.trim();
+    if (!prompt) return null;
+    if (params.useReferenceImage) throw new Error('托管参考图编辑尚未开放，请使用文字描述生成');
+    const data = await yelanRequest<{ b64: string; mimeType: string }>('/phone/images/generations', {
+      method: 'POST', signal: params.signal,
+      body: JSON.stringify({ prompt, ...(params.characterId ? { characterId: params.characterId } : {}) }),
+    });
+    throwIfAborted(params.signal);
+    const blob = base64ToBlob(data.b64, data.mimeType);
+    const mediaRef = await storeMediaBlob(blob, data.mimeType, 'image');
+    return { mediaRef, dataUrl: `data:${data.mimeType};base64,${data.b64}`, blob,
+      mimeType: data.mimeType, prompt, usedReferenceImage: false };
+  }
   const settings = params.settings ?? loadImageGenerationSettings();
   if (!settings.enabled) return null;
 

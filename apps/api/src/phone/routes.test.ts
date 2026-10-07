@@ -25,6 +25,15 @@ vi.mock('./memory', async importOriginal => {
 const app = new Hono().route('/api/phone', phoneRoute);
 describe('phone managed routes', () => {
   beforeEach(() => { vi.unstubAllGlobals(); vi.mocked(readPhoneMemory).mockClear(); });
+  it('protects image generation and rejects client provider overrides before spending quota', async () => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    const path = '/api/phone/images/generations';
+    expect((await app.request(path, { method: 'POST', body: '{}' })).status).toBe(401);
+    const headers = { Authorization: 'Bearer test-user', 'Content-Type': 'application/json' };
+    expect((await app.request(path, { method: 'POST', headers, body: JSON.stringify({ characterId: 'private', prompt: 'test' }) })).status).toBe(404);
+    expect((await app.request(path, { method: 'POST', headers, body: JSON.stringify({ prompt: 'test', model: 'client-model', apiKey: 'injected' }) })).status).toBe(400);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it('requires login and returns visible characters without upstream credentials', async () => {
     expect((await app.request('/api/phone/bootstrap')).status).toBe(401);
     const response = await app.request('/api/phone/bootstrap', { headers: { Authorization: 'Bearer test-user' } });

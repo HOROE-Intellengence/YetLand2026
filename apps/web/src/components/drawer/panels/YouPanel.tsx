@@ -141,14 +141,16 @@ export function YouPanel() {
     if (meQuery.data?.name) setName(meQuery.data.name);
   }, [meQuery.data?.name]);
 
+  const hasProfile = Boolean(meQuery.data);
+  const { email, avatarUrl, bio } = meQuery.data ?? {};
   useEffect(() => {
-    if (!meQuery.data) return;
+    if (!hasProfile) return;
     setProfile({
-      avatarUrl: meQuery.data.avatarUrl ?? '',
-      bio: meQuery.data.bio ?? '',
+      avatarUrl: avatarUrl ?? '',
+      bio: bio ?? '',
     });
-    setEmailDraft(meQuery.data.email ?? '');
-  }, [meQuery.data?.email, meQuery.data?.avatarUrl, meQuery.data?.bio]);
+    setEmailDraft(email ?? '');
+  }, [hasProfile, email, avatarUrl, bio]);
 
   useEffect(() => {
     if (!confirmingClear) return;

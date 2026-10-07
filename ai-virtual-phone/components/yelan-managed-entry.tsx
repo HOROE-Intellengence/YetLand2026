@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type ComponentType } from 'react';
 import { isYelanManaged, setYelanToken, scopePhoneStorage, yelanRequest } from '@/lib/yelan-managed-client';
+import { yelanParentOrigins } from '@/lib/yelan-parent-origin';
 
 export function YelanManagedEntry() {
   const [App, setApp] = useState<ComponentType | null>(null);
@@ -19,9 +20,9 @@ export function YelanManagedEntry() {
   useEffect(() => {
     let disposed = false;
     let started = false;
-    const parentOrigin = process.env.NEXT_PUBLIC_YELAN_WEB_ORIGIN || 'http://localhost:5173';
+    const parentOrigins = yelanParentOrigins(process.env.NEXT_PUBLIC_YELAN_WEB_ORIGIN || 'http://localhost:5173');
     async function receive(event: MessageEvent) {
-      if (event.source !== window.parent || event.origin !== parentOrigin || event.data?.type !== 'yelan:phone-session') return;
+      if (event.source !== window.parent || !parentOrigins.includes(event.origin) || event.data?.type !== 'yelan:phone-session') return;
       if (started || typeof event.data.token !== 'string') return;
       started = true;
       try {
@@ -39,7 +40,7 @@ export function YelanManagedEntry() {
       void import('./main-app').then(app => { if (!disposed) setApp(() => app.MainApp); });
     } else {
       window.addEventListener('message', receive);
-      if (window.parent !== window) window.parent.postMessage({ type: 'yelan:phone-ready' }, parentOrigin);
+      if (window.parent !== window) for (const origin of parentOrigins) window.parent.postMessage({ type: 'yelan:phone-ready' }, origin);
     }
     return () => { disposed = true; window.removeEventListener('message', receive); };
   }, []);

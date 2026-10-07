@@ -1,5 +1,5 @@
-import { AuthVerifyResponseSchema, AuthMeResponseSchema } from '@yelan/shared';
-import type { AuthVerifyResponse, AuthMeResponse } from '@yelan/shared';
+import { AuthMeResponseSchema } from '@yelan/shared';
+import type { AuthMeResponse } from '@yelan/shared';
 
 const LS_TOKEN = 'yelan.adminToken';
 const LS_BASE = 'yelan.adminApiBase';

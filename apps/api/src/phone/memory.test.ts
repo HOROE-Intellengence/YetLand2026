@@ -4,6 +4,7 @@ import { ingestPhoneMemory, readPhoneMemory } from './memory';
 import { sidecarCallWithSchema } from '../sidecar-ai/client';
 import { getUserProfile, recordPreference } from '../sidecar-ai/preference-recorder';
 import { deleteAllMemories } from '../services/memories';
+import { readCharacterMemory } from '../services/character-memory';
 
 vi.mock('../services/characters', () => ({ charactersService: {
   get: (id: string) => ({ id, isActive: true }),
@@ -43,6 +44,20 @@ describe('phone shared memory', () => {
     expect(sidecarCallWithSchema).toHaveBeenCalledTimes(1);
     expect((await ingestPhoneMemory('u1', event)).duplicate).toBe(true);
     await expect(ingestPhoneMemory('u1', { ...event, text: 'changed' })).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('shares scoped facts in both directions between original chat and phone', async () => {
+    await ingestPhoneMemory('u1', event);
+    expect(readCharacterMemory('u1', 'shen', { mode: 'main' })).toContain('明天面试');
+    vi.mocked(sidecarCallWithSchema).mockResolvedValueOnce({ ok: true, data: {
+      preferences: [], events: [{ date: '今天', text: '用户送给AI角色一张蓝色车票' }],
+      relationshipState: '', summary: '用户送给AI角色一张蓝色车票',
+    } });
+    await recordPreference('u1', 'shen', 'user: 送你一张蓝色车票', 's1', { mode: 'main', sourceApp: 'chat' });
+    expect(readPhoneMemory('u1', event)).toContain('蓝色车票');
+    expect(readCharacterMemory('u1', 'other', { mode: 'main' })).not.toContain('蓝色车票');
+    expect(readCharacterMemory('u1', 'shen', { mode: 'if' })).not.toContain('蓝色车票');
+    expect(vi.mocked(sidecarCallWithSchema).mock.calls.at(-1)![0]).toContain('AI角色发送的红包或礼物不得写成用户发送');
   });
 
   it('retries failures without marking the source as successfully recorded', async () => {

@@ -119,7 +119,7 @@ export function ServiceConfig() {
 
   useEffect(() => { loadConfig(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const entries = inventory?.entries ?? [];
+  const entries = useMemo(() => inventory?.entries ?? [], [inventory?.entries]);
   const selectedMain = useMemo(() => entries.find((entry) => entry.id === inventory?.mainApiId), [entries, inventory]);
   const selectedSidecar = useMemo(() => entries.find((entry) => entry.id === inventory?.sidecarApiId), [entries, inventory]);
   const taskApiNames = useMemo(() => {

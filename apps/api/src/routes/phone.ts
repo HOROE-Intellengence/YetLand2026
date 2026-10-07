@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { requireAuth } from '../middleware/auth';
-import { PhoneMemoryEventSchema, PhoneMemoryScopeSchema } from '../phone/contracts';
+import { PhoneMemoryEventSchema, PhoneMemoryScopeSchema, PhoneImageRequestSchema, PhoneSpeechRequestSchema,
+  PhoneVoiceSessionRequestSchema, PhoneCompletionRequestSchema } from '@yelan/shared';
 import { ingestPhoneMemory, readPhoneMemory, PhoneError } from '../phone/memory';
 import { accessibleCharacter } from '../phone/memory';
 import { charactersService } from '../services/characters';
@@ -9,16 +10,16 @@ import { loadCharacterCard, loadPreludeCard } from '../prompts/loader';
 import { getLlmApiConfig } from '../services/llm-api-inventory';
 import { phoneBilling } from '../phone/billing';
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
 import { phoneRole, savePhoneRoleRules } from '../phone/role-rules';
 import { store } from '../store/persistence';
 import { VoiceError } from '../voice/config';
+import { generateManagedImage, imageConfigured, ImageError } from '../services/managed-images';
 
 export const phoneRoute = new Hono();
 phoneRoute.use('*', requireAuth());
 phoneRoute.use('*', bodyLimit({ maxSize: 4 * 1024 * 1024 }));
 phoneRoute.use('*', async (c, next) => { c.header('Cache-Control', 'private, no-store'); await next(); });
-phoneRoute.onError((error, c) => error instanceof VoiceError
+phoneRoute.onError((error, c) => error instanceof ImageError ? c.json({ code: error.code }, error.status) : error instanceof VoiceError
   ? c.json({ code: error.code }, error.status as 400 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503)
   : error instanceof PhoneError
   ? c.json({ code: error.code }, error.status)
@@ -38,7 +39,7 @@ phoneRoute.get('/memory', c => {
 
 phoneRoute.get('/bootstrap', c => {
   const userId = c.get('userId') as string;
-  return c.json({ userId, managed: true, billing: { implemented: false }, characters:
+  return c.json({ userId, managed: true, imageGeneration: imageConfigured(), billing: { implemented: false }, characters:
     charactersService.listVisibleTo(userId).filter(character => character.isActive).map(character => ({
       id: character.id, name: character.name, persona: character.description || '',
       updatedAt: character.updatedAt, avatar: null,
@@ -47,13 +48,20 @@ phoneRoute.get('/bootstrap', c => {
   });
 });
 
+phoneRoute.post('/images/generations', async c => {
+  const body = PhoneImageRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) return c.json({ code: 'INVALID_IMAGE_REQUEST' }, 400);
+  const userId = c.get('userId') as string;
+  if (body.data.characterId) accessibleCharacter(userId, body.data.characterId);
+  return c.json(await generateManagedImage({ ...body.data, userId }, c.req.raw.signal));
+});
+
 phoneRoute.get('/characters/:id/rules', c => c.json(phoneRole(c.get('userId') as string, c.req.param('id'))));
 phoneRoute.put('/characters/:id/rules', async c => c.json(savePhoneRoleRules(c.get('userId') as string,
   c.req.param('id'), await c.req.json().catch(() => null))));
 
 phoneRoute.post('/voice/sessions', async c => {
-  const body = PhoneMemoryScopeSchema.extend({ kind: z.enum(['voice', 'voice-hq']).default('voice'), context: z.string().max(12000).default('') })
-    .safeParse(await c.req.json().catch(() => null));
+  const body = PhoneVoiceSessionRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return c.json({ code: 'INVALID_PHONE_VOICE' }, 400);
   const userId = c.get('userId') as string;
   const characterId = accessibleCharacter(userId, body.data.characterId);
@@ -76,7 +84,7 @@ phoneRoute.post('/voice/sessions', async c => {
 phoneRoute.post('/characters/:id/speech', async c => {
   const userId = c.get('userId') as string;
   const characterId = accessibleCharacter(userId, c.req.param('id'));
-  const body = z.object({ text: z.string().trim().min(1).max(16000) }).safeParse(await c.req.json().catch(() => null));
+  const body = PhoneSpeechRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return c.json({ code: 'INVALID_SPEECH_TEXT' }, 400);
   const [{ synthesize }, { characterProfile }, { voiceDatabase }, { encodeOpus }] = await Promise.all([
     import('../voice-hq/providers'), import('../voice-hq/profiles'), import('../voice/database'), import('../voice/audio'),
@@ -87,15 +95,10 @@ phoneRoute.post('/characters/:id/speech', async c => {
   return new Response(new Uint8Array(audio), { headers: { 'Content-Type': 'audio/ogg', 'Cache-Control': 'private, no-store' } });
 });
 
-const CompletionSchema = z.object({
-  messages: z.array(z.object({ role: z.enum(['system', 'user', 'assistant', 'tool']), content: z.unknown().optional() }).passthrough()).min(1).max(300),
-  stream: z.boolean().optional(),
-}).passthrough();
-
 phoneRoute.post('/characters/:id/chat/completions', async c => {
   const userId = c.get('userId') as string;
   const characterId = accessibleCharacter(userId, c.req.param('id'));
-  const body = CompletionSchema.safeParse(await c.req.json().catch(() => null));
+  const body = PhoneCompletionRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return c.json({ code: 'INVALID_PHONE_COMPLETION' }, 400);
   const config = getLlmApiConfig('main');
   if (!config || config.protocol !== 'openai-compatible') throw new PhoneError('PHONE_MODEL_UNAVAILABLE', 503);

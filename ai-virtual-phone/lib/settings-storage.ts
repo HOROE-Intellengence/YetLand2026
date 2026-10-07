@@ -641,7 +641,7 @@ export function loadApiConfigs(): ApiConfig[] {
         if (isYelanManaged) return parsed.filter(config => config.id.startsWith('yelan:')).map(config => normalizeApiConfig({
             id: config.id, name: '夜阑托管', provider: 'Custom', apiKey: 'server-managed',
             baseUrl: `/api/host/phone/characters/${encodeURIComponent(config.id.slice('yelan:'.length))}`,
-            defaultModel: 'yelan-managed', enableNativeTools: false, enableImageRecognition: true, enableImageGeneration: false,
+            defaultModel: 'yelan-managed', enableNativeTools: false, enableImageRecognition: true, enableImageGeneration: kvGet('yelan-image-enabled') === 'true',
         }));
         return parsed.map(normalizeApiConfig);
     } catch {
@@ -832,6 +832,7 @@ function normalizeImageGenerationSettings(settings: Partial<ImageGenerationSetti
 
 export function loadImageGenerationSettings(): ImageGenerationSettings {
     if (typeof window === "undefined") return { ...DEFAULT_IMAGE_GENERATION_SETTINGS };
+    if (isYelanManaged) return { ...DEFAULT_IMAGE_GENERATION_SETTINGS, enabled: kvGet('yelan-image-enabled') === 'true' };
     try {
         const raw = kvGet(IMAGE_GENERATION_SETTINGS_KEY);
         if (!raw) return { ...DEFAULT_IMAGE_GENERATION_SETTINGS };

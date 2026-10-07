@@ -23,3 +23,25 @@ export const PhoneRoleRulesSchema = z.object({
   })).max(50).default([]),
 }).strict();
 export type PhoneRoleRules = z.infer<typeof PhoneRoleRulesSchema>;
+
+export const PhoneImageRequestSchema = z.object({ prompt: z.string().trim().min(1).max(4000), characterId: z.string().max(128).optional() }).strict();
+export const PhoneSpeechRequestSchema = z.object({ text: z.string().trim().min(1).max(16000) });
+export const PhoneMemoryScopeSchema = z.object({
+  characterId: z.string().min(1).max(128), mode: z.enum(['main', 'if']).default('main'),
+  branchId: z.string().min(1).max(128).optional(),
+});
+export const PhoneSourceSchema = z.enum([
+  'chat', 'group_chat', 'moments', 'checkphone', 'diary', 'voice', 'story', 'vn', 'adventure',
+  'reading', 'shopping', 'game', 'custom_app', 'xiaohongshu', 'interview_magazine', 'cocreate', 'dwelling',
+]);
+export const PhoneMemoryEventSchema = PhoneMemoryScopeSchema.extend({
+  eventId: z.string().min(1).max(160), sourceApp: PhoneSourceSchema, text: z.string().trim().min(1).max(6000),
+});
+export type PhoneMemoryEvent = z.infer<typeof PhoneMemoryEventSchema>;
+export const PhoneVoiceSessionRequestSchema = PhoneMemoryScopeSchema.extend({
+  kind: z.enum(['voice', 'voice-hq']).default('voice'), context: z.string().max(12000).default(''),
+});
+export const PhoneCompletionRequestSchema = z.object({
+  messages: z.array(z.object({ role: z.enum(['system', 'user', 'assistant', 'tool']), content: z.unknown().optional() }).passthrough()).min(1).max(300),
+  stream: z.boolean().optional(),
+}).passthrough();

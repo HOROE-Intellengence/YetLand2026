@@ -16,6 +16,10 @@ const B = '\x1b[1m';
 // ── 权威映射：业务域 → contract 文件 ──────────────────────────────────────
 // null = 暂无契约（待补充）；'__internal__' = 运维端点，不做 API 契约
 const DOMAIN_CONTRACT_MAP = {
+  'phone': 'phone',
+  'admin/materials': '__internal__',
+  'admin/voice': 'voice',
+  'me/created-characters': 'user-character',
   'api-gateway': 'api-gateway',
   'admin/api-gateway': 'api-gateway',
   'developer': '__internal__',

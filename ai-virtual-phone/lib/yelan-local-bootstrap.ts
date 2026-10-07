@@ -4,11 +4,13 @@ import { isYelanManaged, yelanRequest } from './yelan-managed-client';
 import { saveCharacters } from './character-storage';
 import { buildManagedRoleSettings, type ManagedRole } from './yelan-role-rules';
 import { hydrateSettingsDb } from './settings-db';
+import { kvSet } from './kv-db';
 
 export async function bootstrapYelanLocal() {
   if (isYelanManaged) {
-    const boot = await yelanRequest<{ characters: ManagedRole[] }>('/phone/bootstrap');
+    const boot = await yelanRequest<{ characters: ManagedRole[]; imageGeneration?: boolean }>('/phone/bootstrap');
     await hydrateSettingsDb();
+    kvSet('yelan-image-enabled', String(Boolean(boot.imageGeneration)));
     const roleSettings = boot.characters.map(buildManagedRoleSettings);
     savePresets(roleSettings.map(settings => settings.preset));
     saveWorldBooks(roleSettings.map(settings => settings.worldBook));
@@ -18,7 +20,7 @@ export async function bootstrapYelanLocal() {
     const configs: ApiConfig[] = boot.characters.map(character => ({
       id: `yelan:${character.id}`, name: '夜阑托管', provider: 'Custom', apiKey: 'server-managed',
       baseUrl: `/api/host/phone/characters/${encodeURIComponent(character.id)}`,
-      defaultModel: 'yelan-managed', enableNativeTools: false, enableImageRecognition: true, enableImageGeneration: false,
+      defaultModel: 'yelan-managed', enableNativeTools: false, enableImageRecognition: true, enableImageGeneration: Boolean(boot.imageGeneration),
     }));
     saveApiConfigs(configs);
     const bindings = loadBindingConfig();

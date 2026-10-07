@@ -192,11 +192,11 @@ export function loadNativeTimeline(
             if (options?.afterTimestamp && msg.createdAt <= options.afterTimestamp) continue;
 
             let sender: string;
-            if (msg.role === "user") sender = userName;
+            if (msg.role === "user") sender = `真实用户（${userName}）`;
             else if (msg.role === "tool") sender = "工具";
             else if (isSystemInstructionMessage(msg)) sender = "系统指令";
             else if (msg.role === "system") continue; // skip system messages in group timeline
-            else sender = msg.senderName || "未知";
+            else sender = `AI角色（${msg.senderName || "未知"}）`;
 
             const msgLabel = formatPromptEventLabel(`群聊「${gs.groupName || "群聊"}」`, msg.createdAt, timeAware, timestampOptions);
             let content = stripStateAndInnerForPrompt(msg.content || "");
@@ -320,7 +320,7 @@ export function loadNativeTimeline(
                 continue;
             }
 
-            const sender = msg.role === "user" ? userName : msg.role === "tool" ? "工具" : charName;
+            const sender = msg.role === "user" ? `真实用户（${userName}）` : msg.role === "tool" ? "工具" : `AI角色（${charName}）`;
             let content = stripStateAndInnerForPrompt(msg.content || "");
 
             // Action notifications: always override content to bracket format (stored content is natural language for UI)
