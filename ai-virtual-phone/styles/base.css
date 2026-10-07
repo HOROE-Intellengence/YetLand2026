@@ -68,6 +68,16 @@ a {
   width: var(--phone-total-width);
 }
 
+@media (min-width: 501px) {
+  html[data-yelan-managed="true"] .app-root {
+    width: 100%;
+    padding: 12px 0;
+  }
+  html[data-yelan-managed="true"] .phone-shell-wrap {
+    zoom: var(--yelan-phone-scale, 1);
+  }
+}
+
 .splash-phone-screen {
   padding: 0;
   background: #F1F2F6;

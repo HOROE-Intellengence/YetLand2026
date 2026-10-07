@@ -41,6 +41,8 @@ COPY packages/design-tokens ./packages/design-tokens
 # 构建期注入 API 基址：默认占位，compose 会传真实 https://<DOMAIN>
 ARG WEB_API_BASE=https://localhost
 ENV VITE_API_BASE=${WEB_API_BASE}
+ARG WEB_PHONE_URL=
+ENV VITE_PHONE_URL=${WEB_PHONE_URL}
 # 同域托管即真实 server，关掉 mock
 ENV VITE_USE_MOCK=false
 

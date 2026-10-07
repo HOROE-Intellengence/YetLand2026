@@ -1,0 +1,34 @@
+# Opt-in companion service. The original two-service deployment is unchanged.
+# docker compose -f docker-compose.yml -f docker-compose.phone.yml up -d --build
+services:
+  phone:
+    build:
+      context: ../..
+      dockerfile: infra/deploy/phone.Dockerfile
+      args:
+        YELAN_WEB_ORIGIN: https://${DOMAIN:?DOMAIN is required}
+    image: yelan-phone:latest
+    restart: unless-stopped
+    environment:
+      YELAN_API_ORIGIN: http://api:8787
+      YELAN_PHONE_MANAGED: "true"
+      HOST: 0.0.0.0
+      PORT: "3001"
+    expose:
+      - "3001"
+    networks:
+      - web
+    depends_on:
+      - api
+
+  caddy:
+    build:
+      args:
+        WEB_PHONE_URL: https://${PHONE_DOMAIN:?PHONE_DOMAIN is required}
+    environment:
+      PHONE_DOMAIN: ${PHONE_DOMAIN:?PHONE_DOMAIN is required}
+    volumes:
+      - ./Caddyfile.phone:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile.base:ro
+    depends_on:
+      - phone

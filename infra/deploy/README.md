@@ -236,3 +236,22 @@ docker compose up -d --build
 ## 升级到 Postgres（可选）
 
 `待完善功能.md` § A 路线 1 详述。当前默认 JSON 文件持久化对单机数千用户够用。
+
+## 独立小手机（可选）
+
+保留原聊天、普通语音、高质量语音和 API 服务；新增手机容器与独立子域名。设置 `.env` 中的
+`DOMAIN`（夜阑主站）和 `PHONE_DOMAIN`（例如 `phone.example.com`），两者 DNS 均指向本服务器。
+手机只通过容器内网访问现有 API，镜像不接收任何模型密钥。
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.phone.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.phone.yml up -d --build
+```
+
+主站构建时注入手机入口地址；手机构建时固定允许握手的主站 origin。域名变更需要重建两个前端镜像。
+用户从主站功能选择页进入小手机，手机直接链接不会取得登录态。
+原 Compose 文件独立运行时保持原两服务结构；手机覆盖文件用独立 Caddy 配置导入原规则，不覆盖原入口。
+
+构建建议预留至少 6 GiB Node 堆空间。手机状态沿用浏览器存储，按夜阑账号隔离，不提供新增跨端同步。
+托管模式禁止原账号、独立云部署、工具代理和独立模型配置接口；保留的夜阑接口逐次鉴权。
+首次上线仍需按 `docs/phone-integration-plan.md` 完成实际 HTTPS、账号隔离、模型、角色规则与语音验收。
