@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import { phoneRoute } from '../routes/phone';
+import { readPhoneMemory } from './memory';
 
 vi.mock('../middleware/auth', () => ({ requireAuth: () => async (c: any, next: () => Promise<void>) => {
   if (c.req.header('authorization') !== 'Bearer test-user') return c.json({ code: 'AUTH_REQUIRED' }, 401);
@@ -18,12 +19,12 @@ vi.mock('../services/llm-api-inventory', () => ({ getLlmApiConfig: () => ({
 }) }));
 vi.mock('./memory', async importOriginal => {
   const original = await importOriginal<typeof import('./memory')>();
-  return { ...original, readPhoneMemory: () => '共享记忆' };
+  return { ...original, readPhoneMemory: vi.fn(() => '共享记忆') };
 });
 
 const app = new Hono().route('/api/phone', phoneRoute);
 describe('phone managed routes', () => {
-  beforeEach(() => { vi.unstubAllGlobals(); });
+  beforeEach(() => { vi.unstubAllGlobals(); vi.mocked(readPhoneMemory).mockClear(); });
   it('requires login and returns visible characters without upstream credentials', async () => {
     expect((await app.request('/api/phone/bootstrap')).status).toBe(401);
     const response = await app.request('/api/phone/bootstrap', { headers: { Authorization: 'Bearer test-user' } });
@@ -58,5 +59,25 @@ describe('phone managed routes', () => {
     expect(body.messages[0].content).toContain('服务端角色设定');
     expect(body.messages[0].content).toContain('共享记忆');
     expect(body.messages[1].content).toBe('[表情包:开心]');
+  });
+  it('reads the requested branch under the authenticated user and authorized role', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ choices: [] })));
+    const response = await app.request('/api/phone/characters/public/chat/completions', {
+      method: 'POST', headers: { Authorization: 'Bearer test-user', 'Content-Type': 'application/json',
+        'X-Yelan-Memory-Branch': encodeURIComponent('story:支线一') },
+      body: JSON.stringify({ messages: [{ role: 'user', content: '继续剧情' }] }),
+    });
+    expect(response.status).toBe(200);
+    expect(readPhoneMemory).toHaveBeenCalledWith('u1', { characterId: 'public', mode: 'main', branchId: 'story:支线一' });
+  });
+  it.each(['%', 'x'.repeat(129), ''])('rejects malformed branch headers instead of falling back to mainline', async branch => {
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+    const response = await app.request('/api/phone/characters/public/chat/completions', {
+      method: 'POST', headers: { Authorization: 'Bearer test-user', 'Content-Type': 'application/json', 'X-Yelan-Memory-Branch': branch },
+      body: JSON.stringify({ messages: [{ role: 'user', content: '继续' }] }),
+    });
+    expect(response.status).toBe(400);
+    expect(readPhoneMemory).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

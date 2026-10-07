@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { scopedYelanConfig } from '@/lib/yelan-memory-scope';
 import { ArrowLeft, BookOpen, LogOut, Bug, Map as MapIcon, MessageCircle, Save, Send, Palette, MoreHorizontal, X } from "lucide-react";
 import type { MapWorld, GameSave, NodeInteraction, EventScene, EventChoice, StreamMessage, Declaration } from "@/lib/map-types";
 import {
@@ -463,7 +464,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
         pacing: save.pacing,
       };
 
-      const scene = await expandEvent(dmCtx, companionIds, apiConfig);
+      const scene = await expandEvent(dmCtx, companionIds, scopedYelanConfig(apiConfig, 'map', save.worldId));
       const dmScene = scene as EventScene & { dmSituation?: string; worldEvents?: string[] };
       if (dmScene.worldEvents?.length) setWorldEvents(dmScene.worldEvents);
 
@@ -575,7 +576,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
         if (pendingIds.length > 0) {
           setLoadingPhase("companions");
           for (const cid of pendingIds) {
-            const decl = await companionDeclare(cid, apiConfig, streamRef.current, save.agents.length > 1 ? userIdentity : undefined, save.agents.find(a => a.characterId === cid)?.affinity);
+            const decl = await companionDeclare(cid, scopedYelanConfig(apiConfig, 'map', save.worldId), streamRef.current, save.agents.length > 1 ? userIdentity : undefined, save.agents.find(a => a.characterId === cid)?.affinity);
 
             if (decl.failed) {
               pushMessages({ id: mkId(), type: "system", text: `${decl.speaker} 回复失败` });
@@ -633,7 +634,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
       dmCtx.director = save.director;
       dmCtx.recentJournal = saveRef.current.journal.map(j => j.text);
 
-      const continuation = await resolveRound(dmCtx, allDeclarations, apiConfig);
+      const continuation = await resolveRound(dmCtx, allDeclarations, scopedYelanConfig(apiConfig, 'map', save.worldId));
 
       // Update Director
       const ev = continuation as EventScene & { gained?: string[]; lost?: string[]; npcsInvolved?: string[]; moveTo?: string; worldEvents?: string[] };
@@ -833,7 +834,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
           try { dmCtxForEnding = JSON.parse(eventContext); } catch { dmCtxForEnding = { worldLore: skeleton.world.lore, currentLocation: currentNode?.name || "", eventType: "", eventBrief: "", companionNames: [], recentJournal: save.journal.map(j => j.text), keyChoices: save.keyChoices, gameTime: formatGameTime(save.gameDay, save.gameTime) }; }
           dmCtxForEnding.director = newSave.director;
           dmCtxForEnding.recentJournal = newSave.journal.map(j => j.text);
-          const ending = await generateEnding(dmCtxForEnding, apiConfig);
+          const ending = await generateEnding(dmCtxForEnding, scopedYelanConfig(apiConfig, 'map', save.worldId));
           setEndingData(ending);
           setEndingStep(0);
           // Final summary on game completion — use auxiliary API
@@ -966,7 +967,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
           const decls = await Promise.all(
             companionIds.map(cid => companionDeclare(
               cid,
-              apiConfig,
+              scopedYelanConfig(apiConfig, 'map', save.worldId),
               streamRef.current,
               save.agents.length > 1 ? userIdentity : undefined,
               save.agents.find(a => a.characterId === cid)?.affinity,
@@ -1151,7 +1152,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
       const apiConfig = (slot?.apiConfigId ? apiConfigs.find(c => c.id === slot.apiConfigId) : null) || apiConfigs.find(c => c.apiKey) || apiConfigs[0];
       if (!apiConfig?.apiKey) throw new Error("未找到API配置");
 
-      const decl = await companionDeclare(characterId, apiConfig, streamRef.current, save.agents.length > 1 ? userIdentity : undefined, save.agents.find(a => a.characterId === characterId)?.affinity);
+      const decl = await companionDeclare(characterId, scopedYelanConfig(apiConfig, 'map', save.worldId), streamRef.current, save.agents.length > 1 ? userIdentity : undefined, save.agents.find(a => a.characterId === characterId)?.affinity);
 
       if (decl.speech && decl.speech !== "……") {
         pushMessages({ id: mkId(), type: "character", speaker: decl.speaker, text: decl.speech, emotion: decl.emotion });
@@ -1222,7 +1223,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
       dmCtx.recentJournal = save.journal.map(j => j.text);
 
       setLoadingPhase("dm");
-      const continuation = await resolveRound(dmCtx, allDeclarations, apiConfig);
+      const continuation = await resolveRound(dmCtx, allDeclarations, scopedYelanConfig(apiConfig, 'map', save.worldId));
 
       // Reuse the same result processing as handlePlayerAction
       // (This duplicates some logic but keeps it self-contained)

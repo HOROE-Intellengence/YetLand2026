@@ -208,7 +208,7 @@ export async function sidecarCallWithSchema<T>(
   systemPrompt: string,
   userContent: string,
   schema: { safeParse: (data: unknown) => { success: boolean; data?: T; error?: { issues: Array<{ message: string }> } } },
-  opts: { taskKey?: SidecarPromptKey; timeoutMs?: number } = {},
+  opts: { taskKey?: SidecarPromptKey; timeoutMs?: number; maxTokens?: number } = {},
 ): Promise<SidecarResult<T>> {
   const result = await sidecarCall<T>(systemPrompt, userContent, opts);
   if (!result.ok) return result;

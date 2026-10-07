@@ -565,7 +565,7 @@ export function VnPlayer({ characterId, chapterIndex, onClose, onChapterEnd, vnT
     try {
       // Get all messages in session (cross-chapter context)
       const allMessages = loadVnMessages(session.id);
-      const result = await generateVnCompletion(characterId, allMessages);
+      const result = await generateVnCompletion(characterId, allMessages, session.id);
 
       // Save AI response
       const aiMsg = pushVnMessage({
@@ -693,7 +693,7 @@ export function VnPlayer({ characterId, chapterIndex, onClose, onChapterEnd, vnT
 
     try {
       const allMessages = loadVnMessages(session.id);
-      const result = await generateVnCompletion(characterId, allMessages);
+      const result = await generateVnCompletion(characterId, allMessages, session.id);
       const aiMsg = pushVnMessage({ sessionId: session.id, role: "assistant", rawContent: result.rawText, chapterIndex });
       updateChapterStartMessageId(session.id, chapterIndex, userMsg.id);
 
@@ -797,7 +797,7 @@ export function VnPlayer({ characterId, chapterIndex, onClose, onChapterEnd, vnT
     setWaitingForInput(false);
     try {
       const allMessages = loadVnMessages(session.id);
-      const result = await generateVnCompletion(characterId, allMessages);
+      const result = await generateVnCompletion(characterId, allMessages, session.id);
       const aiMsg = pushVnMessage({ sessionId: session.id, role: "assistant", rawContent: result.rawText, chapterIndex });
       rebuildFrames();
       // Play new AI frames

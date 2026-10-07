@@ -49,11 +49,14 @@ async function extractPreference(
   const profileKey = memoryScopeKey(userId, characterId, scope);
   const prompt = getPrompt('preferenceRecorder');
   const existingProfile = scoped ? getUserProfile(userId, characterId, scope) : getUserProfile(userId);
+  const conversation = scoped ? recentConversation : recentConversation.slice(0, 3000);
   const userContent = existingProfile?.trim()
-    ? `[已有画像]\n${existingProfile.slice(0, 2000)}\n\n[最近对话]\n${recentConversation.slice(0, 3000)}`
-    : recentConversation.slice(0, 3000);
+    ? `[已有画像]\n${existingProfile.slice(0, 2000)}\n\n[最近对话]\n${conversation}`
+    : conversation;
 
-  const result = await sidecarCallWithSchema(prompt, userContent, PreferenceRecordResultSchema, { taskKey: 'preferenceRecorder' });
+  const result = await sidecarCallWithSchema(prompt, userContent, PreferenceRecordResultSchema, {
+    taskKey: 'preferenceRecorder', ...(scoped ? { timeoutMs: 30000, maxTokens: 2048 } : {}),
+  });
 
   if (result.ok && result.data) {
     const s = store.state();

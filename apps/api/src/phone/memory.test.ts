@@ -51,6 +51,16 @@ describe('phone shared memory', () => {
     expect(Object.values(store.state().phoneMemoryReceipts!)[0]?.status).toBe('failed');
     await expect(ingestPhoneMemory('u1', event)).resolves.toEqual({ ok: true, duplicate: false });
   });
+  it('passes the entire bounded phone event to the sidecar while preserving legacy limits', async () => {
+    await ingestPhoneMemory('u1', { ...event, text: '甲'.repeat(5900) + '结尾事实' });
+    const phoneCall = vi.mocked(sidecarCallWithSchema).mock.calls[0]!;
+    expect(phoneCall[1]).toContain('结尾事实');
+    expect(phoneCall[3]).toMatchObject({ timeoutMs: 30000, maxTokens: 2048 });
+    await recordPreference('u1', 'shen', '乙'.repeat(5900) + '旧路径结尾');
+    const legacyCall = vi.mocked(sidecarCallWithSchema).mock.calls[1]!;
+    expect(legacyCall[1]).not.toContain('旧路径结尾');
+    expect(legacyCall[3]).toEqual({ taskKey: 'preferenceRecorder' });
+  });
 
   it('blocks private-character reads and writes before any model call', async () => {
     await expect(ingestPhoneMemory('stranger', { ...event, characterId: 'private' })).rejects.toMatchObject({ status: 404 });

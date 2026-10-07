@@ -12,12 +12,17 @@ export async function flushYelanMemory() {
     for (const character of loadCharacters()) {
       const key = `yelan-memory-ack:${character.id}`;
       const ack = new Set<string>(JSON.parse(kvGet(key) || '[]'));
-      const pending = loadNativeTimeline(character.id).filter(entry => !ack.has(entry.id));
+      const pending = loadNativeTimeline(character.id);
       let remaining = 10;
       for (const entry of pending) {
-        if (remaining <= 0) break;
         const narrative = ['story', 'vn', 'map', 'game'].includes(entry.sourceApp);
         const branchId = narrative ? `${entry.sourceApp}:${entry.sessionId || entry.id}` : '';
+        const revisionHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([
+          entry.id, entry.sourceApp, branchId, entry.timestamp, entry.content,
+        ])));
+        const revision = `entry:v2:${Array.from(new Uint8Array(revisionHash), byte => byte.toString(16).padStart(2, '0')).join('')}`;
+        if (ack.has(revision)) continue;
+        if (remaining <= 0) break;
         const parts = memoryParts(entry);
         let complete = true;
         for (let index = 0; index < parts.length; index++) {
@@ -38,7 +43,7 @@ export async function flushYelanMemory() {
             complete = false; break;
           }
         }
-        if (complete) ack.add(entry.id);
+        if (complete) ack.add(revision);
         kvSet(key, JSON.stringify(Array.from(ack)));
       }
     }

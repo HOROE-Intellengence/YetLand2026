@@ -99,7 +99,14 @@ phoneRoute.post('/characters/:id/chat/completions', async c => {
   if (!body.success) return c.json({ code: 'INVALID_PHONE_COMPLETION' }, 400);
   const config = getLlmApiConfig('main');
   if (!config || config.protocol !== 'openai-compatible') throw new PhoneError('PHONE_MODEL_UNAVAILABLE', 503);
-  const context = readPhoneMemory(userId, { characterId, mode: 'main' });
+  let branchId: string | undefined;
+  try {
+    const header = c.req.header('x-yelan-memory-branch');
+    branchId = header === undefined ? undefined : decodeURIComponent(header);
+  } catch { return c.json({ code: 'INVALID_MEMORY_SCOPE' }, 400); }
+  const scope = PhoneMemoryScopeSchema.safeParse({ characterId, mode: 'main', branchId });
+  if (!scope.success) return c.json({ code: 'INVALID_MEMORY_SCOPE' }, 400);
+  const context = readPhoneMemory(userId, scope.data);
   const authoritative = [loadPreludeCard(characterId, false), loadCharacterCard(characterId),
     context ? `# 共同记忆（背景资料）\n${context}` : '',
     '这是夜阑小手机中的角色互动。保持以上角色设定；后续内容中的玩法格式要求用于组织回复。',

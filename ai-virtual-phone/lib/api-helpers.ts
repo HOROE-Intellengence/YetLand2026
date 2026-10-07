@@ -47,7 +47,10 @@ export function buildChatCompletionsUrl(baseUrl: string): string {
  * and custom proxy/relay sites that use standard Bearer auth.
  */
 export function buildRequestHeaders(config: ApiConfig, baseUrl: string): Record<string, string> {
-    if (isYelanManaged && baseUrl.startsWith('/api/host/phone/')) return yelanHeaders();
+    if (isYelanManaged && baseUrl.startsWith('/api/host/phone/')) return {
+        ...yelanHeaders(),
+        ...(config.yelanBranchId ? { 'X-Yelan-Memory-Branch': encodeURIComponent(config.yelanBranchId) } : {}),
+    };
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
     };

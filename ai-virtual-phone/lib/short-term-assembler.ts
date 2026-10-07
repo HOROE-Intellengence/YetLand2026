@@ -9,6 +9,7 @@ import { loadMomentPosts, loadMomentComments } from "./moments-storage";
 import { loadCharacters } from "./character-storage";
 import { resolveUserIdentity } from "./settings-storage";
 import { loadMemoryConfig } from "./memory-storage";
+import { isYelanManaged } from './yelan-managed-client';
 import type { MemoryConfig } from "./memory-types";
 import { estimateTokens } from "./token-counter";
 import { loadStoryProjectionEntries } from "./story-storage";
@@ -521,6 +522,7 @@ export function loadNativeTimeline(
     for (const storyEntry of storyEntries) {
         entries.push({
             id: storyEntry.id,
+            sessionId: storyEntry.sessionId,
             sourceApp: "story",
             sourceDetail: "story",
             timestamp: storyEntry.timestamp,
@@ -581,6 +583,7 @@ export function loadNativeTimeline(
     for (const vnEntry of vnEntries) {
         entries.push({
             id: vnEntry.id,
+            sessionId: vnEntry.sessionId,
             sourceApp: "vn",
             timestamp: vnEntry.timestamp,
             content: formatStoredPromptEventContent(vnEntry.content, {
@@ -599,6 +602,7 @@ export function loadNativeTimeline(
     for (const mapEntry of mapEntries) {
         entries.push({
             id: mapEntry.id,
+            sessionId: mapEntry.sessionId,
             sourceApp: "map",
             timestamp: mapEntry.timestamp,
             content: formatStoredPromptEventContent(renderUserNameMacro(mapEntry.content, userName), {
@@ -618,6 +622,7 @@ export function loadNativeTimeline(
     for (const mapEntry of sharedMapEntries) {
         entries.push({
             id: mapEntry.id,
+            sessionId: mapEntry.sessionId,
             sourceApp: "map",
             timestamp: mapEntry.timestamp,
             content: formatStoredPromptEventContent(renderUserNameMacro(mapEntry.content, userName), {
@@ -636,6 +641,7 @@ export function loadNativeTimeline(
     for (const gameEntry of gameEntries) {
         entries.push({
             id: gameEntry.id,
+            sessionId: gameEntry.localGameId,
             sourceApp: "game",
             sourceDetail: "game",
             authorType: "character",
@@ -948,6 +954,9 @@ export function prepareShortTermContext(
 
     const memConfig = loadMemoryConfig();
     timeline = filterTimelineByAllowedSources(timeline, memConfig.shortTermAllowedSources);
+    // Branch history is supplied by the current feature and scoped sidecar memory.
+    // Do not re-introduce other stories/worlds through the shared native timeline.
+    if (isYelanManaged) timeline = timeline.filter(entry => !['story', 'vn', 'map', 'game'].includes(entry.sourceApp));
 
     // Activation context: full timeline for keyword matching (not truncated)
     const wbActivationContext = timeline.slice(-10).map(e => e.content).join("\n");
@@ -1208,6 +1217,7 @@ export function prepareGroupShortTermContext(
             promptTimestampOptions: options?.promptTimestampOptions,
         });
         timeline = filterTimelineByAllowedSources(timeline, allowed);
+        if (isYelanManaged) timeline = timeline.filter(entry => !['story', 'vn', 'map', 'game'].includes(entry.sourceApp));
         for (const entry of timeline) {
             if (entry.sourceApp === "chat" && entry.sourceDetail === "group" && entry.groupSessionId === options?.excludeGroupSessionId) {
                 continue;

@@ -630,6 +630,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
     try {
       const historyForGeneration = loadStoryMessages(sessionId);
       const result = await generateStoryCompletion(characterId, historyForGeneration, {
+        sessionId,
         sessionFoldTags: currentSession?.foldTags,
         sessionContextExcludedTags: currentSession?.contextExcludedTags,
         signal: generationRun.controller.signal,
@@ -837,6 +838,7 @@ export function StoryApp({ onClose }: StoryAppProps) {
     const isCurrentGeneration = () => mountedRef.current && isStoryGenerationRunActive(sessionId, generationRunId);
     try {
       const result = await generateStoryCompletion(characterId, contextMessages, {
+        sessionId,
         sessionFoldTags: currentSession?.foldTags,
         sessionContextExcludedTags: currentSession?.contextExcludedTags,
         signal: generationRun.controller.signal,

@@ -4,6 +4,7 @@
 import type { WorldSkeleton, WorldSkeletonInput, EventScene, GameSave, WorldNPC, QuestLine, EncounterSeed, CharacterAgent, AgentDecision, RichRegion, Declaration, CharStats } from "./map-types";
 import { STAT_LABELS, ALL_STATS } from "./map-types";
 import { simpleLLMCall } from "./api-helpers";
+import { scopedYelanConfig } from './yelan-memory-scope';
 import { previewMessagesForApi, sendLLMRequest } from "./chat-engine";
 import type { ApiConfig } from "./settings-types";
 import { loadCharacters } from "./character-storage";
@@ -816,6 +817,7 @@ export async function characterReact(
     const userIdentity = resolveUserIdentity(characterId, "adventure");
     const apiConfigs = loadApiConfigs();
     const apiConfig = slot.apiConfigId ? apiConfigs.find(c => c.id === slot.apiConfigId) ?? _apiConfigFallback : _apiConfigFallback;
+    if (_apiConfigFallback.yelanBranchId) apiConfig.yelanBranchId = _apiConfigFallback.yelanBranchId;
     const adventureConfig = loadAdventureInteractionConfig();
 
     // Build context for the character
@@ -1013,6 +1015,7 @@ async function buildCompanionDeclarePromptPayload(
   const fallback = apiConfigFallback ?? globalApiConfig ?? apiConfigs.find(c => c.apiKey) ?? apiConfigs[0] ?? null;
   const apiConfig = slot.apiConfigId ? apiConfigs.find(c => c.id === slot.apiConfigId) ?? fallback : fallback;
   if (!apiConfig) throw new Error("未找到可用的 API 配置");
+  if (apiConfigFallback?.yelanBranchId) apiConfig.yelanBranchId = apiConfigFallback.yelanBranchId;
   const adventureConfig = loadAdventureInteractionConfig();
 
   const filteredLog = (streamLog || []).filter(m => m.type !== "system");
@@ -1546,7 +1549,7 @@ export async function generateAdventureSummary(
   const journalText = save.journal.map(j => `[${j.timestamp}] ${j.locationName}: ${j.text}`).join("\n");
   const summaryUserName = resolveAdventureSummaryUserName(save);
 
-  const result = await simpleLLMCall(apiConfig, [
+  const result = await simpleLLMCall(scopedYelanConfig(apiConfig, 'map', save.worldId), [
     { role: "system", content: prompt },
     { role: "user", content: `世界：${worldName}\n玩家天数：第${save.gameDay}天\n\n日志：\n${journalText}` },
   ], { temperature: 0.5 });

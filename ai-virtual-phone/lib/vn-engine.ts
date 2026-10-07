@@ -12,6 +12,8 @@ import {
 import type { ApiConfig, PresetConfig, RegexConfig, WorldBookConfig } from "./settings-types";
 import { assemblePromptPayload, type LLMMessage } from "./llm-prompt-assembler";
 import { previewMessagesForApi, sendLLMRequest, ChatEngineError } from "./chat-engine";
+import { scopedYelanConfig } from './yelan-memory-scope';
+import { isYelanManaged } from './yelan-managed-client';
 import { loadMemoryConfig } from "./memory-storage";
 import { retrieveCoreMemoriesForPrompt, retrieveMemoriesForPrompt } from "./memory-service";
 import { formatCoreMemories, formatLongTermMemories } from "./memory-injector";
@@ -100,7 +102,8 @@ export function resolveVnConfigs(characterId: string): {
 
 export async function generateVnCompletion(
   characterId: string,
-  history: VnMessage[]
+  history: VnMessage[],
+  sessionId?: string,
 ): Promise<VnGenerationResult> {
   const character = loadCharacters().find((c) => c.id === characterId);
   if (!character) {
@@ -110,7 +113,7 @@ export async function generateVnCompletion(
   const { apiConfig, preset, regexes, worldBooks } = resolveVnConfigs(characterId);
   const llmMessages = await buildVnPromptMessages(characterId, history, preset, regexes, worldBooks);
 
-  const rawOutput = await sendLLMRequest(apiConfig, preset, llmMessages, regexes, {
+  const rawOutput = await sendLLMRequest(scopedYelanConfig(apiConfig, 'vn', sessionId || history[0]?.sessionId), preset, llmMessages, regexes, {
     characterName: character.name,
   }, {
     appId: "vn",
@@ -214,7 +217,7 @@ export async function summarizeVnChapter(
   characterId: string,
   messages: VnMessage[]
 ): Promise<string> {
-  const apiConfig = resolveAuxiliaryApiConfig("memorySummaryApiConfigId");
+  const apiConfig = isYelanManaged ? resolveVnConfigs(characterId).apiConfig : resolveAuxiliaryApiConfig("memorySummaryApiConfigId");
   if (!apiConfig) {
     throw new ChatEngineError("未配置记忆总结 API（请在绑定配置 → 辅助API绑定中设置）");
   }
@@ -241,7 +244,7 @@ export async function summarizeVnChapter(
     lines.join("\n\n"),
   ].join("\n");
 
-  const result = await simpleLLMCall(apiConfig, [{ role: "user", content: prompt }], {
+  const result = await simpleLLMCall(scopedYelanConfig(apiConfig, 'vn', messages[0]?.sessionId), [{ role: "user", content: prompt }], {
     temperature: 0.3,
     max_tokens: 500,
   });

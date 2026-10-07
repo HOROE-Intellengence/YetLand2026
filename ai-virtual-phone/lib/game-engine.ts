@@ -1,6 +1,7 @@
 import { loadCharacters } from "./character-storage";
 import type { Character } from "./character-types";
 import { ChatEngineError, sendLLMRequest } from "./chat-engine";
+import { scopedYelanConfig } from './yelan-memory-scope';
 import { buildCalendarScheduleMarker } from "./calendar-storage";
 import { getWeekStartIso } from "./calendar-utils";
 import { assemblePromptPayload, type LLMMessage } from "./llm-prompt-assembler";
@@ -130,13 +131,14 @@ export async function buildGameRolePackage(input: {
 export async function callGameLLM(input: {
   messages: LLMMessage[];
   characterId?: string;
+  localGameId?: string;
 }): Promise<{ content: string; model: string; presetName: string }> {
   const configs = resolveGameConfigs(input.characterId);
   const characterName = configs.character?.name || "游戏";
   const userName = input.characterId
     ? resolveUserIdentity(input.characterId, GAME_BINDING_APP_ID)?.name || "用户"
     : "用户";
-  const content = await sendLLMRequest(configs.apiConfig, configs.preset, input.messages, configs.regexes, {
+  const content = await sendLLMRequest(scopedYelanConfig(configs.apiConfig, 'game', input.localGameId), configs.preset, input.messages, configs.regexes, {
     characterName,
     userName,
   }, {

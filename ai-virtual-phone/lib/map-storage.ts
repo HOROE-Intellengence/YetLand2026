@@ -189,6 +189,7 @@ export function removeAgentFromSave(save: GameSave, characterId: string): GameSa
 
 export type MapProjectionEntry = {
   id: string;
+  sessionId: string;
   timestamp: string;
   content: string;
 };
@@ -208,6 +209,7 @@ export function loadMapProjectionEntries(
     if (options?.afterTimestamp && summary.timestamp <= options.afterTimestamp) continue;
     projections.push({
       id: `map_summary_${save.worldId}`,
+      sessionId: save.worldId,
       timestamp: summary.timestamp,
       content: `[跑团游戏 ${formatChatTimestamp(summary.timestamp)}] ${summary.text}`,
     });
@@ -231,6 +233,7 @@ export function loadMapSharedProjectionEntries(
     if (options?.afterTimestamp && summary.timestamp <= options.afterTimestamp) continue;
     projections.push({
       id: `map_shared_${save.worldId}`,
+      sessionId: save.worldId,
       timestamp: summary.timestamp,
       content: `[跑团游戏 ${formatChatTimestamp(summary.timestamp)}] ${summary.text}`,
     });

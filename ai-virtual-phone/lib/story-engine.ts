@@ -22,6 +22,7 @@ import { STORY_PARSER_VERSION } from "./story-parser";
 import { loadStoryMessages, replaceStoryMessages, type StoryMessage } from "./story-storage";
 import type { ChatMessage } from "./chat-storage";
 import { MacroEngine } from "./macro-engine";
+import { scopedYelanConfig } from './yelan-memory-scope';
 
 const DEFAULT_STORY_FOLD_TAGS = "think,thinking,summary";
 const DEFAULT_STORY_CONTEXT_EXCLUDED_TAGS = "think,thinking";
@@ -136,7 +137,7 @@ export function getStoryRenderSignature(characterId: string): { regexSignature: 
 export async function generateStoryCompletion(
   characterId: string,
   history: StoryMessage[],
-  options?: { sessionFoldTags?: string; sessionContextExcludedTags?: string; signal?: AbortSignal },
+  options?: { sessionId?: string; sessionFoldTags?: string; sessionContextExcludedTags?: string; signal?: AbortSignal },
 ): Promise<StoryGenerationResult> {
   const character = loadCharacters().find((item) => item.id === characterId);
   if (!character) {
@@ -151,7 +152,7 @@ export async function generateStoryCompletion(
   const userIdentity = resolveUserIdentity(characterId, "story");
   const macroEngine = new MacroEngine(character.name, userIdentity?.name ?? "用户");
 
-  const rawOutput = await sendLLMRequest(apiConfig, preset, llmMessages, regexes, {
+  const rawOutput = await sendLLMRequest(scopedYelanConfig(apiConfig, 'story', options?.sessionId || history[0]?.sessionId), preset, llmMessages, regexes, {
     characterName: character.name,
   }, { skipOutputRegex: true, includeReasoning: true, appId: "story", appTags: ["story"], signal: options?.signal });
 

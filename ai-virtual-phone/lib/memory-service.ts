@@ -6,6 +6,7 @@ import { loadMemoryEntriesByType } from "./memory-storage";
 import { resolveAuxiliaryApiConfig } from "./settings-storage";
 import { generateEmbedding, resolveEmbeddingModel, cosineSimilarity } from "./memory-embedding";
 import { estimateTokens } from "./token-counter";
+import { isYelanManaged } from './yelan-managed-client';
 
 /**
  * Retrieve relevant long-term memories for prompt injection.
@@ -20,6 +21,7 @@ export async function retrieveMemoriesForPrompt(
     currentContext: string,
     config: MemoryConfig
 ): Promise<MemoryEntry[]> {
+    if (isYelanManaged) return []; // The authenticated server injects scoped sidecar memory.
     const longTermEntries = await loadMemoryEntriesByType(characterId, "long_term");
     if (longTermEntries.length === 0 || !currentContext.trim()) return [];
 
@@ -64,6 +66,7 @@ export async function retrieveCoreMemoriesForPrompt(
     characterId: string,
     config: MemoryConfig,
 ): Promise<MemoryEntry[]> {
+    if (isYelanManaged) return [];
     const coreEntries = await loadMemoryEntriesByType(characterId, "core");
     if (coreEntries.length === 0) return [];
 

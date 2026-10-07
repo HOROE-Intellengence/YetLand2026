@@ -13,6 +13,10 @@ export async function yelanRequest<T>(path: string, init?: RequestInit): Promise
 // Installed before importing the phone application. Keep its existing local
 // persistence while separating accounts; no cross-device synchronization.
 export function scopePhoneStorage(userId: string) {
+  const marker = Symbol.for('yelan.phone.storage-user');
+  const scopeState = window as unknown as Record<symbol, string | undefined>;
+  if (scopeState[marker] === userId) return;
+  if (scopeState[marker]) throw new Error('切换账号后请重新进入小手机');
   const prefix = `yelan:${encodeURIComponent(userId)}:`;
   const original = window.localStorage;
   const keys = () => Array.from({ length: original.length }, (_, i) => original.key(i)!)
@@ -40,4 +44,5 @@ export function scopePhoneStorage(userId: string) {
     indexedDB.databases = async () => (await databases()).filter(db => db.name?.startsWith(prefix))
       .map(db => ({ ...db, name: db.name!.slice(prefix.length) }));
   }
+  scopeState[marker] = userId;
 }

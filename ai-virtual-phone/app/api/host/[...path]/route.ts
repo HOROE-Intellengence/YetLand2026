@@ -13,6 +13,7 @@ async function forward(req: NextRequest) {
   try {
     const response = await fetch(target, { method: req.method,
       headers: { Authorization: token, 'Content-Type': req.headers.get('content-type') || 'application/json',
+        ...(req.headers.get('x-yelan-memory-branch') ? { 'X-Yelan-Memory-Branch': req.headers.get('x-yelan-memory-branch')! } : {}),
         ...(req.headers.get('idempotency-key') ? { 'Idempotency-Key': req.headers.get('idempotency-key')! } : {}),
         ...(req.headers.get('range') ? { Range: req.headers.get('range')! } : {}),
       },

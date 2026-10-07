@@ -143,6 +143,8 @@ export type RegexConfig = SettingItemMeta & {
 
 // --- ApiConfig (migrated from api-settings.tsx) ---
 export type ApiConfig = {
+    /** Request-local managed memory scope; never a provider credential. */
+    yelanBranchId?: string;
     id: string;
     name?: string;
     provider: string;

@@ -207,7 +207,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
         npc_count: String(npcCount),
         difficulty: difficulty || "适中",
       };
-      const skeleton = await generateWorldSkeleton(description, [], apiConfig, vars);
+      const skeleton = await generateWorldSkeleton(description, [], { ...apiConfig, yelanBranchId: `map:${worldId}` }, vars);
 
       const resp = await fetch("/countries.geo.json");
       const geoData: GeoJSONData = await resp.json();

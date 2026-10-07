@@ -348,6 +348,7 @@ export function updateChapterStartMessageId(
 
 export type VnProjectionEntry = {
   id: string;
+  sessionId: string;
   timestamp: string;
   content: string;
 };
@@ -381,6 +382,7 @@ export function loadVnProjectionEntries(
     const formattedTs = formatChatTimestamp(ts);
     projections.push({
       id: `vn_projection_${chapter.id}`,
+      sessionId: session.id,
       timestamp: ts,
       content: `[事件 ${formattedTs}] ${snippet}`,
     });

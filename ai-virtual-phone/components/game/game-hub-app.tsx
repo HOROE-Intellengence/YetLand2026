@@ -2114,14 +2114,14 @@ export function GameHubApp({ onClose, autoOpenLocalId }: { onClose: () => void; 
       const fallbackCharacterId = requestedCharacterId
         || assignments.flatMap(item => item.characterIds)[0]
         || undefined;
-      return await callGameLLM({ messages, characterId: fallbackCharacterId });
+      return await callGameLLM({ messages, characterId: fallbackCharacterId, localGameId: runtimeGame.localId });
     }
 
     if (action === "callGlobalLLM") {
       ensureAdvancedAccess();
       const record = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
       const messages = parseBridgeMessages(record.messages);
-      return await callGameLLM({ messages });
+      return await callGameLLM({ messages, localGameId: runtimeGame.localId });
     }
 
     if (action === "recordGameEvent") {
