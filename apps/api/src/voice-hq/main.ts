@@ -12,6 +12,7 @@ import { resolveIfUnlockFromText, isSessionIfActive } from '../services/if-unloc
 import { checkTokenBudget } from '../services/token-guard';
 import { store } from '../store/persistence';
 import { VoiceError } from '../voice/config';
+import { readPhoneMemory, rememberVoiceTurn } from '../phone/memory';
 
 export interface MainInput {
   userId: string; sessionId: string; characterId: string; text: string;
@@ -39,8 +40,10 @@ export async function generateHqReply(input: MainInput): Promise<MainOutput> {
   const temperature = await resolveTemperature({ sessionId, characterName: character.name,
     characterDescription: character.description || '', styleTags: character.styleTags ?? [], userInput: text,
     boundary, stage, round, ifUnlock });
+  const phoneScope = store.state().phoneVoiceSessions?.[sessionId];
+  const sharedMemory = phoneScope?.userId === userId ? readPhoneMemory(userId, phoneScope) : undefined;
   const prompt = assembleSystemPrompt({ characterId, stage, boundary, ifActive,
-    atmosphereBlock: buildSidecarBlock(temperature, undefined, undefined) });
+    atmosphereBlock: buildSidecarBlock(temperature, sharedMemory, undefined) });
   if (historyChars + prompt.length > maxChars) throw new VoiceError('HQ_CONTEXT_LIMIT', 409);
   if (!consumeOneRound(userId)) return { text: '今天的对话额度已用完，我们下次再聊。', model: 'quota-notice' };
   input.onPrompt(prompt, temperature);
@@ -55,6 +58,9 @@ export async function generateHqReply(input: MainInput): Promise<MainOutput> {
   }
   if (!reply.trim()) throw new VoiceError('HQ_MAIN_EMPTY', 502);
   persistAssistantMessage(sessionId, reply);
+  const messageId = store.state().messages[sessionId]?.at(-1)?.id;
+  if (phoneScope?.userId === userId && messageId) rememberVoiceTurn({ userId, characterId, id: messageId,
+    inputText: text, outputText: reply, mode: ifActive ? 'if' : 'main' });
   recordTurnCost({ assistantBuffer: reply, providerUsage: usage ?? null, body: { text, history },
     sessionId, modelId: model, actualProviderId: provider });
   return { text: reply, model, usage };

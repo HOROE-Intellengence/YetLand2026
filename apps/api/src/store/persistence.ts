@@ -184,6 +184,7 @@ export interface ConstellationRow {
 
 // BE-102 — 长期记忆
 export interface UserPreferenceRow {
+  branchId?: string;
   id: string;
   userId: string;
   characterId: string;
@@ -198,6 +199,7 @@ export interface UserPreferenceRow {
 }
 
 export interface UserEventRow {
+  branchId?: string;
   id: string;
   userId: string;
   characterId: string;
@@ -267,6 +269,8 @@ export interface SurveyDefinitionRow {
 }
 
 export interface UserProfileFactRow {
+  mode?: 'main' | 'if';
+  branchId?: string;
   id: string;
   userId: string;
   characterId: string;
@@ -281,6 +285,9 @@ export interface UserProfileFactRow {
 }
 
 export interface UserProfileChangelogRow {
+  mode?: 'main' | 'if';
+  branchId?: string;
+  sourceApp?: string;
   id: string;
   userId: string;
   characterId: string;
@@ -356,6 +363,10 @@ interface PersistedState {
   sidecarOrder: ('preferenceRecorder' | 'outputStructurer' | 'atmosphereJudge' | 'quotaEnding' | 'contextCompressor')[];
   // 侧袋 AI 产出：用户画像
   userProfiles: Record<string, { markdown: string; updatedAt: string }>;
+  // Shared across apps, isolated by user + character + mode + narrative branch.
+  scopedMemoryProfiles?: Record<string, { markdown: string; updatedAt: string }>;
+  phoneMemoryReceipts?: Record<string, import('../phone/contracts').PhoneMemoryReceipt>;
+  phoneVoiceSessions?: Record<string, { userId: string; characterId: string; mode: 'main' | 'if'; branchId?: string }>;
   userProfileFacts: Record<string, UserProfileFactRow>;
   userProfileChangelog: UserProfileChangelogRow[];
   // 侧袋 AI 产出：上下文概要

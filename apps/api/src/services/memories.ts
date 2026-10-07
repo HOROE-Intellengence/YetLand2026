@@ -119,7 +119,7 @@ export function listPreferences(userId: string, since?: string): UserPreferenceR
 
 export function upsertPreferenceRow(
   userId: string,
-  input: { id?: string; characterId: string; mode: 'main' | 'if'; text: string; category?: string; embedding?: number[]; weight?: number },
+  input: { id?: string; characterId: string; mode: 'main' | 'if'; branchId?: string; text: string; category?: string; embedding?: number[]; weight?: number },
   updatedAt = now(),
 ): UserPreferenceRow | null {
   const s = store.state();
@@ -134,12 +134,14 @@ export function upsertPreferenceRow(
     : activePreferencesForUser(userId).find((row) =>
       row.characterId === input.characterId
       && row.mode === input.mode
+      && row.branchId === input.branchId
       && normalizePreferenceText(row.text) === normalized,
     );
 
   if (existing) {
     existing.characterId = input.characterId;
     existing.mode = input.mode;
+    existing.branchId = input.branchId;
     existing.text = text;
     existing.category = strongerCategory(existing.category ?? DEFAULT_PREFERENCE_CATEGORY, category);
     existing.embedding = input.embedding ?? existing.embedding;
@@ -155,6 +157,7 @@ export function upsertPreferenceRow(
     id,
     userId,
     characterId: input.characterId,
+    branchId: input.branchId,
     mode: input.mode,
     text,
     category,
@@ -197,7 +200,7 @@ export function consolidatePreferences(userId: string, updatedAt = now()): Prefe
 
   const groups = new Map<string, UserPreferenceRow[]>();
   for (const row of activeBefore) {
-    const key = `${row.characterId}\u0000${row.mode}\u0000${normalizePreferenceText(row.text)}`;
+    const key = `${row.characterId}\u0000${row.mode}\u0000${row.branchId ?? ''}\u0000${normalizePreferenceText(row.text)}`;
     const group = groups.get(key) ?? [];
     group.push(row);
     groups.set(key, group);
@@ -233,7 +236,7 @@ export function consolidatePreferences(userId: string, updatedAt = now()): Prefe
 
   const limitGroups = new Map<string, UserPreferenceRow[]>();
   for (const row of activePreferencesForUser(userId)) {
-    const key = `${row.characterId}\u0000${row.mode}\u0000${row.category}`;
+    const key = `${row.characterId}\u0000${row.mode}\u0000${row.branchId ?? ''}\u0000${row.category}`;
     const group = limitGroups.get(key) ?? [];
     group.push(row);
     limitGroups.set(key, group);
@@ -359,6 +362,15 @@ export function deleteAllMemories(userId: string): {
     delete s.userProfiles[userId];
     profiles = 1;
   }
+  for (const key of Object.keys(s.scopedMemoryProfiles ?? {})) {
+    if (JSON.parse(key)[0] === userId) {
+      delete s.scopedMemoryProfiles![key];
+      profiles += 1;
+    }
+  }
+  for (const [key, receipt] of Object.entries(s.phoneMemoryReceipts ?? {})) {
+    if (receipt.userId === userId) delete s.phoneMemoryReceipts![key];
+  }
 
   for (const [factId, fact] of Object.entries(s.userProfileFacts)) {
     if (fact.userId !== userId) continue;
@@ -420,6 +432,7 @@ export function recall(userId: string, characterId: string, mode: 'main' | 'if',
   for (const r of Object.values(store.state().userPreferences)) {
     if (r.userId !== userId || r.tombstone) continue;
     if (r.characterId !== characterId) continue;
+    if (r.branchId) continue;
     if (!modeFilter.includes(r.mode)) continue;
     if (!r.embedding) continue;
     const score = cosine(queryEmbedding, r.embedding);
@@ -429,6 +442,7 @@ export function recall(userId: string, characterId: string, mode: 'main' | 'if',
   for (const r of Object.values(store.state().userEvents)) {
     if (r.userId !== userId || r.tombstone) continue;
     if (r.characterId !== characterId) continue;
+    if (r.branchId) continue;
     if (!modeFilter.includes(r.mode)) continue;
     if (!r.embedding) continue;
     const score = cosine(queryEmbedding, r.embedding);

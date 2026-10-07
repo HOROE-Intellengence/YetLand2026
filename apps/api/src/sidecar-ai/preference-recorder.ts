@@ -7,6 +7,7 @@ import { sidecarCallWithSchema } from './client';
 import { PreferenceRecordResultSchema } from '@yelan/shared';
 import { store } from '../store/persistence';
 import { normalizePreferenceCategory, upsertPreferenceRow } from '../services/memories';
+import { memoryScopeKey, pinnedUserIdentity, type MemoryScope } from '../services/memory-scope';
 
 // 计数器：userId → 用户输入次数
 const inputCounters: Record<string, number> = {};
@@ -21,14 +22,33 @@ export function shouldRecordPreference(userId: string): boolean {
   return (inputCounters[userId] ?? 0) % 5 === 0;
 }
 
-export async function recordPreference(
+const profileQueues = new Map<string, Promise<unknown>>();
+
+export function recordPreference(
+  userId: string, characterId: string, recentConversation: string,
+  sourceSessionId?: string, scope?: MemoryScope,
+): Promise<SidecarResult<PreferenceRecordResult>> {
+  const key = scope ? memoryScopeKey(userId, characterId, scope) : `legacy:${userId}`;
+  const work = (profileQueues.get(key) ?? Promise.resolve()).catch(() => {}).then(() =>
+    extractPreference(userId, characterId, recentConversation, sourceSessionId, scope),
+  );
+  profileQueues.set(key, work);
+  void work.finally(() => { if (profileQueues.get(key) === work) profileQueues.delete(key); }).catch(() => {});
+  return work;
+}
+
+async function extractPreference(
   userId: string,
   characterId: string,
   recentConversation: string,
   sourceSessionId?: string,
+  scope?: MemoryScope,
 ): Promise<SidecarResult<PreferenceRecordResult>> {
+  const scoped = Boolean(scope);
+  scope ??= { mode: 'main' };
+  const profileKey = memoryScopeKey(userId, characterId, scope);
   const prompt = getPrompt('preferenceRecorder');
-  const existingProfile = store.state().userProfiles[userId]?.markdown;
+  const existingProfile = scoped ? getUserProfile(userId, characterId, scope) : getUserProfile(userId);
   const userContent = existingProfile?.trim()
     ? `[已有画像]\n${existingProfile.slice(0, 2000)}\n\n[最近对话]\n${recentConversation.slice(0, 3000)}`
     : recentConversation.slice(0, 3000);
@@ -46,11 +66,13 @@ export async function recordPreference(
       .filter((pref) => pref.text);
 
     // 当前注入主 AI 的画像快照：替换而不是堆叠；保留用户显式设置的称呼。
-    s.userProfiles[userId] = {
+    const profiles = scoped ? (s.scopedMemoryProfiles ??= {}) : s.userProfiles;
+    profiles[scoped ? profileKey : userId] = {
       markdown: preservePinnedProfileLines(existingProfile, result.data.summary),
       updatedAt: now,
     };
     s.userProfileChangelog.push({
+      mode: scope.mode, branchId: scope.branchId, sourceApp: scope.sourceApp,
       id: `pflog_${randomUUID().slice(0, 8)}`,
       userId,
       characterId,
@@ -70,7 +92,8 @@ export async function recordPreference(
       for (const pref of extractedPreferences) {
         upsertPreferenceRow(userId, {
           characterId,
-          mode: 'main',
+          branchId: scope.branchId,
+          mode: scope.mode,
           text: pref.text,
           category: pref.category,
         }, now);
@@ -84,7 +107,8 @@ export async function recordPreference(
           id,
           userId,
           characterId,
-          mode: 'main',
+          branchId: scope.branchId,
+          mode: scope.mode,
           date: event.date,
           text: cleanText,
           emotion: event.emotion,
@@ -99,6 +123,7 @@ export async function recordPreference(
       upsertProfileFact({
         userId,
         characterId,
+        mode: scope.mode, branchId: scope.branchId,
         sourceSessionId,
         type: 'relationship',
         text: relationship.slice(0, 500),
@@ -114,8 +139,14 @@ export async function recordPreference(
 }
 
 /** 获取用户画像 Markdown */
-export function getUserProfile(userId: string): string {
+export function getUserProfile(userId: string, characterId?: string, scope: MemoryScope = { mode: 'main' }): string {
   const row = store.state().userProfiles[userId];
+  if (characterId) {
+    const scoped = store.state().scopedMemoryProfiles?.[memoryScopeKey(userId, characterId, scope)]?.markdown;
+    // Legacy global summaries may contain another character's relationship. Only
+    // explicitly pinned identity is safe to carry into a scoped prompt.
+    return [pinnedUserIdentity(row?.markdown), scoped].filter(Boolean).join('\n');
+  }
   return row?.markdown ?? '';
 }
 
@@ -132,6 +163,8 @@ function preservePinnedProfileLines(existingProfile: string | undefined, nextSum
 }
 
 function upsertProfileFact(args: {
+  mode?: 'main' | 'if';
+  branchId?: string;
   userId: string;
   characterId: string;
   sourceSessionId?: string;
@@ -147,6 +180,7 @@ function upsertProfileFact(args: {
   const existing = Object.values(s.userProfileFacts).find((fact) =>
     fact.userId === args.userId
     && fact.characterId === args.characterId
+    && (fact.mode ?? 'main') === (args.mode ?? 'main') && fact.branchId === args.branchId
     && fact.scope === 'character'
     && fact.type === args.type
     && fact.text === text
@@ -163,6 +197,7 @@ function upsertProfileFact(args: {
 
   const id = `pf_${randomUUID().slice(0, 8)}`;
   s.userProfileFacts[id] = {
+    mode: args.mode, branchId: args.branchId,
     id,
     userId: args.userId,
     characterId: args.characterId,

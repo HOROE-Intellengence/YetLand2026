@@ -12,6 +12,7 @@ import { Server } from 'node:http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { mockChatRoute } from './routes/chat';
+import { phoneRoute } from './routes/phone';
 import { apiGatewayRoute } from './routes/api-gateway';
 import { developerRoute } from './routes/developer';
 import { mockAuthRoute } from './routes/auth';
@@ -133,6 +134,7 @@ app.get('/health', (c) => {
 });
 
 app.route('/api/chat', mockChatRoute);
+app.route('/api/phone', phoneRoute);
 app.route('/v1', apiGatewayRoute);
 app.route('/api/developer', developerRoute);
 app.route('/api/auth', mockAuthRoute);
