@@ -20,6 +20,8 @@ import { loadNativeTimeline, formatTimelineForSummarization, filterTimelineByAll
 import { generateEmbedding, resolveEmbeddingModel } from "./memory-embedding";
 import { simpleLLMCall } from "./api-helpers";
 import { maybeRunCoreMemoryPipeline } from "./core-memory-builder";
+import { isYelanManaged } from './yelan-managed-client';
+import { flushYelanMemory } from './yelan-memory-bridge';
 
 /** Per-character lock to prevent concurrent summarization. */
 const summarizingSet = new Set<string>();
@@ -33,6 +35,7 @@ export async function maybeRunSummarization(
     characterId: string,
     characterName: string
 ): Promise<void> {
+    if (isYelanManaged) { await flushYelanMemory(); return; }
     const config = loadMemoryConfig();
     if (!config.autoSummarizeEnabled) return;
 

@@ -20,6 +20,22 @@ const mockCharacter: Character = {
 };
 
 describe('sessionStore', () => {
+  it('opens phone independently and returns there after login without replacing existing routes', () => {
+    const state = useSessionStore.getState();
+    state.goPhone();
+    expect(useSessionStore.getState().scene).toBe('phone');
+    state.goPhoneLogin();
+    state.finishLogin('手机用户');
+    expect(useSessionStore.getState()).toMatchObject({ scene: 'phone', phoneLogin: false });
+    state.goOpening(); state.goVoice();
+    expect(useSessionStore.getState().scene).toBe('voice');
+    state.goHqVoice();
+    expect(useSessionStore.getState().scene).toBe('voice-hq');
+    state.goApi();
+    expect(useSessionStore.getState().scene).toBe('api');
+    state.setGreeting('你好'); state.setUserName('手机用户');
+    expect(useSessionStore.getState().scene).toBe('select');
+  });
   beforeEach(() => {
     useSessionStore.getState().restart();
   });

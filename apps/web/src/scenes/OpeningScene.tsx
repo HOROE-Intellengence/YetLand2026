@@ -8,6 +8,7 @@ export function OpeningScene() {
   const goVoice = useSessionStore((s) => s.goVoice);
   const goHqVoice = useSessionStore((s) => s.goHqVoice);
   const goApi = useSessionStore((s) => s.goApi);
+  const goPhone = useSessionStore((s) => s.goPhone);
 
   return (
     <div className={styles.root}>
@@ -26,6 +27,7 @@ export function OpeningScene() {
         </button>
         <button className={styles.greetBtn} type="button" onClick={goHqVoice}>语音（高质量）</button>
         <button className={styles.greetBtn} type="button" onClick={goApi}>API调用</button>
+        <button className={styles.greetBtn} type="button" onClick={goPhone}>小手机</button>
       </div>
       <button
         className={styles.enterBtn}

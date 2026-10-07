@@ -13,6 +13,7 @@ import { OpeningScene } from './scenes/OpeningScene';
 import { VoiceHqScene } from './scenes/VoiceHqScene';
 import { VoiceScene } from './scenes/VoiceScene';
 import { ApiScene } from './scenes/ApiScene';
+import { PhoneScene } from './scenes/PhoneScene';
 import { LoginScene } from './scenes/LoginScene';
 import { NameScene } from './scenes/NameScene';
 import { CharacterSelect } from './scenes/CharacterSelect';
@@ -59,6 +60,7 @@ export default function App() {
       {scene === 'voice' && <VoiceScene />}
       {scene === 'voice-hq' && <VoiceHqScene />}
       {scene === 'api' && <ApiScene />}
+      {scene === 'phone' && <PhoneScene />}
       {scene === 'login' && <LoginScene />}
       {scene === 'name' && <NameScene />}
       {scene === 'select' && <CharacterSelect />}

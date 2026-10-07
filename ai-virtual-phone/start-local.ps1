@@ -10,12 +10,15 @@ if (-not (Test-Path 'node_modules/next')) { throw 'Install dependencies first.' 
 $url = 'http://localhost:3001'
 $listener = Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue
 if ($listener) {
-  try { $config = Invoke-RestMethod "$url/api/yelan/config" -TimeoutSec 10 } catch { throw 'Port 3001 is occupied by another service.' }
-  if ($config.id -ne 'yelan-shared-local') { throw 'Port 3001 is occupied by another service.' }
+  try { $config = Invoke-RestMethod "$url/api/managed-status" -TimeoutSec 10 } catch { throw 'Port 3001 is occupied by another service.' }
+  if ($config.app -ne 'yelan-phone') { throw 'Port 3001 is occupied by another service.' }
+  if (-not $config.managed) { throw 'The running phone uses legacy debug mode. Stop that process before starting managed mode.' }
 } else {
   $env:NEXT_PUBLIC_SELF_HOSTED_MODE = 'true'
   $env:NEXT_PUBLIC_YELAN_PHONE_LOCAL = 'true'
   $env:YELAN_PHONE_LOCAL = 'true'
+  $env:NEXT_PUBLIC_YELAN_PHONE_MANAGED = 'true'
+  $env:YELAN_PHONE_MANAGED = 'true'
   New-Item -ItemType Directory -Force '.local' | Out-Null
   $process = Start-Process -FilePath $nodePath -WindowStyle Hidden -WorkingDirectory $PSScriptRoot `
     -ArgumentList @('--max-old-space-size=6144', 'scripts/local-next-server.mjs', '--dev', '--host', '127.0.0.1', '--port', '3001') `
@@ -24,4 +27,4 @@ if ($listener) {
   Write-Host "Starting local phone (PID $($process.Id)). Logs: .local/"
 }
 Write-Host "Phone: $url"
-if (-not $NoBrowser) { Start-Process $url }
+if (-not $NoBrowser) { Start-Process 'http://localhost:5173' }

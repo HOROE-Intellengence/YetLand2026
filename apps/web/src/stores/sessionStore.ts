@@ -2,9 +2,12 @@
 import { create } from 'zustand';
 import { DEFAULT_USER_BOUNDARY, type Character, type Stage, type Boundary } from '@yelan/shared';
 
-type Scene = 'home' | 'intro' | 'opening' | 'login' | 'name' | 'select' | 'create' | 'chat' | 'end' | 'voice' | 'voice-hq' | 'api';
+type Scene = 'home' | 'intro' | 'opening' | 'login' | 'name' | 'select' | 'create' | 'chat' | 'end' | 'voice' | 'voice-hq' | 'api' | 'phone';
 
 interface SessionState {
+  phoneLogin: boolean;
+  goPhone: () => void;
+  goPhoneLogin: () => void;
   apiLogin: boolean;
   goApi: () => void;
   goApiLogin: () => void;
@@ -43,16 +46,19 @@ interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
+  phoneLogin: false,
+  goPhone: () => set({ scene: 'phone', phoneLogin: false, apiLogin: false, voiceLogin: false, hqVoiceLogin: false }),
+  goPhoneLogin: () => set({ scene: 'login', phoneLogin: true, apiLogin: false, voiceLogin: false, hqVoiceLogin: false }),
   apiLogin: false,
-  goApi: () => set({ scene: 'api', apiLogin: false, voiceLogin: false }),
-  goApiLogin: () => set({ scene: 'login', hqVoiceLogin: false, apiLogin: true, voiceLogin: false }),
+  goApi: () => set({ scene: 'api', phoneLogin: false, apiLogin: false, voiceLogin: false }),
+  goApiLogin: () => set({ scene: 'login', phoneLogin: false, hqVoiceLogin: false, apiLogin: true, voiceLogin: false }),
   hqVoiceLogin: false,
-  goHqVoice: () => set({ scene: 'voice-hq', voiceLogin: false, apiLogin: false, hqVoiceLogin: false }),
-  goHqVoiceLogin: () => set({ scene: 'login', voiceLogin: false, apiLogin: false, hqVoiceLogin: true }),
+  goHqVoice: () => set({ scene: 'voice-hq', phoneLogin: false, voiceLogin: false, apiLogin: false, hqVoiceLogin: false }),
+  goHqVoiceLogin: () => set({ scene: 'login', phoneLogin: false, voiceLogin: false, apiLogin: false, hqVoiceLogin: true }),
   scene: 'home',
   voiceLogin: false,
-  goVoice: () => set({ scene: 'voice', voiceLogin: false }),
-  goVoiceLogin: () => set({ scene: 'login', hqVoiceLogin: false, voiceLogin: true, apiLogin: false }),
+  goVoice: () => set({ scene: 'voice', phoneLogin: false, voiceLogin: false }),
+  goVoiceLogin: () => set({ scene: 'login', phoneLogin: false, hqVoiceLogin: false, voiceLogin: true, apiLogin: false }),
   greeting: '',
   userName: '',
   character: null,
@@ -62,10 +68,11 @@ export const useSessionStore = create<SessionState>((set) => ({
   achievement: null,
 
   goIntro: () => set({ scene: 'intro' }),
-  goOpening: () => set({ scene: 'opening' }),
-  goLogin: () => set({ scene: 'login', hqVoiceLogin: false, voiceLogin: false, apiLogin: false }),
+  goOpening: () => set({ scene: 'opening', phoneLogin: false }),
+  goLogin: () => set({ scene: 'login', phoneLogin: false, hqVoiceLogin: false, voiceLogin: false, apiLogin: false }),
   finishLogin: (name) => set((state) => ({
-    scene: state.hqVoiceLogin ? 'voice-hq' : state.apiLogin ? 'api' : state.voiceLogin ? 'voice' : name ? 'select' : 'name',
+    scene: state.phoneLogin ? 'phone' : state.hqVoiceLogin ? 'voice-hq' : state.apiLogin ? 'api' : state.voiceLogin ? 'voice' : name ? 'select' : 'name',
+    phoneLogin: false,
     userName: name ?? '',
     character: null,
     stage: 'daily',
@@ -77,7 +84,8 @@ export const useSessionStore = create<SessionState>((set) => ({
     apiLogin: false,
   })),
   cancelLogin: () => set((state) => ({
-    scene: state.hqVoiceLogin ? 'voice-hq' : state.apiLogin ? 'api' : state.voiceLogin ? 'voice' : 'opening',
+    scene: state.phoneLogin ? 'phone' : state.hqVoiceLogin ? 'voice-hq' : state.apiLogin ? 'api' : state.voiceLogin ? 'voice' : 'opening',
+    phoneLogin: false,
     hqVoiceLogin: false,
     voiceLogin: false,
     apiLogin: false,
@@ -93,7 +101,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   pushAchievement: (achievement) => set({ achievement }),
   clearAchievement: () => set({ achievement: null }),
   cutoff: () => set({ scene: 'end' }),
-  restart: () => set({ scene: 'intro', hqVoiceLogin: false, character: null, greeting: '', userName: '', stage: 'daily', boundary: DEFAULT_USER_BOUNDARY, temperature: 3, voiceLogin: false, apiLogin: false }),
+  restart: () => set({ scene: 'intro', phoneLogin: false, hqVoiceLogin: false, character: null, greeting: '', userName: '', stage: 'daily', boundary: DEFAULT_USER_BOUNDARY, temperature: 3, voiceLogin: false, apiLogin: false }),
 }));
 
 export interface AchievementNotice {

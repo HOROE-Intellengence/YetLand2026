@@ -4,6 +4,7 @@
 
 import type { ApiConfig } from "./settings-types";
 import { pushApiLog } from "./api-log-store";
+import { isYelanManaged, yelanHeaders } from './yelan-managed-client';
 
 const SIMPLE_ANTHROPIC_AUTO_MAX_TOKENS = 8192;
 
@@ -46,6 +47,7 @@ export function buildChatCompletionsUrl(baseUrl: string): string {
  * and custom proxy/relay sites that use standard Bearer auth.
  */
 export function buildRequestHeaders(config: ApiConfig, baseUrl: string): Record<string, string> {
+    if (isYelanManaged && baseUrl.startsWith('/api/host/phone/')) return yelanHeaders();
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
     };

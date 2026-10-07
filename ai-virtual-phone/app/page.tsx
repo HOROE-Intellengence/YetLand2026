@@ -1,5 +1,5 @@
-import { MainApp } from "@/components/main-app";
+import { YelanManagedEntry } from "@/components/yelan-managed-entry";
 
 export default function HomePage() {
-  return <MainApp />;
+  return <YelanManagedEntry />;
 }

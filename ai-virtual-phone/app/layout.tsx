@@ -40,11 +40,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body>
-        <PWAManifestInjector />
-        <PWARegistrar />
-        <CSSImportEnhancer />
-        <ChatPluginBootstrap />
-        <ChatReasoningVisibilityController />
+        {process.env.NEXT_PUBLIC_YELAN_PHONE_MANAGED !== 'true' && <>
+          <PWAManifestInjector />
+          <PWARegistrar />
+          <CSSImportEnhancer />
+          <ChatPluginBootstrap />
+          <ChatReasoningVisibilityController />
+        </>}
         {children}
       </body>
     </html>

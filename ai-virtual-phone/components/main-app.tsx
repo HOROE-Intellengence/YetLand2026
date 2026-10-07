@@ -13,6 +13,7 @@ import { SplashAnimation } from "./splash-animation";
 import { MusicProvider } from "@/lib/music-context";
 import { hydrateKvDb, isKvHydrated } from "@/lib/kv-db";
 import { bootstrapYelanLocal } from "@/lib/yelan-local-bootstrap";
+import { startYelanMemoryBridge } from '@/lib/yelan-memory-bridge';
 import { getThemeAssetMap, readThemeProfile } from "@/lib/theme-storage";
 import { resolveActiveIconSkins, type ThemeProfile } from "@/lib/theme-types";
 import { hasPendingMcpOAuthCallback } from "@/lib/tool-executor";
@@ -228,6 +229,7 @@ async function prepareDesktopThemeForFirstPaint(): Promise<PreparedDesktopTheme>
 }
 
 export function MainApp() {
+  useEffect(() => startYelanMemoryBridge(), []);
   const [preparedDesktopTheme, setPreparedDesktopTheme] = useState<PreparedDesktopTheme | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [splashDismissed, setSplashDismissed] = useState(false);

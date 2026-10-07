@@ -18,6 +18,7 @@ async function mainConfig() {
 }
 
 function allowed(req: NextRequest) {
+  if (process.env.YELAN_PHONE_MANAGED === 'true') return false;
   if (process.env.YELAN_PHONE_LOCAL !== "true") return false;
   const host = req.headers.get("host") || "";
   if (!/^(localhost|127\.0\.0\.1):3001$/.test(host)) return false;
