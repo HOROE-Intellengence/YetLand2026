@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import { phoneRoute } from '../routes/phone';
 import { readPhoneMemory } from './memory';
+const upstream = vi.hoisted(() => ({ baseUrl: 'https://upstream.test/v1' }));
 
 vi.mock('../middleware/auth', () => ({ requireAuth: () => async (c: any, next: () => Promise<void>) => {
   if (c.req.header('authorization') !== 'Bearer test-user') return c.json({ code: 'AUTH_REQUIRED' }, 401);
@@ -15,7 +16,7 @@ vi.mock('../services/characters', () => ({ charactersService: {
 } }));
 vi.mock('../prompts/loader', () => ({ loadCharacterCard: () => '服务端角色设定', loadPreludeCard: () => '服务端前置卡' }));
 vi.mock('../services/llm-api-inventory', () => ({ getLlmApiConfig: () => ({
-  model: 'managed-model', protocol: 'openai-compatible', baseUrl: 'https://upstream.test/v1', apiKey: 'server-only-test-key',
+  model: 'managed-model', protocol: 'openai-compatible', baseUrl: upstream.baseUrl, apiKey: 'server-only-test-key',
 }) }));
 vi.mock('./memory', async importOriginal => {
   const original = await importOriginal<typeof import('./memory')>();
@@ -24,7 +25,17 @@ vi.mock('./memory', async importOriginal => {
 
 const app = new Hono().route('/api/phone', phoneRoute);
 describe('phone managed routes', () => {
-  beforeEach(() => { vi.unstubAllGlobals(); vi.mocked(readPhoneMemory).mockClear(); });
+  beforeEach(() => { vi.unstubAllGlobals(); vi.mocked(readPhoneMemory).mockClear(); upstream.baseUrl = 'https://upstream.test/v1'; });
+  it.each(['https://upstream.test/v1', 'https://upstream.test/v1/', 'https://upstream.test/v1/chat/completions', 'https://upstream.test/v1/chat/completions/'])('accepts API roots and complete endpoint URLs: %s', async baseUrl => {
+    upstream.baseUrl = baseUrl;
+    const fetcher = vi.fn(async () => Response.json({ choices: [] })); vi.stubGlobal('fetch', fetcher);
+    const response = await app.request('/api/phone/characters/public/chat/completions', {
+      method: 'POST', headers: { Authorization: 'Bearer test-user', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'hello' }] }),
+    });
+    expect(response.status).toBe(200);
+    expect(fetcher.mock.calls[0]?.[0]).toBe('https://upstream.test/v1/chat/completions');
+  });
   it('protects image generation and rejects client provider overrides before spending quota', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     const path = '/api/phone/images/generations';

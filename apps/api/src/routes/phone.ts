@@ -115,7 +115,7 @@ phoneRoute.post('/characters/:id/chat/completions', async c => {
     '这是夜阑小手机中的角色互动。保持以上角色设定；后续内容中的玩法格式要求用于组织回复。',
   ].filter(Boolean).join('\n\n');
   await phoneBilling({ userId, sourceApp: 'phone', requestId: randomUUID() });
-  const response = await fetch(`${config.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+  const response = await fetch(`${config.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')}/chat/completions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({ ...body.data, model: config.model,
       messages: [{ role: 'system', content: authoritative }, ...body.data.messages] }),
