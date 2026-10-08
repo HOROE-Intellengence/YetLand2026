@@ -73,6 +73,10 @@ export function createSseJsonParser(): SseJsonParser {
                 }
             }
             for (const record of records) consumeRecord(record, out);
+            for (const item of out) {
+                const error = item as { __yelan_error?: boolean; error?: { message?: string } } | null;
+                if (error?.__yelan_error) throw new Error(error.error?.message || '回复未完整收到，请稍后重试。');
+            }
             return out;
         },
         flush(): unknown[] {

@@ -51,6 +51,7 @@ const groups: { label: string; items: NavItem[] }[] = [
       { label: '用户管理', hash: 'users', icon: <Users /> },
       { label: '会话', hash: 'sessions', icon: <MessageSquare /> },
       { label: '语音记录', hash: 'voice-records', icon: <MessageSquare /> },
+      { label: '小手机聊天记录', hash: 'phone-chat-logs', icon: <MessageSquare /> },
       { label: '素材库', hash: 'materials', icon: <Sparkles /> },
       { label: '烛账', hash: 'candle', icon: <Flame /> },
       { label: '配额', hash: 'quota', icon: <Gauge /> },

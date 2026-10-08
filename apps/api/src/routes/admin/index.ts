@@ -27,11 +27,13 @@ import { adminMembershipRoute } from './membership';
 import { requireAdmin } from '../../middleware/auth';
 import { adminApiGatewayRoute } from './api-gateway';
 import { adminMaterialsRoute } from './materials';
+import { adminPhoneChatLogsRoute } from './phone-chat-logs';
 
 export const mockAdminRoute = new Hono();
 mockAdminRoute.use('*', requireAdmin());
 mockAdminRoute.route('/api-gateway', adminApiGatewayRoute);
 mockAdminRoute.route('/materials', adminMaterialsRoute);
+mockAdminRoute.route('/phone-chat-logs', adminPhoneChatLogsRoute);
 
 mockAdminRoute.route('/health', adminHealthRoute);
 mockAdminRoute.route('/diagnostics', adminDiagnosticsRoute);

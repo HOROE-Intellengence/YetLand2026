@@ -4,6 +4,7 @@
 // 通用 LLM 调用）共用这份日志，统一在「底层调用大模型日志」面板查看。
 
 import { kvGet, kvSet, kvRemove, registerKvMigration } from "./kv-db";
+import { isYelanManaged } from './yelan-managed-client';
 
 export type DebugInfo = {
     id: string;
@@ -125,15 +126,17 @@ function trimLogsForStorage(logs: DebugInfo[], maxCount: number, maxSerializedCh
     return newestFirst.reverse();
 }
 
-export function getApiLogs(): DebugInfo[] { return _loadLogs(API_LOGS_KEY); }
+export function getApiLogs(): DebugInfo[] { if(isYelanManaged) { clearApiLogs(); return []; } return _loadLogs(API_LOGS_KEY); }
 export function clearApiLogs(): void { try { kvRemove(API_LOGS_KEY); } catch { } }
 
 /** 工坊专用调用记录（仅工坊 UI 读取，与底层日志完全隔离）。 */
-export function getQaApiLogs(): DebugInfo[] { return _loadLogs(QA_LOGS_KEY); }
+export function getQaApiLogs(): DebugInfo[] { if(isYelanManaged) { clearQaApiLogs(); return []; } return _loadLogs(QA_LOGS_KEY); }
 export function clearQaApiLogs(): void { try { kvRemove(QA_LOGS_KEY); } catch { } }
+if (isYelanManaged) { clearApiLogs(); clearQaApiLogs(); }
 
 /** 追加一条调用日志（id/timestamp 自动生成、超限文本截断），超出数量/体积上限时裁掉最旧的记录。 */
 export function pushApiLog(entry: Omit<DebugInfo, "id" | "timestamp">): void {
+    if (isYelanManaged) { clearApiLogs(); clearQaApiLogs(); return; }
     // 工坊（QA 助手）的调用单独归档，不进聊天页的底层调用日志。
     // 分流只认显式 channel 字段：角色名恰好叫「工坊」的聊天不会被误扔进工坊记录。
     const isQa = entry.channel === "qa";

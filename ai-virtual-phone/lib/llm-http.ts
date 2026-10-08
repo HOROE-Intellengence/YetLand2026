@@ -5,12 +5,13 @@
 //    绕过 opencode.ai 未开放浏览器 CORS 的问题。
 
 import type { LlmRequestPayload } from "./llm-provider-adapter";
+import { isYelanManaged } from './yelan-managed-client';
 
 export type FetchLlmPayloadOptions = {
     signal?: AbortSignal;
 };
 
-export function fetchLlmPayload(
+export async function fetchLlmPayload(
     payload: LlmRequestPayload,
     options: FetchLlmPayloadOptions = {},
 ): Promise<Response> {
@@ -27,10 +28,16 @@ export function fetchLlmPayload(
             signal: options.signal,
         });
     }
-    return fetch(payload.url, {
+    const response = await fetch(payload.url, {
         method: "POST",
         headers: payload.headers,
         body: bodyText,
         signal: options.signal,
     });
+    if (isYelanManaged && !payload.body.stream && response.ok) {
+        const data = await response.json();
+        if (data?.__yelan_error) throw new Error(data.error?.message || '回复未完整收到，请稍后重试。');
+        return new Response(JSON.stringify(data), { status: response.status, headers: response.headers });
+    }
+    return response;
 }

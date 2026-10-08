@@ -9,6 +9,7 @@ import remarkCjkFriendly from "remark-cjk-friendly";
 import remarkBreaks from "remark-breaks";
 import { AppWindow, ArrowUp, BrushCleaning, Check, ChevronLeft, ChevronRight, Copy, Drama, FileCode2, FileText, Gamepad2, Github, Image as ImageIcon, Loader2, Menu, MoreVertical, Paperclip, Pencil, Pin, PinOff, Play, Plus, Square, Trash2, Wrench, X } from "lucide-react";
 import { getQaApiLogs, clearQaApiLogs, type DebugInfo } from "@/lib/api-log-store";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 import { QaFileCard } from "@/components/qa-file-card";
 import { parseQaFileMarker } from "@/lib/qa-computer-tools";
 import { mdiHammerWrench } from "@mdi/js";
@@ -1076,7 +1077,7 @@ export function PhoneQaApp({ onClose, onNotice }: PhoneQaAppProps) {
           {repoConnected && <span className="qa-header-sub">已连接仓库</span>}
         </div>
         <div className="qa-header-right">
-          <button
+          {!isYelanManaged && <button
             type="button"
             className="qa-icon-btn"
             onClick={() => setApiLogOpen(true)}
@@ -1084,7 +1085,7 @@ export function PhoneQaApp({ onClose, onNotice }: PhoneQaAppProps) {
             title="查看工坊的 AI 调用记录"
           >
             <FileCode2 size={17} strokeWidth={1.75} />
-          </button>
+          </button>}
           <button
             type="button"
             className="qa-icon-btn"
@@ -1519,7 +1520,7 @@ export function PhoneQaApp({ onClose, onNotice }: PhoneQaAppProps) {
         <QaSettingsSheet onClose={() => setSettingsOpen(false)} onNotice={onNotice} />
       )}
 
-      {apiLogOpen && (
+      {apiLogOpen && !isYelanManaged && (
         <QaApiLogSheet onClose={() => setApiLogOpen(false)} onNotice={onNotice} />
       )}
 

@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { phoneRoute } from '../routes/phone';
 import { readPhoneMemory } from './memory';
 const upstream = vi.hoisted(() => ({ baseUrl: 'https://upstream.test/v1' }));
+vi.mock('./chat-logs',()=>({phoneChatLogs:()=>({start:vi.fn(),finish:vi.fn()})}));
 
 vi.mock('../middleware/auth', () => ({ requireAuth: () => async (c: any, next: () => Promise<void>) => {
   if (c.req.header('authorization') !== 'Bearer test-user') return c.json({ code: 'AUTH_REQUIRED' }, 401);

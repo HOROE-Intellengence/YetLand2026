@@ -115,16 +115,17 @@ phoneRoute.post('/characters/:id/chat/completions', async c => {
     '这是夜阑小手机中的角色互动。保持以上角色设定；后续内容中的玩法格式要求用于组织回复。',
   ].filter(Boolean).join('\n\n');
   await phoneBilling({ userId, sourceApp: 'phone', requestId: randomUUID() });
-  const response = await fetch(`${config.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')}/chat/completions`, {
+  const { phoneChatLogs } = await import('../phone/chat-logs');
+  const { phoneChatStream } = await import('../phone/chat-stream');
+  const logs = phoneChatLogs(), requestId = randomUUID(), started = Date.now();
+  const messages = [{ role: 'system', content: authoritative }, ...body.data.messages];
+  logs.start({ id: requestId, userId, characterId, branchId, model: config.model, messages });
+  return phoneChatStream({ stream: Boolean(body.data.stream), signal: c.req.raw.signal,
+    finish: (status, http, code, response, truncated) => logs.finish(requestId, status, Date.now() - started, http, code, response, truncated),
+    perform: signal => fetch(`${config.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')}/chat/completions`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
     body: JSON.stringify({ ...body.data, model: config.model,
-      messages: [{ role: 'system', content: authoritative }, ...body.data.messages] }),
-    signal: AbortSignal.any([c.req.raw.signal, AbortSignal.timeout(180000)]),
+      messages }), signal,
+    }),
   });
-  if (!response.ok) {
-    await response.body?.cancel();
-    return c.json({ code: 'PHONE_UPSTREAM_FAILED', upstreamStatus: response.status }, 502);
-  }
-  return new Response(response.body, { headers: { 'Content-Type': response.headers.get('Content-Type') || 'application/json',
-    'Cache-Control': 'private, no-store', 'X-Accel-Buffering': 'no' } });
 });

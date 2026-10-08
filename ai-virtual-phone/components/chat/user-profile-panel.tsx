@@ -1,4 +1,5 @@
 "use client";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 
 import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import CSSSchemeBar from "@/components/ui/css-scheme-picker";
@@ -264,7 +265,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
             </ChatPluginPageBoundary>
         );
     }
-    if (showApiLog) {
+    if (showApiLog && !isYelanManaged) {
         return <ApiLogViewer onBack={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: false })); setShowApiLog(false); }} />;
     }
     if (showCSSEditor) {
@@ -469,14 +470,14 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                             <ChevronRight size={16} className="text-[var(--c-icon)] opacity-50" />
                         </button>
 
-                        <button className="flex items-center gap-3 py-3.5 w-full" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowApiLog(true); }}>
+                        {!isYelanManaged && <button className="flex items-center gap-3 py-3.5 w-full" onClick={() => { window.dispatchEvent(new CustomEvent("chat-hide-tabbar", { detail: true })); setShowApiLog(true); }}>
                             <FileCode2 size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
                                 <span className="ts-14 font-semibold text-[var(--c-text-title)]">底层调用大模型日志</span>
                                 <span className="ts-11 text-[var(--c-text)] opacity-70">查看网络通信中大模型的原始数据流</span>
                             </div>
                             <ChevronRight size={16} className="text-[var(--c-icon)] opacity-50" />
-                        </button>
+                        </button>}
                     </div>
                 </div>
             </PageShell>
