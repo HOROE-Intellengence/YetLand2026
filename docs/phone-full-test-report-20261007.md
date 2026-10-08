@@ -101,3 +101,13 @@ HQ 录音实际返回 `LOCAL_ASR_SKIPPED`：原服务在 local 模式设计为�
 - 证据：`.server/regression-20261008.log`、`.server/lint-20261008.log`、`.server/production-smoke-20261008/`、`.server/voice-egress/deployment.json`（含回滚所需 Worker route IDs，无密钥）；含账号或签名链接的证据保持 Git 忽略。
 - 回滚语音中转：恢复备份中的两个语音 URL 后，以原 `yelan-release` Compose 项目重建 API（原镜像、原挂载）；再删除本轮两条精确 Worker routes 和该 Worker。先保留可工作的中转直到回滚确实需要执行；原直连目前不可用。后台路由备份为 `/root/yelan-ingress-20261008/backup/admin-routing-20261008/`。
 - 目前仍为密码测试阶段，未撤维护、未向普通用户开放新版。
+
+## 2026-10-08 小手机聊天超时与管理员日志修复
+
+- 修复提交 `d3a439c` 已部署：API `yelan-api:chat-fix-d3a439c`，国内手机 `yelan-phone:chat-fix-cn-d3a439c`，CF 手机 `yelan-phone:chat-fix-com-d3a439c`。主站镜像保持原版本。
+- 原客户端等待 500 秒，服务端却在 180 秒截止，且上游等待期间没有保活；这会放大代理空闲断连风险。服务端改为 480 秒截止、每 15 秒保活，SSE 只在完整帧边界插入心跳，JSON 响应使用合法空白保活；上游中断或超时明确返回失败提示，不自动重复请求。
+- 夜阑托管模式移除个人主页及 QA 页的模型调用日志入口，停写并清理旧的浏览器调试日志，正常用户聊天消息保留。新增服务端 SQLite 调用记录及后台「用户 → 小手机聊天记录」，支持用户筛选、输入输出、状态、耗时及错误检查。仅管理员可读，不存请求鉴权头或服务 Key；单次输入/输出记录各有 256,000 字符上限并标记截断，不限制实际聊天输出。只记录部署后的新调用，不批量导入旧浏览器历史。
+- 本地全量回归 105 文件、753/753 通过；随后补充的 2 项托管前端错误/日志测试也通过。API、Admin、phone 类型检查通过，新增后台页 lint 通过，契约扫描 0 errors / 0 warnings。覆盖超过旧 180 秒阈值、分片 SSE、JSON 延迟正文、断流、取消、超时、日志权限和持久化。
+- CF 手机真实模型验收：流式请求 2,269 ms 收到首个保活数据，6,050 ms 完整结束；非流式回复亦通过。两次调用均为 complete，管理员可读输入输出；普通用户访问后台日志 401，手机代理访问后台日志 404。API 重启后两条记录仍在，记录中未发现库存中的服务 Key。
+- 镜像 tar SHA256 校验通过。部署前已停写备份完整数据及两套 Compose，位置 `/root/yelan-releases/backup-chat-fix-d3a439c/`；回滚时恢复其中 release.yml、ingress.yml 到对应 Compose 路径并使用原项目名重建 API/phone，保留当前数据，不能盲目覆盖部署后的新增记录。
+- 证据：`.server/chat-fix-regression.log`、`.server/chat-fix-live/`、三份 chat-fix 构建日志。浏览器工具绑定页面仍超时，未宣称完成新版页面可视检查；公网接口、权限及重启持久化已实测。公网主站及手机无预览权限仍为维护 503。
