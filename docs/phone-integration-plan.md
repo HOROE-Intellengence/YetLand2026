@@ -99,3 +99,6 @@
 - 窄窗口修复生产镜像已部署至本地 3002：375×667 视口完整显示手机边框和底部，聊天入口可进入。截图 .server/phone-narrow-fixed.jpg；已恢复浏览器默认尺寸。此项为窄窗口回归，不等于真实触屏键盘测试。
 
 - 2026-10-07 浏览器实际账号切换通过：在同一 127.0.0.1 主站和 localhost 手机 iframe 中，账号 A 添加其私有“全量测试角色”，写入合成标记 A-20261007；登录既有账号 B 后手机聊天列表不含该角色与消息；重新登录 A 后原消息及 AI 回复仍完整存在。截图 .server/isolation-account-a.jpg、isolation-account-b.jpg、isolation-account-a-restored.jpg。本次覆盖私有角色、聊天记录与切换后持久恢复，未单独覆盖图片缓存或多标签同时登录。
+
+- 图片保存故障回归新增两项：数据库保存失败保留原图片回执、释放用户生成锁；异步任务受理后取消保留原任务且不重新 POST 生成。成功时清除回执，回执不含上游 Key。图片生成/任务/缩略图相关 10/10 通过；当前素材目录无待恢复回执。
+- HQ 录音在当前 local 模式实测返回 interrupted / LOCAL_ASR_SKIPPED，输入文本与输出音频均为空，与原服务按部署模式跳过 ASR 的实现一致。证据 .server/hq-local-audio-input-result.json。HQ 公网 ASR 不得标为通过；未切换部署模式或临时公开本机音频。
