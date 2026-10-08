@@ -5,6 +5,7 @@ import {
   AdminConfigEnvPatchSchema,
   AdminConfigRuntimePatchSchema,
   AdminConfigTestLLMSchema,
+  AdminImageConfigSchema,
   DEFAULT_GLOBAL_BOUNDARY,
 } from '@yelan/shared';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -15,8 +16,19 @@ import { audit } from './_audit';
 import { getRouter, resetRouter } from '../../llm/create-router';
 import { getClientFlags } from '../../config/feature-flags';
 import { validationHook } from '../../middleware/validation';
+import { requireAdmin } from '../../middleware/auth';
+import { publicImageConfig, saveImageConfig } from '../../services/image-config';
 
 export const adminConfigRoute = new Hono();
+adminConfigRoute.use('/image', requireAdmin());
+adminConfigRoute.get('/image', c => { c.header('Cache-Control', 'private, no-store'); return c.json(publicImageConfig()); });
+adminConfigRoute.put('/image', zValidator('json', AdminImageConfigSchema, validationHook), c => {
+  const input = c.req.valid('json');
+  const result = saveImageConfig(input);
+  audit('config.image', undefined, undefined, { enabled: input.enabled, keyChanged: Boolean(input.apiKey) });
+  c.header('Cache-Control', 'private, no-store');
+  return c.json(result);
+});
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = resolve(here, '..', '..', '..', '.env');

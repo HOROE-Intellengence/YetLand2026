@@ -374,6 +374,7 @@ interface PersistedState {
   contextSummaries: Record<string, { summary: string; updatedAt: string; compressedUntilMessageId?: string }>;
   // 侧袋 AI 产出：会话温度日志
   temperatureLogs: Record<string, { values: number[]; updatedAt: string }>;
+  imageServiceConfig?: { baseUrl: string; apiKey: string; enabled: boolean };
   llmApiInventory: {
     entries: Record<string, LlmApiEntry>;
     mainApiId: string | null;

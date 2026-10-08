@@ -392,6 +392,15 @@ export const AdminIfCodesToggleSchema = z.object({
 });
 
 // ── Config ──
+export const AdminImageConfigSchema = z.object({
+  baseUrl: z.string().trim().max(2048).url().refine(value => {
+    const u = new URL(value);
+    return u.protocol === 'https:' && !u.username && !u.password && !u.search && !u.hash;
+  }, '请填写不含凭据和查询参数的 HTTPS API 根地址'),
+  apiKey: z.string().trim().max(4096).refine(value => !/[\r\n]/.test(value)).optional(),
+  enabled: z.boolean(),
+}).strict();
+
 export const AdminConfigEnvPatchSchema = z.object({
   patch: z.record(z.string(), z.string()),
   reason: z.string().min(1),

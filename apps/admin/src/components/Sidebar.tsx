@@ -37,6 +37,7 @@ const groups: { label: string; items: NavItem[] }[] = [
       { label: '策略', hash: 'policy', icon: <ScrollText /> },
       { label: '会员', hash: 'membership', icon: <CreditCard /> },
       { label: '语音配置与测试', hash: 'voice-settings', icon: <MessageSquare /> },
+      { label: '图片服务', hash: 'image-settings', icon: <Sparkles /> },
       { label: '角色卡', hash: 'characters', icon: <UserCheck /> },
       { label: '星座编辑器', hash: 'constellations', icon: <Sparkles /> },
       { label: '前置提示卡', hash: 'prelude-cards', icon: <Wrench /> },

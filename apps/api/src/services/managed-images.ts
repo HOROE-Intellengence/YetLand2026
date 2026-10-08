@@ -6,8 +6,9 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { imageResultSource, waitForImageTask } from './image-task';
 
-export const IMAGE_MODEL = 'gpt-image-2.5-flare';
-export const imageConfigured = () => Boolean(process.env.IMAGE_API_KEY?.trim() && process.env.IMAGE_API_BASE_URL?.trim());
+import { imageConfig, IMAGE_MODEL } from './image-config';
+export { IMAGE_MODEL } from './image-config';
+export const imageConfigured = () => { const c = imageConfig(); return Boolean(c.enabled && c.apiKey && c.baseUrl); };
 export class ImageError extends Error {
   constructor(public code: string, public status: 400 | 429 | 502 | 503 = 502) { super(code); }
 }
@@ -15,12 +16,13 @@ const busy = new Set<string>();
 export async function generateManagedImage(input: { userId: string; characterId?: string; prompt: string; referenceImageDataUrl?: string }, signal: AbortSignal) {
   if (!imageConfigured()) throw new ImageError('IMAGE_NOT_CONFIGURED', 503);
   if (busy.has(input.userId) || busy.size >= 2) throw new ImageError('IMAGE_BUSY', 429);
-  const base = new URL(process.env.IMAGE_API_BASE_URL!);
+  const config = imageConfig();
+  const base = new URL(config.baseUrl);
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) throw new ImageError('IMAGE_CONFIG_INVALID', 503);
   busy.add(input.userId);
   try {
     let body: RequestInit['body'];
-    const headers: Record<string, string> = { Authorization: `Bearer ${process.env.IMAGE_API_KEY!.trim()}` };
+    const headers: Record<string, string> = { Authorization: `Bearer ${config.apiKey}` };
     if (input.referenceImageDataUrl) {
       const source = Buffer.from(input.referenceImageDataUrl.split(',')[1]!, 'base64');
       let image: Buffer;
@@ -58,7 +60,7 @@ export async function generateManagedImage(input: { userId: string; characterId?
     // failure can be recovered without paying to generate the same image again.
     const receipt = join(imageMaterials().root, `pending-${randomUUID()}.json`);
     await writeFile(receipt, JSON.stringify({ ...input, model: IMAGE_MODEL, result }), { mode: 0o600 });
-    const resolved = await waitForImageTask(result, base, process.env.IMAGE_API_KEY!.trim(), AbortSignal.any([signal, AbortSignal.timeout(180000)]));
+    const resolved = await waitForImageTask(result, base, config.apiKey, AbortSignal.any([signal, AbortSignal.timeout(180000)]));
     await writeFile(receipt, JSON.stringify({ ...input, model: IMAGE_MODEL, result: resolved }), { mode: 0o600 });
     const { b64, url } = imageResultSource(resolved);
     if (!b64 && !url) throw new ImageError('IMAGE_RESPONSE_MISSING_IMAGE');
