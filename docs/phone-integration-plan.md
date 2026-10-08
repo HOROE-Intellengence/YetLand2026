@@ -112,3 +112,62 @@
 - 栖所投影真实侧袋测试通过：合成的江白星砂书房布局经投影函数和原事件接口返回 200，记忆保留蓝色窗帘/书桌/铜风铃，并明确标为虚拟角色栖所。证据 .server/dwelling-memory-audit.json；此证据覆盖投影到侧袋，不冒充浏览器新建栖所的全流程。
 
 - 栖所桥接修复的生产镜像构建完成并替换本地 3002 容器，首页 200、已屏蔽 3D 页面仍 404。后续需刷新已打开手机页面加载新版脚本。
+
+## 公网测试部署需求清单（尚未提供部署环境）
+
+目标：完成真实 HTTPS、手机麦克风、HQ 文件识别、原有功能回归；保持小手机独立入口、3D 关闭、计费空接口，不增加跨端同步。
+
+### 用户需要提供
+
+| 项目 | 具体内容 | 验收要求 |
+| --- | --- | --- |
+| 部署主机 | 已有主机地址、系统/架构、可用部署方式；建议给专用测试目录和可访问的执行环境 | 能运行现有 Docker Compose；不占用或替换其它业务的容器/数据目录 |
+| 两个域名 | 夜阑主站 DOMAIN、小手机 PHONE_DOMAIN，例如 test.example.com / phone-test.example.com | DNS 指向同一入口；域名修改后须重建两个前端，因为握手 origin 和 iframe 地址在构建时固定 |
+| DNS 与入口归属 | 由谁修改 DNS；80/443 是否已有反向代理或其他服务 | 现有配置由 Caddy 接管 80/443；已被占用时接入现有代理，不直接抢占端口 |
+| 部署目录 | 专用目录，例如 /srv/yelan-test，以及持久数据目录和备份位置 | 测试账号与真实生产账号数据分离；不默认迁入真实聊天数据 |
+| 测试终端 | 一台可访问测试域名的真实手机或带麦克风的浏览器 | 用户实际授权麦克风并说一条合成测试句；确认能听到回复 |
+| 外部服务权限 | 现有主模型/侧袋/语音/图片配置是否可用于该测试服务器，额度是否可用 | 优先复用已有配置，不在聊天中粘贴密钥；服务器逐个实测连通性 |
+
+### 我可以配置或生成
+
+- 复用现有 API、主站 Caddy、独立 phone 三服务 Compose；不新建模型服务或数据库服务。
+- 生成独立的 ADMIN_TOKEN、后台路径和 VOICE_ASR_SIGNING_KEY；存于部署环境文件，不写入仓库或前端。
+- 设置 DEPLOY_MODE=server、DOMAIN、PHONE_DOMAIN、精确 CORS_ORIGINS，构建主站及小手机的 origin 配置。
+- 配置 VOICE_ASR_PUBLIC_ORIGIN=https://主站域名，只能是公网 HTTPS origin，不能包含 /api 路径、IP 或 localhost。签名 key 至少 32 字符且无空白；TTL 默认 900 秒，代码允许 60–3600 秒。
+- 迁入已授权的主模型、侧袋、Fish、Gemini relay、HQ ASR 和图片配置；生成独立合成验收账号。
+- 使用现有 ffmpeg 镜像依赖和 SQLite/文件存储；本地镜像构建已为 Node 预留 6 GiB 堆，部署主机若不承担构建，可使用预先构建镜像。具体运行容量以测试并发实测确定，不把堆上限当运行最低内存。
+
+### 必须满足的网络条件
+
+- 浏览器可访问两个 HTTPS 域名并信任证书；HTTP 入口用于现有 Caddy 自动证书流程和跳转。
+- API、phone 的 8787/3001 仅容器内网可达，不要求直接公开。
+- HQ ASR 提供商必须能从公网 GET 主站 /api/voice/asr-assets/<id>?issued=...&expires=...&signature=...。该路径由短效签名鉴权，不能再叠加登录页、验证码或全站访问挑战；其余 API 保持原身份鉴权。访问日志不得记录完整签名 URL。
+- 服务器出站能访问已配置的主模型、侧袋、Fish、HQ ASR 和图片服务，以及 Gemini relay 的 WSS 地址；支持流式响应/WebSocket，不被反向代理缓冲或提前截断。
+- 服务器时钟准确，避免短效签名误判过期。本机 127.0.0.1:7897 代理不随部署迁移，server 模式也不会启用该本地专用代理。
+
+### 配置映射
+
+| 配置 | 来源/说明 |
+| --- | --- |
+| DOMAIN / PHONE_DOMAIN | 用户提供的两个域名 |
+| ADMIN_TOKEN / ADMIN_PATH | 部署时生成 |
+| VOICE_ASR_PUBLIC_ORIGIN | 通常与主站 origin 相同；无需第三个域名 |
+| VOICE_ASR_SIGNING_KEY / VOICE_ASR_SIGNING_TTL_SECONDS | 新生成独立签名 key；默认 900 秒 |
+| VOICE_HQ_ASR_API_KEY / BASE_URL / MODEL | 复用现有配置并验证调用权限；当前代码默认 qwen-audio-3.0-asr-flash-filetrans |
+| VOICE_HQ_FISH_API_KEY / BASE_URL | 复用现有 Fish 配置；TTS 模型固定 s2.1-pro-free，音色由夜阑后台管理 |
+| VOICE_RELAY_URL / TOKEN | 复用已有 WSS relay；上游 Google key 继续留在 relay 的 secrets |
+| 主模型与侧袋配置 | 复用已授权绑定，核实后端实际生效值，不仅核实环境文件是否存在 |
+| IMAGE_API_BASE_URL / IMAGE_API_KEY | 已指定图片服务；模型由后端固定 gpt-image-2.5-flare。已补入可选 phone Compose 的 API 环境映射 |
+
+### 持久化与验收顺序
+
+1. 配置校验、独立数据卷、证书和主站/手机访问；复核原功能选择入口均在，3D 为 404。
+2. 登录与 A→B→A 隔离、角色权限、流式聊天、双向记忆、规则执行。
+3. 真实手机录音→上传→签名音频供提供商读取→HQ ASR→主模型→Fish→浏览器播放；记录每一阶段结果，不能用文本测试替代录音测试。
+4. 音频签名无效/过期/篡改被拒绝、账号越权被拒绝；确认同一 ASR 任务可恢复而不重复提交。
+5. 小额度生图一次，确认前端显示及缩略图进入后台；验证重启后素材仍在。当前宿主 _data 挂载包含 state.json、voice、materials、gateway 等，不能只备份 state.json。
+6. 整目录一致性备份/恢复演练，再决定是否对真实用户开放。测试目录与现有业务分开。
+
+无需为当前方案新增对象存储、Redis、Postgres、向量数据库、跨端同步、短信服务或 Tripo Key；在线音乐可继续保持未接入。
+
+2026-10-07：加入图片环境映射后 Compose config --quiet 通过（仅旧 version 字段弃用提示）；最新全量自动化 718/718。没有部署公网、购买服务或更改系统网络。

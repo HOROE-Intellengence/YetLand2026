@@ -1,6 +1,11 @@
 # Opt-in companion service. The original two-service deployment is unchanged.
 # docker compose -f docker-compose.yml -f docker-compose.phone.yml up -d --build
 services:
+  api:
+    environment:
+      IMAGE_API_BASE_URL: ${IMAGE_API_BASE_URL:-}
+      IMAGE_API_KEY: ${IMAGE_API_KEY:-}
+
   phone:
     build:
       context: ../..
