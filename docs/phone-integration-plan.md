@@ -171,3 +171,7 @@
 无需为当前方案新增对象存储、Redis、Postgres、向量数据库、跨端同步、短信服务或 Tripo Key；在线音乐可继续保持未接入。
 
 2026-10-07：加入图片环境映射后 Compose config --quiet 通过（仅旧 version 字段弃用提示）；最新全量自动化 718/718。没有部署公网、购买服务或更改系统网络。
+
+- 2026-10-07 公网前离线部署验收：当前 API Dockerfile 实际构建成功，镜像 yelan-api:phone-audit；隔离、无网络临时容器中的 sharp 和 better-sqlite3 实际运行，1600×1600 合成噪声压缩为 129,525 字节 JPEG（640×640），数据库关闭重开后记录仍在。未调用付费上游。
+- 独立 127.0.0.1:8788 临时 API 容器使用 server 模式且关闭真实模型：health 200，素材库未登录 401/管理员 200，React 后台产物 200。证据 .server/api-container-audit.json。临时容器已停止并自动清理；当前 8787 API 和 3002 手机容器未被替换。
+- 三服务 Compose 合并检查通过：api/caddy/phone 均保留，图片 Key 只映射至 API；主站允许 origin 和手机入口构建参数匹配。证据 .server/phone-compose-audit.json。公网 HTTPS、真实设备麦克风及 HQ ASR 仍等待用户提供部署环境，用户已确认暂未提供。
