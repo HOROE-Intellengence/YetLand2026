@@ -34,7 +34,7 @@ describe('phone managed routes', () => {
       body: JSON.stringify({ messages: [{ role: 'user', content: 'hello' }] }),
     });
     expect(response.status).toBe(200);
-    expect(fetcher.mock.calls[0]?.[0]).toBe('https://upstream.test/v1/chat/completions');
+    expect((fetcher.mock.calls[0] as unknown as [string, RequestInit])[0]).toBe('https://upstream.test/v1/chat/completions');
   });
   it('protects image generation and rejects client provider overrides before spending quota', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
