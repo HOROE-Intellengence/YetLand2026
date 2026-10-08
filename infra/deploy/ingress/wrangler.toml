@@ -1,0 +1,14 @@
+name = "yelan-ingress"
+main = "worker.mjs"
+account_id = "1f95f9c30f6f07834a0bbb498889adcb"
+compatibility_date = "2026-10-08"
+workers_dev = false
+preview_urls = false
+
+# Only the dedicated yetland.com zone; never attach a wildcard to a personal zone.
+routes = [
+  { pattern = "*/*", zone_id = "2f4da0efcfff7eea8de10f745b19e9d6" }
+]
+
+[observability]
+enabled = false

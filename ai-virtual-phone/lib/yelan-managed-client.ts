@@ -7,7 +7,12 @@ export function yelanHeaders(): Record<string, string> {
 export async function yelanRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/host${path}`, { ...init, headers: { ...yelanHeaders(), ...init?.headers } });
   if (!response.ok) throw new Error(response.status === 401 ? '请返回夜阑重新登录' : '夜阑服务暂不可用');
-  return response.json();
+  const data = await response.json();
+  const streamedStatus = response.headers.get('X-Yelan-Streaming-JSON') === '1' ? data?.__yelan_http_status : undefined;
+  if (typeof streamedStatus === 'number' && (streamedStatus < 200 || streamedStatus >= 300)) {
+    throw new Error(streamedStatus === 401 ? '请返回夜阑重新登录' : '夜阑服务暂不可用');
+  }
+  return data;
 }
 
 // Installed before importing the phone application. Keep its existing local

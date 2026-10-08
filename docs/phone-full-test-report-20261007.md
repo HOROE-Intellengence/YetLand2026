@@ -1,5 +1,7 @@
 # 小手机全量测试记录（2026-10-07）
 
+> 2026-10-08 最新部署复验：下面的初测失败记录保留为历史。当前普通/HQ 服务端音频上传、识别、回复、音频下载均已通过；物理麦克风与扬声器听感仍需人工确认。详见本文末尾。
+
 结论：最终全量自动化 91 个文件、692/692 项通过，核心文本链路可用；功能验收未全通过，不能据此宣布全功能上线就绪。
 
 ## 测试范围及环境
@@ -76,3 +78,18 @@ HQ 录音实际返回 `LOCAL_ASR_SKIPPED`：原服务在 local 模式设计为�
 ### 原聊天→小手机反向记忆实测
 
 原聊天正常五轮输入触发侧袋后，小手机在空消息历史正确回答“橙铃四八”是橙色风铃、位置在白榆桥东侧木盒。另一角色记忆接口 200、context 为空。结合此前手机→原聊天实测，基础主线文本记忆双向链路已通过；不扩大为所有玩法与分支的语义验收。证据 `.server/reverse-memory-result.json`。
+
+## 2026-10-08 CF 入口与服务器部署复验
+
+- 当前代码全量回归 100 文件、731/731 通过；新增固定语音中转的 7/7 项针对性测试通过。API、Web、Admin、phone 四端 `tsc --noEmit` 均通过；Web/Admin ESLint 无规则错误，保留既有 Node 模块类型提示；契约扫描 0 errors / 0 warnings。
+- CF 前端镜像与本机镜像 ID 一致：web `1fab9696ac594ab83b0407822a30c5e6f28b09013699c26066528af87bb23050`，phone `278606d04b98491b34be55a19ba058ca81f5c0cd02b46fc5e3b88c25d51b1681`。无需为已核对的一致构建重复编译。API 仍为 `phone-20261007-2f13d36`。
+- CF 入口实测：主站/phone 未授权维护 503，预览 Cookie 200，错误密码/未带密码 401 且不签发 Cookie，成功认证 303；手机 bootstrap、模型返回 200，未登录 401，3D 404。
+- 原聊天 SSE 真实回复成功；手机记忆事件写入及读取成功。通过 CF 手机入口真实生图返回成功，新增素材 ID `b2e0c290-3dc9-4445-8677-a0e26c9fea8b`；缩略图 57,369 bytes、1024×1024。原素材仍保留。管理后台 HTML、素材 API 管理员 200、无管理员令牌 401、无预览权限 503 均通过。
+- CF 备用前端补齐原隐藏后台入口、后台静态资源与 `/health` 路由，使用原 ADMIN_PATH，不改变后台真实身份验证。
+- 国内服务器直连 Fish 与 workers.dev 仍超时。新增 `yelan-voice-egress` Worker，仅匹配 `ingress.yetland.com/google-live` 和 `/fish/*`，要求既有专用凭据，固定上游，不接受客户端指定目标，不自动重试。无凭据访问均 401；不修改国内 DNS、主站入口或公开维护状态。
+- 服务器仅改 `VOICE_RELAY_URL=wss://ingress.yetland.com/google-live`、`VOICE_HQ_FISH_BASE_URL=https://ingress.yetland.com/fish`。原配置备份 `/root/yelan-releases/voice-egress-20261008/deploy.env`；原主模型、侧袋、角色与用户数据保持。
+- **服务端音频闭环通过**：朗读 8,527 bytes / 2.84 秒；普通通话音频上传→识别→回复→音频下载 53,156 bytes / 17.67 秒；HQ 上传→公网 ASR→识别→模型→Fish→音频下载 144,343 bytes / 24.50 秒。HQ 识别文本为“你好，这是夜阑语音部署测试。”，终态 complete、errorCode=null。所有输出经 ffprobe 验证有有效时长。
+- 本轮浏览器工具在创建/绑定页时反复超时；没有把上一轮的桌面截图算成本轮 UI 复验。真实麦克风/播放听感、图片缓存跨账号及多标签并发隔离、全部玩法逐项真实生成仍未全部完成。3D 已关闭、音乐未配置，不列为已接入。
+- 证据：`.server/regression-20261008.log`、`.server/lint-20261008.log`、`.server/production-smoke-20261008/`、`.server/voice-egress/deployment.json`（含回滚所需 Worker route IDs，无密钥）；含账号或签名链接的证据保持 Git 忽略。
+- 回滚语音中转：恢复备份中的两个语音 URL 后，以原 `yelan-release` Compose 项目重建 API（原镜像、原挂载）；再删除本轮两条精确 Worker routes 和该 Worker。先保留可工作的中转直到回滚确实需要执行；原直连目前不可用。后台路由备份为 `/root/yelan-ingress-20261008/backup/admin-routing-20261008/`。
+- 目前仍为密码测试阶段，未撤维护、未向普通用户开放新版。

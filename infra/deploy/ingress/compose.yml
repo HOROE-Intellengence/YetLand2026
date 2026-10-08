@@ -1,0 +1,24 @@
+services:
+  web:
+    image: yelan-web-caddy:ingress-20261008-com
+    container_name: yelan-ingress-web
+    restart: unless-stopped
+    environment:
+      ADMIN_PATH: ${ADMIN_PATH:?Use the existing production admin path}
+    volumes:
+      - ./Caddyfile.internal:/etc/caddy/Caddyfile:ro
+    networks: [origin]
+  phone:
+    image: yelan-phone:ingress-20261008-com
+    container_name: yelan-ingress-phone
+    restart: unless-stopped
+    environment:
+      YELAN_API_ORIGIN: http://yelan-release-api:8787
+      YELAN_PHONE_MANAGED: "true"
+      HOST: 0.0.0.0
+      PORT: "3001"
+    networks: [origin]
+networks:
+  origin:
+    external: true
+    name: yelan-release_web

@@ -1,0 +1,15 @@
+name = "yelan-voice-egress"
+main = "worker.mjs"
+compatibility_date = "2026-10-08"
+workers_dev = false
+preview_urls = false
+
+# RELAY_TOKEN and FISH_API_KEY are Worker secrets matching the API deployment.
+# More specific than the existing ingress worker wildcard; no DNS changes.
+routes = [
+  { pattern = "ingress.yetland.com/google-live", zone_name = "yetland.com" },
+  { pattern = "ingress.yetland.com/fish/*", zone_name = "yetland.com" }
+]
+
+[observability]
+enabled = false

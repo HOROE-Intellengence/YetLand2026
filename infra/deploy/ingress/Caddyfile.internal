@@ -1,0 +1,33 @@
+{
+ auto_https off
+}
+:80 {
+ header Cache-Control "private, no-store"
+ handle /api/* {
+  reverse_proxy yelan-release-api:8787 {
+   flush_interval -1
+  }
+ }
+ handle /v1/* {
+  reverse_proxy yelan-release-api:8787 {
+   flush_interval -1
+  }
+ }
+ handle /admin/assets/* {
+  reverse_proxy yelan-release-api:8787
+ }
+ handle {$ADMIN_PATH:/__console_change_me__}* {
+  uri replace {$ADMIN_PATH:/__console_change_me__} /admin
+  reverse_proxy yelan-release-api:8787 {
+   header_down Location /admin {$ADMIN_PATH:/__console_change_me__}
+  }
+ }
+ handle /health {
+  reverse_proxy yelan-release-api:8787
+ }
+ handle {
+  root * /srv
+  try_files {path} /index.html
+  file_server
+ }
+}
