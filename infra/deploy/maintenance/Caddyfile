@@ -1,0 +1,21 @@
+{$DOMAIN} {
+    header {
+        Cache-Control "no-store"
+        Retry-After "600"
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
+    @api path /api /api/* /v1 /v1/*
+    handle @api {
+        header Content-Type application/json
+        respond `{"code":"MAINTENANCE","message":"新的功能正在加入，请稍后再试"}` 503
+    }
+    handle {
+        root * /srv/maintenance
+        rewrite * /index.html
+        file_server {
+            status 503
+        }
+    }
+    encode gzip zstd
+}

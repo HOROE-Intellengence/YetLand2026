@@ -175,3 +175,14 @@
 - 2026-10-07 公网前离线部署验收：当前 API Dockerfile 实际构建成功，镜像 yelan-api:phone-audit；隔离、无网络临时容器中的 sharp 和 better-sqlite3 实际运行，1600×1600 合成噪声压缩为 129,525 字节 JPEG（640×640），数据库关闭重开后记录仍在。未调用付费上游。
 - 独立 127.0.0.1:8788 临时 API 容器使用 server 模式且关闭真实模型：health 200，素材库未登录 401/管理员 200，React 后台产物 200。证据 .server/api-container-audit.json。临时容器已停止并自动清理；当前 8787 API 和 3002 手机容器未被替换。
 - 三服务 Compose 合并检查通过：api/caddy/phone 均保留，图片 Key 只映射至 API；主站允许 origin 和手机入口构建参数匹配。证据 .server/phone-compose-audit.json。公网 HTTPS、真实设备麦克风及 HQ ASR 仍等待用户提供部署环境，用户已确认暂未提供。
+
+## 2026-10-07 正式站维护页切换
+
+用户授权将访问导到维护页，文案“新的功能正在加入”。通过本机 ssh yelan-server 执行。
+
+- 正式域名 https://yetland.cn/ 已由独立 yelan-maintenance 容器承接 80/443；沿用原 Caddy 镜像及证书卷，设置 unless-stopped。原 yelan-caddy 已停止保留，yelan-api 继续运行且不直接对公网开放。
+- 全站页面显示维护页并返回 503、Cache-Control:no-store、Retry-After:600；/api 和 /v1 路径返回 MAINTENANCE JSON 503，停止新的外部业务调用。
+- 配置及证书备份：/root/yelan-maintenance-20261007/backup（权限仅 root）。本次只备份切换涉及的入口配置、环境文件、容器描述和证书；没有修改或迁移业务数据库，不冒充已完成数据一致性全备。
+- 新维护文件：/root/yelan-maintenance-20261007/Caddyfile 与 site/index.html。原部署目录 /root/YetLand2026/infra/deploy 未覆盖。
+- 远端 HTTPS 检查与实际公网浏览器均确认标题和维护文案。截图 .server/yetland-maintenance-live.jpg。
+- 回到旧版入口：先执行 docker stop yelan-maintenance，再执行 docker start yelan-caddy。当前任务仅上线维护页，未执行回滚、应用升级或撤维护。
