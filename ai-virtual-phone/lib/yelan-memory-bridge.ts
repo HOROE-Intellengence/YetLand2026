@@ -3,6 +3,8 @@ import { loadCharacters } from './character-storage';
 import { loadNativeTimeline } from './short-term-assembler';
 import { kvGet, kvSet } from './kv-db';
 import { memoryParts } from './yelan-memory-parts';
+import { loadDwellingLayout } from './dwelling-storage';
+import { dwellingMemoryEntry } from './yelan-dwelling-memory';
 
 let busy = false;
 export async function flushYelanMemory() {
@@ -12,7 +14,8 @@ export async function flushYelanMemory() {
     for (const character of loadCharacters()) {
       const key = `yelan-memory-ack:${character.id}`;
       const ack = new Set<string>(JSON.parse(kvGet(key) || '[]'));
-      const pending = loadNativeTimeline(character.id);
+      const dwelling = dwellingMemoryEntry(character.id, await loadDwellingLayout(character.id));
+      const pending = [...loadNativeTimeline(character.id), ...(dwelling ? [dwelling] : [])];
       let remaining = 10;
       for (const entry of pending) {
         const narrative = ['story', 'vn', 'map', 'game'].includes(entry.sourceApp);
