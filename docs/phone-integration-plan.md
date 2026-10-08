@@ -186,3 +186,16 @@
 - 新维护文件：/root/yelan-maintenance-20261007/Caddyfile 与 site/index.html。原部署目录 /root/YetLand2026/infra/deploy 未覆盖。
 - 远端 HTTPS 检查与实际公网浏览器均确认标题和维护文案。截图 .server/yetland-maintenance-live.jpg。
 - 回到旧版入口：先执行 docker stop yelan-maintenance，再执行 docker start yelan-caddy。当前任务仅上线维护页，未执行回滚、应用升级或撤维护。
+# 2026-10-07 正式服务器维护窗口部署
+
+- 主站 `https://yetland.cn`，小手机 `https://phone.yetland.cn`；DNS 与 HTTPS 已实际验证。
+- 发布目录 `/root/yelan-releases/phone-c68ffa1`，代码提交 `2f13d36`；API 镜像 `yelan-api:phone-20261007-2f13d36`，web/phone 镜像仍为 `phone-20261007-c68ffa1`。镜像经 SHA256 上传校验。
+- 停止旧 API 写入后，完整备份原 `_data` 到 `/root/yelan-releases/backup-before-c68ffa1/data.tgz`，验证归档可读与 state.json 可解析。新版使用独立数据副本，旧目录和旧容器保留。
+- 原主模型与侧袋 inventory、原账号和角色沿用；补入本地已验证的语音、图片配置，密钥只在服务器私有环境文件中。启用 server 模式、公网 ASR origin 和独立签名密钥。
+- `yelan-maintenance` 继续占用公网 80/443。新版三个容器只通过 Docker 内网连接，不暴露 API/phone 端口。
+- 临时测试入口 `/__preview` 使用密码验证，成功后设置 Secure/HttpOnly/SameSite=Lax 的跨子域 Cookie，有效期 24 小时；`/__preview/logout` 清除放行 Cookie。未授权主站、手机、业务 API 继续返回维护 503。错误密码/未提供密码返回 401 且不签发 Cookie。凭据保存在服务器 root 私有文件及本机 `.server/夜阑临时测试入口.txt`，不提交 Git。
+- `/api/voice/asr-assets/*` 独立转发到 API，由原短效签名鉴权，以便 ASR 服务读取音频；没有签名的无效资源访问被拒绝。
+- 线上实测通过：原账号登录流程、原聊天 SSE、小手机主站嵌入握手和桌面、手机模型响应、记忆写入及重启保留、图片生成与素材库、素材匿名拒绝、3D 404。实际素材缩略图 57,369 bytes / 1024×1024，API 重启后仍存在。
+- 修复上线发现的接口兼容问题：旧后台允许保存完整 `/chat/completions` URL，小手机之前重复拼接后缀。新增 API 根地址及完整地址的 4 种回归用例，手机路由共 12 项通过。
+- HQ 公网音频读取、ASR 识别及模型文本生成已通过；Fish TTS 连接失败。普通语音中继连接失败。服务器 DNS 存在异常解析，使用可信解析结果定向连接仍 TLS reset，故未宣称语音闭环通过。需提供内地可访问的 Fish 服务地址及语音中继域名，或部署稳定境外中转后复验。
+- 当前保持维护，不开放普通用户流量。恢复旧版时先停止新版 API 写入，停止维护容器，再启动保留的 `yelan-api` 与 `yelan-caddy`；旧数据目录未被新版写入，但恢复会舍弃新版测试期产生的数据。维护期停止测试入口时恢复仓库 `infra/deploy/maintenance/Caddyfile` 后 reload 即可。
