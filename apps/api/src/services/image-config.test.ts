@@ -7,10 +7,10 @@ beforeEach(()=>{store.__resetForTests();vi.stubEnv('ADMIN_TOKEN','test-admin-ima
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();vi.restoreAllMocks();});
 it('inherits environment config without exposing its key',()=>{expect(publicImageConfig()).toMatchObject({hasKey:true,source:'environment'});expect(JSON.stringify(publicImageConfig())).not.toContain('existing-environment-secret');});
 it('retains a blank key, normalizes full endpoint and persists one config',()=>{
- const save=vi.spyOn(store,'save');saveImageConfig({baseUrl:'https://new.example/v1/images/generations/',apiKey:'',enabled:true});
+ const save=vi.spyOn(store,'saveStrict');saveImageConfig({baseUrl:'https://new.example/v1/images/generations/',apiKey:'',enabled:true});
  expect(imageConfig()).toEqual({baseUrl:'https://new.example/v1',apiKey:'existing-environment-secret',enabled:true});expect(save).toHaveBeenCalled();
 });
-it('rolls back memory if persistence fails',()=>{vi.spyOn(store,'save').mockImplementation(()=>{throw Error('disk')});expect(()=>saveImageConfig({baseUrl:'https://new.example/v1',apiKey:'new-secret',enabled:true})).toThrow();expect(imageConfig().apiKey).toBe('existing-environment-secret');});
+it('rolls back memory if persistence fails',()=>{vi.spyOn(store,'saveStrict').mockImplementation(()=>{throw Error('disk')});expect(()=>saveImageConfig({baseUrl:'https://new.example/v1',apiKey:'new-secret',enabled:true})).toThrow();expect(imageConfig().apiKey).toBe('existing-environment-secret');});
 it('denies unauthenticated and ordinary callers',async()=>{
  for(const token of ['', 'ordinary-user'])for(const method of ['GET','PUT'])expect((await adminConfigRoute.request('/image',{method,headers:{Authorization:token}})).status).toBe(401);
 });
@@ -27,3 +27,4 @@ it('generation uses the saved URL and key instead of environment values',async()
  const [url,init]=fetcher.mock.calls[0] as unknown as [string,RequestInit];expect(url).toBe('https://new.example/v1/images/generations');expect(init.headers).toMatchObject({Authorization:'Bearer new-private-key'});
  saveImageConfig({baseUrl:'https://new.example/v1',enabled:false});await expect(generateManagedImage({userId:'test',prompt:'synthetic'},new AbortController().signal)).rejects.toMatchObject({code:'IMAGE_NOT_CONFIGURED'});expect(fetcher).toHaveBeenCalledTimes(1);
 });
+

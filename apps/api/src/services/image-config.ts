@@ -16,6 +16,7 @@ export function saveImageConfig(input: {baseUrl: string; apiKey?: string; enable
   const state = store.state(), previous = state.imageServiceConfig;
   state.imageServiceConfig = { baseUrl: input.baseUrl.replace(/\/+$/, '').replace(/\/images\/(generations|edits)$/, ''),
     apiKey: input.apiKey?.trim() || imageConfig().apiKey, enabled: input.enabled };
-  try { store.save(); } catch (e) { state.imageServiceConfig = previous; throw e; }
+  try { store.saveStrict(); } catch (e) { state.imageServiceConfig = previous; throw e; }
   return publicImageConfig();
 }
+
