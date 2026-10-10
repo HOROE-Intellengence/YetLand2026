@@ -1,5 +1,6 @@
 import type { MemoryEntry } from "./memory-types";
 import { DEFAULT_CORE_MEMORY_PROMPT } from "./memory-types";
+import { isYelanManaged } from './yelan-managed-client';
 import {
     loadMemoryConfig,
     loadMemoryEntriesByType,
@@ -74,7 +75,8 @@ export async function runCoreMemoryPipeline(
     if (!formatted) return { success: false, error: "格式化核心记忆数据失败" };
 
     const { eventsText, earliest, latest } = formatted;
-    const promptTemplate = config.coreMemoryPrompt?.trim() || DEFAULT_CORE_MEMORY_PROMPT;
+    const customPrompt = config.coreMemoryPrompt?.trim();
+    const promptTemplate = isYelanManaged && customPrompt && customPrompt !== DEFAULT_CORE_MEMORY_PROMPT ? `${DEFAULT_CORE_MEMORY_PROMPT}\n\n用户希望长期记住的重点：\n${customPrompt}` : customPrompt || DEFAULT_CORE_MEMORY_PROMPT;
     const prompt = promptTemplate
         .replace(/\{\{char\}\}/gi, characterName)
         .replace(/\{\{earliest\}\}/gi, earliest)

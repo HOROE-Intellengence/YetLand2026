@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { ApiKeyNameSchema } from '@yelan/shared';
+import { ApiKeyNameSchema, ApiKeyEmailSendSchema } from '@yelan/shared';
 import type {
   ApiGatewaySettings,
   ApiKeyView,
@@ -37,6 +37,7 @@ export interface KeyRow extends Omit<ApiKeyView, 'todayCalls' | 'totalCalls'> {
   hash: string;
   identity: string;
   verificationId: string | null;
+  emailVerificationId: string | null;
 }
 export interface CallRow extends Omit<ApiCallView, 'keyPrefix'> {
   identity: string;
@@ -74,6 +75,11 @@ export function normalizeVerifiedPhone(phone: string): string {
     throw new GatewayError('INVALID_PHONE', 400, '请输入有效的中国大陆手机号');
   return `+86${digits}`;
 }
+export function normalizeVerifiedEmail(email: string): string {
+  const parsed = ApiKeyEmailSendSchema.safeParse({ email });
+  if (!parsed.success) throw new GatewayError('INVALID_EMAIL', 400, '请输入有效的邮箱地址');
+  return parsed.data.email;
+}
 type KeyInput = {
   name: string;
   tier: ApiTier;
@@ -95,6 +101,14 @@ export class GatewayDatabase {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), json TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS phone_verifications (id TEXT PRIMARY KEY, userId TEXT NOT NULL, phone TEXT NOT NULL, purpose TEXT NOT NULL, verifiedAt TEXT NOT NULL, consumedAt TEXT);
+      CREATE TABLE IF NOT EXISTS email_verifications (id TEXT PRIMARY KEY, userId TEXT NOT NULL, email TEXT NOT NULL, purpose TEXT NOT NULL, verifiedAt TEXT NOT NULL, consumedAt TEXT);
+      CREATE TABLE IF NOT EXISTS email_challenges (
+        id TEXT PRIMARY KEY, userId TEXT NOT NULL, email TEXT NOT NULL, providerId TEXT,
+        createdAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
+        consumedAt INTEGER, verifying INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS email_challenges_recipient ON email_challenges(email, createdAt);
+      CREATE TABLE IF NOT EXISTS email_send_limits (scope TEXT PRIMARY KEY, lastSentAt INTEGER NOT NULL, windowStart INTEGER NOT NULL, count INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS api_keys (
         id TEXT PRIMARY KEY, userId TEXT NOT NULL, name TEXT NOT NULL, prefix TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
         tier TEXT NOT NULL CHECK(tier IN ('pure','advanced')), status TEXT NOT NULL, verification TEXT NOT NULL,
@@ -120,12 +134,23 @@ export class GatewayDatabase {
       CREATE TABLE IF NOT EXISTS response_chunks (callId TEXT NOT NULL REFERENCES calls(id), seq INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(callId,seq));
       CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, action TEXT NOT NULL, target TEXT, createdAt TEXT NOT NULL);
     `);
+    const columns = this.db.prepare('PRAGMA table_info(api_keys)').all() as { name: string }[];
+    if (!columns.some((c) => c.name === 'verifiedEmail'))
+      this.db.exec('ALTER TABLE api_keys ADD COLUMN verifiedEmail TEXT');
+    if (!columns.some((c) => c.name === 'emailVerificationId'))
+      this.db.exec(
+        'ALTER TABLE api_keys ADD COLUMN emailVerificationId TEXT REFERENCES email_verifications(id)',
+      );
+    this.db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS keys_verified_email_unique ON api_keys(verifiedEmail) WHERE verifiedEmail IS NOT NULL AND status!='revoked'",
+    );
     this.db
       .prepare('INSERT OR IGNORE INTO settings VALUES (1,?)')
       .run(JSON.stringify(DEFAULT_SETTINGS));
     this.db.prepare('INSERT OR IGNORE INTO prelude VALUES (1,?,0,NULL)').run(initialPrelude);
   }
   recover() {
+    this.db.prepare('UPDATE email_challenges SET verifying=0 WHERE verifying=1').run();
     this.db
       .prepare(
         "UPDATE calls SET status='interrupted', errorCode='PROCESS_RESTARTED', updatedAt=? WHERE status='processing'",
@@ -198,11 +223,10 @@ export class GatewayDatabase {
   createTestKey(user: Identity, input: KeyInput) {
     return this.createKey(user, input);
   }
-  // Only a server-persisted, successful SMS verification may reach this path.
-  // Public SMS/application endpoints remain disabled until the provider is wired.
+  // Only a recent, account-bound, server-persisted verification may issue a public key.
   createVerifiedKey(user: Identity, input: KeyInput, verificationId: string) {
     if (!verificationId)
-      throw new GatewayError('PHONE_VERIFICATION_REQUIRED', 400, '请先验证手机号');
+      throw new GatewayError('PHONE_VERIFICATION_REQUIRED', 400, '请先验证手机号或邮箱');
     return this.createKey(user, input, verificationId);
   }
   private createKey(user: Identity, input: KeyInput, verificationId?: string) {
@@ -214,18 +238,27 @@ export class GatewayDatabase {
     return this.db
       .transaction(() => {
         let verifiedPhone: string | null = null;
+        let verifiedEmail: string | null = null;
+        let proofTable: 'phone_verifications' | 'email_verifications' = 'phone_verifications';
         if (verificationId) {
-          const proof = this.db
+          let proof = this.db
             .prepare('SELECT * FROM phone_verifications WHERE id=?')
             .get(verificationId) as
             | {
                 userId: string;
                 phone: string;
+                email?: string;
                 purpose: string;
                 verifiedAt: string;
                 consumedAt: string | null;
               }
             | undefined;
+          if (!proof) {
+            proofTable = 'email_verifications';
+            proof = this.db
+              .prepare('SELECT * FROM email_verifications WHERE id=?')
+              .get(verificationId) as typeof proof;
+          }
           const age = proof ? Date.now() - Date.parse(proof.verifiedAt) : NaN;
           if (
             !proof ||
@@ -239,19 +272,33 @@ export class GatewayDatabase {
             throw new GatewayError(
               'PHONE_VERIFICATION_REQUIRED',
               400,
-              '手机号核验已失效，请重新验证',
+              '手机号或邮箱核验已失效，请重新验证',
             );
-          verifiedPhone = normalizeVerifiedPhone(proof.phone);
-          if (
-            this.db
-              .prepare("SELECT 1 FROM api_keys WHERE verifiedPhone=? AND status!='revoked'")
-              .get(verifiedPhone)
-          )
-            throw new GatewayError(
-              'PHONE_KEY_LIMIT',
-              409,
-              '该手机号已有 Key，请先撤销旧 Key；纯净版与高级版共用此名额',
-            );
+          if (proofTable === 'email_verifications') {
+            verifiedEmail = normalizeVerifiedEmail(proof.email!);
+            if (
+              this.db
+                .prepare("SELECT 1 FROM api_keys WHERE verifiedEmail=? AND status!='revoked'")
+                .get(verifiedEmail)
+            )
+              throw new GatewayError(
+                'EMAIL_KEY_LIMIT',
+                409,
+                '该邮箱已有 Key，请先撤销旧 Key；纯净版与高级版共用此名额',
+              );
+          } else {
+            verifiedPhone = normalizeVerifiedPhone(proof.phone);
+            if (
+              this.db
+                .prepare("SELECT 1 FROM api_keys WHERE verifiedPhone=? AND status!='revoked'")
+                .get(verifiedPhone)
+            )
+              throw new GatewayError(
+                'PHONE_KEY_LIMIT',
+                409,
+                '该手机号已有 Key，请先撤销旧 Key；纯净版与高级版共用此名额',
+              );
+          }
         }
         const count = this.db
           .prepare(
@@ -269,9 +316,11 @@ export class GatewayDatabase {
           hash: hashKey(secret),
           tier: input.tier,
           status: 'active',
-          verification: verificationId ? 'sms' : 'admin_test',
+          verification: verificationId ? (verifiedEmail ? 'email' : 'sms') : 'admin_test',
           verifiedPhone,
-          verificationId: verificationId ?? null,
+          verifiedEmail,
+          verificationId: verifiedEmail ? null : (verificationId ?? null),
+          emailVerificationId: verifiedEmail ? verificationId! : null,
           identity: JSON.stringify({ ...user, snapshotSource: 'key_application' }),
           createdAt: now(),
           expiresAt: input.expiresAt ?? null,
@@ -282,14 +331,14 @@ export class GatewayDatabase {
         };
         this.db
           .prepare(
-            'INSERT INTO api_keys VALUES (@id,@userId,@name,@prefix,@hash,@tier,@status,@verification,@verifiedPhone,@verificationId,@identity,@createdAt,@expiresAt,@lastUsedAt,@dailyLimit,@rpm,@concurrency)',
+            'INSERT INTO api_keys (id,userId,name,prefix,hash,tier,status,verification,verifiedPhone,verificationId,identity,createdAt,expiresAt,lastUsedAt,dailyLimit,rpm,concurrency,verifiedEmail,emailVerificationId) VALUES (@id,@userId,@name,@prefix,@hash,@tier,@status,@verification,@verifiedPhone,@verificationId,@identity,@createdAt,@expiresAt,@lastUsedAt,@dailyLimit,@rpm,@concurrency,@verifiedEmail,@emailVerificationId)',
           )
           .run(key);
         if (verificationId)
           this.db
-            .prepare('UPDATE phone_verifications SET consumedAt=? WHERE id=?')
+            .prepare(`UPDATE ${proofTable} SET consumedAt=? WHERE id=?`)
             .run(now(), verificationId);
-        this.audit(verificationId ? 'key.create.sms' : 'key.create.admin_test', key.id);
+        this.audit(`key.create.${key.verification}`, key.id);
         return { secret, key: this.keyView(key.id)! };
       })
       .immediate();
@@ -305,7 +354,7 @@ export class GatewayDatabase {
   keys(userId?: string): ApiKeyView[] {
     return this.db
       .prepare(
-        `SELECT k.id,k.userId,k.name,k.prefix,k.tier,k.status,k.verification,k.verifiedPhone,k.createdAt,k.expiresAt,k.lastUsedAt,k.dailyLimit,k.rpm,k.concurrency,
+        `SELECT k.id,k.userId,k.name,k.prefix,k.tier,k.status,k.verification,k.verifiedPhone,k.verifiedEmail,k.createdAt,k.expiresAt,k.lastUsedAt,k.dailyLimit,k.rpm,k.concurrency,
       (SELECT COUNT(*) FROM calls c WHERE c.keyId=k.id AND c.createdAt>=?) todayCalls,
       (SELECT COUNT(*) FROM calls c WHERE c.keyId=k.id) totalCalls FROM api_keys k ${userId ? 'WHERE k.userId=?' : ''} ORDER BY k.createdAt DESC`,
       )

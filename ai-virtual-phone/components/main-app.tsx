@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
 
 import { AccountGate } from "@/components/auth/account-gate";
 import { CloudBackupScheduler } from "@/components/cloud-backup-scheduler";
@@ -9,7 +8,6 @@ import { RealityBridgeScheduler } from "@/components/reality-bridge-scheduler";
 import { MediaMaintenanceScheduler } from "@/components/media-maintenance-scheduler";
 import { DesktopShell } from "./desktop-shell";
 import { OfflinePushRevampAnnouncement } from "./offline-push-revamp-announcement";
-import { SplashAnimation } from "./splash-animation";
 import { MusicProvider } from "@/lib/music-context";
 import { hydrateKvDb, isKvHydrated } from "@/lib/kv-db";
 import { bootstrapYelanLocal } from "@/lib/yelan-local-bootstrap";
@@ -152,7 +150,7 @@ async function warmBuiltinFonts(shouldStop: () => boolean): Promise<void> {
   await Promise.all(BUILTIN_FONT_LOAD_SPECS.map((spec) => document.fonts.load(spec).catch(() => [])));
 }
 
-function SplashScreen({ ready = false, onEnter }: { ready?: boolean; onEnter?: () => void }) {
+function SplashScreen() {
   return (
     <main className="app-root splash-root">
       <section
@@ -162,16 +160,11 @@ function SplashScreen({ ready = false, onEnter }: { ready?: boolean; onEnter?: (
         <div className="phone-case">
           <div className="phone-frame">
             <div className="phone-shell splash-phone-screen">
-              <SplashAnimation />
-              <button
-                type="button"
-                className={ready ? "splash-enter-button splash-enter-button-show" : "splash-enter-button"}
-                onClick={onEnter}
-                disabled={!ready}
-                aria-label="Enter"
-              >
-                <ArrowRight size={18} strokeWidth={1.8} />
-              </button>
+              <div className="phone-boot-screen" role="status" aria-label="手机正在启动">
+                <svg className="phone-boot-logo" viewBox="0 0 24 28" fill="currentColor" aria-hidden="true">
+                  <path d="M17.3 4.5c1-1.2 1.7-2.8 1.5-4.5-1.5.1-3.2 1-4.2 2.2-.9 1-1.7 2.7-1.5 4.3 1.7.1 3.2-.8 4.2-2ZM21.4 14.9c0-3.7 3-5.5 3.1-5.6-1.7-2.5-4.3-2.8-5.2-2.9-2.2-.2-4.3 1.3-5.4 1.3-1.1 0-2.8-1.3-4.6-1.2C6.9 6.5 4.6 8 3.4 10.1c-2.5 4.3-.6 10.7 1.8 14.2 1.2 1.7 2.6 3.6 4.4 3.5 1.8-.1 2.5-1.1 4.7-1.1s2.9 1.1 4.8 1.1c2-.1 3.2-1.7 4.4-3.4 1.4-2 2-4 2.1-4.1-.1 0-4.2-1.6-4.2-5.4Z" transform="translate(-2 0)" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -234,9 +227,19 @@ export function MainApp() {
   const [preparedDesktopTheme, setPreparedDesktopTheme] = useState<PreparedDesktopTheme | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [splashDismissed, setSplashDismissed] = useState(false);
+  const [bootElapsed, setBootElapsed] = useState(false);
   const [kvHydrateFailed, setKvHydrateFailed] = useState(false);
   const [managedInitError, setManagedInitError] = useState(false);
   const [initAttempt, setInitAttempt] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBootElapsed(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (bootElapsed && hydrated) setSplashDismissed(true);
+  }, [bootElapsed, hydrated]);
 
   useEffect(() => {
     let cancelled = false;
@@ -326,7 +329,7 @@ export function MainApp() {
   return (
     <AccountGate>
       {!splashDismissed ? (
-        <SplashScreen ready={hydrated} onEnter={() => setSplashDismissed(true)} />
+        <SplashScreen />
       ) : (
         <main className="app-root">
           <MusicProvider>

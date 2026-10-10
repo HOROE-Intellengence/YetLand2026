@@ -12,6 +12,7 @@ import { createAnthropicProvider, createOpenAILikeProvider, createNvidiaUnlimPro
 import { resetRouter } from '../../llm/create-router';
 import { audit } from './_audit';
 import { validationHook } from '../../middleware/validation';
+import { store } from '../../store/persistence';
 
 export const adminLlmApisRoute = new Hono();
 
@@ -117,7 +118,7 @@ adminLlmApisRoute.post(
     const provider = providerFor({
       id: body.id ?? 'test-api',
       protocol: body.protocol,
-      apiKey: body.apiKey,
+      apiKey: body.apiKey.trim() || (body.id ? store.state().llmApiInventory.entries[body.id]?.apiKey : '') || '',
       baseUrl: body.baseUrl ?? '',
       model: body.model,
     });

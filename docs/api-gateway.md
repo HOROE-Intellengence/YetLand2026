@@ -1,14 +1,18 @@
 # 对外 API 网关
 
-本模块独立于原 `/api/chat`、角色库、记忆、侧袋及语音功能。客户端 Base URL 为 `https://yetland.cn/v1`，鉴权为 `Authorization: Bearer <平台签发的Key>`。
+本模块独立于原 `/api/chat`、角色库、记忆、侧袋及语音功能。客户端 Base URL 为 `https://ingress.yetland.com/v1`，鉴权为 `Authorization: Bearer <平台签发的Key>`。
 
 ## 开通顺序
 
 1. 在既有「API 仓库」确认 Gemini 上游可用。网关默认固定引用 `horoe-gemini-flash-lite`；不会随原聊天主模型切换，也不会自动回退。
 2. 打开后台「API 管理 → 调用总览」，选择上游、设置账号额度和并发。当前每 Key 默认每天 100 次、每分钟 20 次、并发 2；账号默认每天 200 次、每分钟 30 次、并发 3。额度按 UTC 日统计，已发往上游的失败调用也计数。
 3. 打开「高级版前置」审阅初始草稿，发布后才能使用高级版。初始草稿仅包含 `[全局表达约束前置].md` 中 Boundary 4 之前的一般表达规则；原文件不变，露骨性描写和模式解锁段落未导入。保存草稿不改变线上；每次发布/回滚产生新版本。回滚不覆盖草稿。
-4. 在「Key 管理」选择已注册账号，填写必填名称，签发纯净版或高级版测试 Key；复制唯一一次显示的明文。管理员测试 Key 暂保留每账号最多两个未撤销、未过期的限制（停用的也计入），不代表手机号已验证。正式用户 Key 按验证码绑定手机号全平台唯一，纯净版与高级版共用名额，停用及过期仍占名额；撤销后需重新核验才能申请替代 Key，历史记录保留。Key 仅存 SHA-256 哈希。
-5. 「API调用」用户入口可登录后查看/撤销自己的 Key，无聊天历史读取或同步接口。短信仍为占位，申请和发送/核验入口返回 503；管理员测试 Key 的申请手机号为空，验证状态为 `admin_test`，不会伪装成已验证。
+4. 在「Key 管理」选择已注册账号，填写必填名称，签发纯净版或高级版测试 Key；复制唯一一次显示的明文。管理员测试 Key 暂保留每账号最多两个未撤销、未过期的限制（停用的也计入），不代表手机号或邮箱已验证。正式用户 Key 按验证码绑定手机号或邮箱全平台唯一，纯净版与高级版共用名额，停用及过期仍占名额；撤销后需重新核验才能申请替代 Key，历史记录保留。Key 仅存 SHA-256 哈希。
+5. 「API调用」用户入口可登录后选择邮箱／手机号验证码，填写名称、核验并申请 Key，也可查看／撤销自己的 Key，无聊天历史读取或同步接口。邮箱通过 Bird Verify 接入；仅后端设置 `BIRD_API_KEY`，将示例 `bk_xxxxxxxxx` 替换为真实密钥。本机写入已忽略的 `apps/api/.env`；Compose 部署写入 `infra/deploy/.env` 并重建／重启 API。短信仍为占位，短信发送／核验返回 503。管理员测试 Key 的验证状态为 `admin_test`，不会伪装成已验证。
+
+邮箱申请接口：`POST /api/developer/email/send` 接收 `{ "email": "user@example.com" }`，返回本地 `challengeId`；`POST /api/developer/email/verify` 接收 `{ "challengeId": "...", "code": "123456" }`，返回一次性 `verificationId`；`POST /api/developer/keys` 接收 `{ "name": "客户端名称", "tier": "pure", "verificationId": "..." }`。三步均需账号登录令牌，接收者与账号绑定。Bird 请求固定 `options.language = "zh"`、六位数字验证码，核验需 `success: true` 且收件人和 Bird verification ID 都匹配；HTTP 200 的错误验证码不视为成功。发送后提醒用户检查垃圾箱，说明国际邮件经常被放入垃圾箱中。
+
+邮件发送按账号和邮箱各限每 60 秒一次、每小时五次；最多五次核验尝试，本地挑战有效期不超过十分钟且不超过 Bird 返回的有效期。重发作废旧挑战；核验凭据五分钟内有效，创建 Key 时事务性消费。挑战、限流和核验记录保存在网关 SQLite，重启保留；密钥、验证码和 Bird 错误原文不会返回前端。Bird 请求超时 20 秒、不自动重试。未配置邮件密钥时邮箱入口返回 503。
 
 ## 协议
 
@@ -24,29 +28,29 @@
 
 ### 对话接口
 
-- `GET /v1/models` 列出指定上游模型，两种 Key 相同。
+- `GET /v1/models` 按 Key 版本列出可用公开模型：纯净版 `yetland_opus_5_5_pure`，高级版 `yetland_opus_5_5_plus`，响应禁止缓存。申请页提供两个模型名的复制按钮；客户端若显示内置模型，请重新获取或手动添加对应名称。
 - `POST /v1/chat/completions` 支持 JSON 和 SSE，接受带末尾 `/` 的路径。
-- 请求必须包含 `model` 和 `messages`；纯净版保留请求 JSON 的字段和值，不补温度、输出长度、侧袋、角色卡或记忆。鉴权头替换为服务端上游凭证；语义透传，不承诺请求字节格式一致。
+- 请求必须包含 `model` 和 `messages`；公开模型名必须匹配 Key 版本，转发时映射到实际配置的上游模型。兼容原上游模型名的旧请求，但模型发现不再展示它。纯净版保留其他请求 JSON 字段和值，不补温度、输出长度、侧袋、角色卡或记忆。鉴权头替换为服务端上游凭证；语义透传，不承诺请求字节格式一致。
 - 高级版仅在 messages 开头插入已发布的 system 前置，原消息顺序不变。模型如何处理多个 system/developer 消息取决于上游，提示词不是安全权限边界。
 - 额外参数（包括 tools、response_format、多模态 content）保留并由上游决定支持情况。本轮验收覆盖文本、工具增量透传与 SSE，不宣称所有 Gemini 参数已实测。
-- 普通响应保留上游 JSON；成功 SSE 保留原始字节（含 usage、tool_calls、finish_reason、[DONE]）。上游错误转换成不含凭证的错误对象。网关不自动重试收费请求，不降级到 mock。
+- 普通响应和 SSE 的顶层 `model` 使用对应公开名称，其他内容（含 usage、tool_calls、finish_reason、[DONE]）保留；内部仍归档原始上游响应。上游错误转换成不含凭证的错误对象。网关不自动重试收费请求，不降级到 mock。
 - 请求上限 2 MiB，响应上限 32 MiB，单 SSE 事件上限 4 MiB；总超时默认 180 秒，后台可调。客户端断开取消上游，保留已经收到的部分输出。
 - 返回 `x-request-id` 供后台定位；429 另含 Retry-After。无需浏览器 Cookie；浏览器跨域允许范围沿用 CORS 配置，原生/服务端客户端不受浏览器 CORS 限制。
 
 示例（平台 Key 从环境变量提供，不要写入源代码）：
 
 ```bash
-curl https://yetland.cn/v1/chat/completions \
+curl https://ingress.yetland.com/v1/chat/completions \
   -H "Authorization: Bearer $YETLAND_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"model":"gemini-3.5-flash-lite","messages":[{"role":"user","content":"你好"}],"stream":true,"stream_options":{"include_usage":true}}'
+  -d '{"model":"yetland_opus_5_5_pure","messages":[{"role":"user","content":"你好"}],"stream":true,"stream_options":{"include_usage":true}}'
 ```
 
 ## 数据归属与留存
 
 ### 后台聊天阅读与导出
 
-当前首要分类是**申请 Key 时验证码核验的手机号**：聊天侧栏和 Key 管理表格按手机号分组，组内显示 Key 名称。支持手机号、名称及用户搜索；注册手机号不替代验证码绑定手机号。无核验手机号的管理员测试 Key 单列，不伪装成正式绑定。
+当前首要分类是**申请 Key 时验证码核验的手机号或邮箱**：聊天侧栏和 Key 管理表格按绑定地址分组，组内显示 Key 名称。支持手机号、邮箱、名称及用户搜索；注册资料不替代验证码绑定地址。管理员测试 Key 单列，不伪装成正式绑定。启动时为旧 `api_keys` 表追加邮箱字段和唯一索引，保留既有手机核验、Key 与调用记录。
 
 「API 管理 → 聊天记录」默认按 Key 汇总，左侧可搜索 Key 或用户，右侧只显示用户/AI 消息。按请求时间排列，每页读取 50 次调用，可加载更早内容。为避免客户端重复携带历史，阅读视图只显示每次请求最后一条 assistant 消息之后的 user 消息及本次实际输出；system、developer、tool 和原始历史仍保存在调用详情。图片、音频、文件显示占位文字，不自动访问外部附件 URL。此视图不新增对话、不改写原始存档。
 
@@ -59,7 +63,7 @@ curl https://yetland.cn/v1/chat/completions \
 `apps/api/.local/gateway/api.sqlite` 使用 SQLite WAL/FULL；Compose 挂载到 `infra/deploy/_data/gateway`。这是单进程部署；不要同时启动多个 API 进程共享此文件（启动恢复会标记未完成调用为 interrupted）。多实例上线前迁移协调存储。
 
 - Key 关联稳定 userId，保存注册身份及申请时账号姓名、手机号/邮箱的快照，不保存账号登录 token、密码哈希或上游密钥。新注册账号保存不可变注册身份；旧账号 registration 为空，申请快照只能代表首次签发 Key 时的资料，不能还原其此前被修改过的注册资料。
-- 手机核验独立建表预留；短信恢复时记录真实核验凭据、用途和一次性消费，再开放自助申请。现有 phoneVerifiedAt 不作为新 Key 的核验凭据。
+- 手机和邮箱核验分别建表；短信恢复时记录真实核验凭据、用途和一次性消费，再开放手机自助申请。现有 phoneVerifiedAt 不作为新 Key 的核验凭据。
 - 每次调用先事务性预留额度并保存完整请求、实际上游请求、模型及前置版本，再发送上游。响应分段落盘，最终归档状态、耗时和用量；未收到 usage 记未知，不伪造 Token 数。
 - 原始身份与对话记录仅在管理员详情可见，详情读取与管理变更有独立审计。普通用户没有云聊天同步能力。
 - 请求历史是客户端提供，可能伪造；模型本次输出独立存储。训练导出只包含明确获授权且完成的记录；当前测试 Key 无训练授权，所以导出为空。导出剔除独立账号身份字段，但正文仍可能含个人信息，正式训练前需内容脱敏与样本筛选。最多每次 10,000 条，需按时间分段导出。

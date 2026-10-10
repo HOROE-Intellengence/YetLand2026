@@ -158,6 +158,13 @@ tr:hover { background: rgba(200, 168, 120, 0.03); }
 .btn-danger { border-color: var(--danger); color: var(--danger); }
 .btn-danger:hover { background: rgba(200, 120, 120, 0.1); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn:disabled, .btn:disabled:hover {
+  opacity: .38;
+  cursor: not-allowed;
+  filter: grayscale(1);
+  box-shadow: none;
+}
+.pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
 
 /* ── Forms ── */
 .field { margin-bottom: 16px; }

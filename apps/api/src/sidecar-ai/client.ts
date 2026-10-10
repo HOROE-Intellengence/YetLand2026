@@ -3,6 +3,7 @@
 import type { SidecarResult } from './types';
 import type { SidecarPromptKey } from '@yelan/shared';
 import { getLlmApiConfig } from '../services/llm-api-inventory';
+import { isPhoneTextModelScope } from '../services/llm-scope';
 
 /** 侧袋 AI 的模型配置 — 使用便宜模型 */
 function getSidecarConfig(taskKey?: SidecarPromptKey) {
@@ -18,6 +19,7 @@ function getSidecarConfig(taskKey?: SidecarPromptKey) {
       apiKey: selected.apiKey,
     };
   }
+  if (isPhoneTextModelScope()) return { model: '', baseUrl: '', apiKey: '' };
   return {
     model: process.env.SIDECAR_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat',
     baseUrl: normalizeBase(process.env.SIDECAR_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'),

@@ -35,7 +35,7 @@ export async function maybeRunSummarization(
     characterId: string,
     characterName: string
 ): Promise<void> {
-    if (isYelanManaged) { await flushYelanMemory(); return; }
+    if (isYelanManaged) { await flushYelanMemory(true); return; }
     const config = loadMemoryConfig();
     if (!config.autoSummarizeEnabled) return;
 
@@ -97,7 +97,8 @@ export async function runSummarizationPipeline(
     const { eventsText, earliest, latest } = formatted;
 
     // Use user-editable prompt template from config, with placeholder substitution
-    const promptTemplate = config.summarizationPrompt?.trim() || DEFAULT_SUMMARIZATION_PROMPT;
+    const customPrompt = config.summarizationPrompt?.trim();
+    const promptTemplate = isYelanManaged && customPrompt && customPrompt !== DEFAULT_SUMMARIZATION_PROMPT ? `${DEFAULT_SUMMARIZATION_PROMPT}\n\n用户希望记住的重点：\n${customPrompt}` : customPrompt || DEFAULT_SUMMARIZATION_PROMPT;
     const summaryPrompt = promptTemplate
         .replace(/\{\{char\}\}/gi, characterName)
         .replace(/\{\{earliest\}\}/gi, earliest)

@@ -9,7 +9,7 @@ import { useViewport } from './hooks/useViewport';
 import { fullSync, startSyncTimer, stopSyncTimer } from './memory/sync';
 import { LandingScene } from './scenes/LandingScene';
 import { IntroScene } from './scenes/IntroScene';
-import { OpeningScene } from './scenes/OpeningScene';
+import { OpeningScene, CallModeScene } from './scenes/OpeningScene';
 import { VoiceHqScene } from './scenes/VoiceHqScene';
 import { VoiceScene } from './scenes/VoiceScene';
 import { ApiScene } from './scenes/ApiScene';
@@ -57,6 +57,7 @@ export default function App() {
       {scene === 'home' && <LandingScene />}
       {scene === 'intro' && <IntroScene />}
       {scene === 'opening' && <OpeningScene />}
+      {scene === 'call-modes' && <CallModeScene />}
       {scene === 'voice' && <VoiceScene />}
       {scene === 'voice-hq' && <VoiceHqScene />}
       {scene === 'api' && <ApiScene />}
@@ -74,7 +75,7 @@ export default function App() {
       <DrawerShell />
 
       {/* 仅 dev 环境挂载 */}
-      {import.meta.env.DEV && scene !== 'voice' && scene !== 'voice-hq' && <TweaksPanel />}
+      {import.meta.env.DEV && !['voice', 'voice-hq', 'opening', 'call-modes'].includes(scene) && <TweaksPanel />}
     </div>
   );
 }

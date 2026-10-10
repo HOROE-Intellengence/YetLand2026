@@ -16,6 +16,7 @@ import { api } from '../api/client';
 import { useToast } from '../components/Toast';
 import { JsonViewer } from '../components/JsonViewer';
 import { CharacterImportDialog } from './CharacterImportDialog';
+import { CharacterWorldviews, PhoneInspections } from './PhoneInspections';
 
 type Origin = 'admin' | 'user';
 type ReviewStatus = 'none' | 'private' | 'pending' | 'approved' | 'rejected';
@@ -52,6 +53,7 @@ interface PreludeCardOption {
 }
 
 export function Characters() {
+  const [inspectionTab, setInspectionTab] = useState<'characters' | 'worldview' | 'phone-role'>('characters');
   const { success, error: toastErr } = useToast();
   const [chars, setChars] = useState<Character[]>([]);
   const [preludeCards, setPreludeCards] = useState<PreludeCardOption[]>([]);
@@ -150,9 +152,16 @@ export function Characters() {
 
   const pendingCount = chars.filter((c) => c.reviewStatus === 'pending').length;
   const visible = pendingOnly ? chars.filter((c) => c.reviewStatus === 'pending') : chars;
+  const tabs = <nav aria-label="角色管理分区" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+    <button className={`btn ${inspectionTab === 'characters' ? 'btn-primary' : ''}`} onClick={() => setInspectionTab('characters')}>角色卡</button>
+    <button className={`btn ${inspectionTab === 'worldview' ? 'btn-primary' : ''}`} onClick={() => setInspectionTab('worldview')}>世界观</button>
+    <button className={`btn ${inspectionTab === 'phone-role' ? 'btn-primary' : ''}`} onClick={() => setInspectionTab('phone-role')}>小手机角色自定义</button>
+  </nav>;
+  if (inspectionTab !== 'characters') return <div>{tabs}{inspectionTab === 'worldview' ? <CharacterWorldviews /> : <PhoneInspections initialKind="role" />}</div>;
 
   return (
     <div>
+      {tabs}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ marginBottom: 0 }}>角色卡管理</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

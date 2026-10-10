@@ -2,6 +2,7 @@ import Dexie from "dexie";
 import { CHECKPHONE_APP_SPECS, type CheckPhoneAppId, type CheckPhoneManifest, type CheckPhoneSnapshot } from "./checkphone-config";
 import { kvGet, kvRemove, kvSet, registerDynamicPrefix } from "./kv-db";
 import { formatPromptTimestamp } from "./prompt-time";
+import { createStarterManifest, createStarterSnapshot } from './checkphone-defaults';
 
 type CheckPhoneManifestRow = CheckPhoneManifest;
 type CheckPhoneSnapshotRow = CheckPhoneSnapshot;
@@ -135,8 +136,9 @@ export async function loadPhoneManifest(characterId: string): Promise<CheckPhone
     }
   } catch (error) {
     console.warn("[CheckPhoneStorage] load manifest error:", error);
+    return null;
   }
-  return null;
+  return createStarterManifest(characterId);
 }
 
 export async function savePhoneManifest(manifest: CheckPhoneManifest): Promise<void> {
@@ -183,8 +185,9 @@ export async function loadPhoneSnapshot<AppPayload = unknown>(
     }
   } catch (error) {
     console.warn("[CheckPhoneStorage] load snapshot error:", error);
+    return null;
   }
-  return null;
+  return createStarterSnapshot(characterId, appId) as CheckPhoneSnapshot<AppPayload>;
 }
 
 export async function savePhoneSnapshot<AppPayload = unknown>(snapshot: CheckPhoneSnapshot<AppPayload>): Promise<void> {

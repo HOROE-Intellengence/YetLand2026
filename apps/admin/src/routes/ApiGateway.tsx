@@ -12,15 +12,16 @@ import { useToast } from '../components/Toast';
 import './ApiGateway.css';
 import { ApiConversations } from './ApiConversations';
 import { groupKeysByPhone } from './api-key-groups';
+import { RecordReader } from '../components/RecordReader';
+import { Pagination } from '../components/Pagination';
 
 const root = '/api/admin/api-gateway';
 const tierLabel = (tier: string) => (tier === 'pure' ? '纯净版' : '高级版');
 const time = (value: string | null) => (value ? new Date(value).toLocaleString() : '—');
-const pretty = (value: unknown) =>
-  typeof value === 'string' ? value : JSON.stringify(value, null, 2);
 type SettingsResponse = {
   settings: ApiGatewaySettings;
   smsEnabled: boolean;
+  emailEnabled?: boolean;
   baseUrl: string;
   upstreams: { id: string; name: string; model: string; ready: boolean }[];
 };
@@ -82,6 +83,7 @@ function ApiGatewayDiagnostics() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const loadSequence = useRef(0);
+  const [loadingCalls, setLoadingCalls] = useState(true);
   const query = useCallback(
     () =>
       new URLSearchParams({
@@ -93,6 +95,7 @@ function ApiGatewayDiagnostics() {
   );
   const load = useCallback(async () => {
     const sequence = ++loadSequence.current;
+    setLoadingCalls(true);
     try {
       const q = query();
       const [overview, records, configuration] = await Promise.all([
@@ -108,6 +111,8 @@ function ApiGatewayDiagnostics() {
       setErr('');
     } catch (e) {
       if (sequence === loadSequence.current) setErr((e as Error).message);
+    } finally {
+      if (sequence === loadSequence.current) setLoadingCalls(false);
     }
   }, [query, offset]);
   useEffect(() => {
@@ -326,25 +331,7 @@ function ApiGatewayDiagnostics() {
           </tbody>
         </table>
         {!calls.rows.length && <p className="muted">该范围没有记录</p>}
-        <div className="gateway-toolbar">
-          <button
-            className="btn"
-            disabled={!offset}
-            onClick={() => setOffset(Math.max(0, offset - 50))}
-          >
-            上一页
-          </button>
-          <span>
-            {calls.total ? offset + 1 : 0}–{Math.min(offset + 50, calls.total)}
-          </span>
-          <button
-            className="btn"
-            disabled={offset + 50 >= calls.total}
-            onClick={() => setOffset(offset + 50)}
-          >
-            下一页
-          </button>
-        </div>
+        {!err && <Pagination page={offset / 50 + 1} total={calls.total} pageSize={50} loading={loadingCalls} onChange={page => { setLoadingCalls(true); setDetail(null); setOffset((page - 1) * 50); }} />}
       </section>
       {detail && (
         <section className="card">
@@ -357,33 +344,18 @@ function ApiGatewayDiagnostics() {
           <p className="muted">
             请求中的历史由客户端提供；输出来自本次上游响应。身份为申请 Key 时快照。
           </p>
-          {[
-            'id',
-            'identity',
-            'verification',
-            'verifiedPhone',
-            'model',
-            'promptVersion',
-            'status',
-            'errorCode',
-            'request',
-            'upstreamRequest',
-            'outputText',
-            'response',
-            'usage',
-          ].map((k) => (
-            <details key={k} open={['identity', 'request', 'outputText'].includes(k)}>
-              <summary>{k}</summary>
-              <pre>{pretty(detail[k]) || '—'}</pre>
-            </details>
-          ))}
+          <p>模型：{String(detail.model ?? '—')} · 提示词版本：{String(detail.promptVersion ?? '无')} · 状态：{String(detail.status ?? '—')}</p>
+          <RecordReader value={detail.outputText} label="AI 回复" />
+          <details><summary>输入对话与上下文</summary><RecordReader value={detail.request} /></details>
+          <details><summary>实际转发的对话与设定</summary><RecordReader value={detail.upstreamRequest} /></details>
         </section>
       )}
       {settings && config && (
         <section className="card">
           <h3>网关设置</h3>
           <p className="muted">
-            短信申请未开放。调用额度按 UTC 日累计；换 Key
+            邮箱验证码：{config.emailEnabled ? 'Bird 已配置' : '未配置'}； 手机号验证码：
+            {config.smsEnabled ? '已开放' : '未开放'}。调用额度按 UTC 日累计；换 Key
             不重置账号额度。上游选择独立于原聊天主模型。
           </p>
           <div className="gateway-form">
@@ -511,8 +483,8 @@ export function ApiGatewayKeys() {
   return (
     <div className="gateway-panel">
       <Intro title="Key 管理">
-        按验证码绑定手机号分类，每个手机号最多一个未撤销
-        Key，纯净版和高级版共用名额。短信未开放，当前仅签发管理员测试 Key。
+        按验证码绑定手机号或邮箱分类，每个手机号或邮箱最多一个未撤销
+        Key，纯净版和高级版共用名额。用户可通过已开通的验证码方式自助申请。
       </Intro>
       {err && (
         <p role="alert" className="gateway-error">
@@ -644,7 +616,7 @@ export function ApiGatewayKeys() {
               <Fragment key={group.phone}>
                 <tr className="gateway-phone-row">
                   <th colSpan={7} scope="colgroup">
-                    验证码绑定手机号：{group.phone}
+                    验证码绑定手机号／邮箱：{group.phone}
                   </th>
                 </tr>
                 {group.keys.map((k) => (
@@ -659,7 +631,9 @@ export function ApiGatewayKeys() {
                     </td>
                     <td>{tierLabel(k.tier)}</td>
                     <td>
-                      {k.verification === 'admin_test' ? '管理员测试' : k.verifiedPhone}
+                      {k.verification === 'admin_test'
+                        ? '管理员测试'
+                        : (k.verifiedEmail ?? k.verifiedPhone)}
                       <small className="gateway-small">
                         {k.expiresAt && Date.parse(k.expiresAt) <= Date.now()
                           ? 'expired'

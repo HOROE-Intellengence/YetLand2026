@@ -14,6 +14,7 @@ import { ADVENTURE_THEMES } from "./map-text-stream";
 import { loadCharacters } from "@/lib/character-storage";
 import { loadApiConfigs, loadBindingConfig, resolveBinding, resolveUserIdentity, resolveAuxiliaryApiConfig } from "@/lib/settings-storage";
 import { expandEvent, companionDeclare, resolveRound, rollD100, ROLL_LABELS, formatGameTime, pickEncounter, shouldTriggerEncounter, setDMDebugCallback, shouldAutoSummarize, generateAdventureSummary, generateEnding, type EndingResult, DEFAULT_DM_ENDING_PROMPT } from "@/lib/map-rpg-engine";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 import { STAT_LABELS, ALL_STATS } from "@/lib/map-types";
 import MapRenderer from "./map-renderer";
 import MapTextStream from "./map-text-stream";
@@ -1485,7 +1486,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
               <BookOpen size={16} color="var(--c-adv-accent)" />
               <span>冒险日志</span>
             </button>
-            <button
+            {!isYelanManaged && <button
               onClick={() => {
                 setShowTopActionMenu(false);
                 setShowDebug(!showDebug);
@@ -1502,7 +1503,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
             >
               <Bug size={16} color="var(--c-adv-accent)" />
               <span>调试记录</span>
-            </button>
+            </button>}
           </div>
         </>
       )}
@@ -2556,7 +2557,7 @@ export default function MapView({ world, save, onSaveUpdate, onBack }: Props) {
       )}
 
       {/* Debug panel */}
-      {showDebug && (() => {
+      {showDebug && !isYelanManaged && (() => {
         const isChar = (type: string) => type.includes("角色");
         const isRoundStart = (type: string) =>
           type === "发送·system" ||

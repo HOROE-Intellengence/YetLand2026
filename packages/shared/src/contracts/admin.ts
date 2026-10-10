@@ -432,7 +432,7 @@ export const AdminLlmApiSchema = z.object({
 export const AdminLlmApiTestSchema = AdminLlmApiSchema.omit({ reason: true });
 
 export const AdminLlmApiSelectSchema = z.object({
-  role: z.enum(['main', 'sidecar']),
+  role: z.enum(['main', 'sidecar', 'phone']),
   id: z.string().nullable(),
   reason: z.string().min(1),
 });

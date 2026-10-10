@@ -1,4 +1,6 @@
 "use client";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
+import { phoneServiceError } from '@/lib/phone-diagnostics';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import ReactMarkdown from "react-markdown";
@@ -95,7 +97,7 @@ const CAST_COLOR_SWATCHES = ["#d4c5a0", "#94b89d", "#c87a7a", "#8fa6c9", "#b69ac
 const WORK_DECORATIVE_SUBTITLE = "A COLLABORATIVE NOVEL DOSSIER";
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "共创生成失败。";
+  return isYelanManaged ? phoneServiceError(error, '共创未完成，请重试；已保存的作品仍会保留。') : error instanceof Error ? error.message : "共创生成失败。";
 }
 
 function modeLabel(mode: CoCreateMode): string {
@@ -1754,9 +1756,9 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
               </button>
             ) : null
           ) : (
-            <button type="button" className="cocreate-icon-button" onClick={() => setBackendLogOpen(true)} aria-label="后台记录">
+            !isYelanManaged ? <button type="button" className="cocreate-icon-button" onClick={() => setBackendLogOpen(true)} aria-label="后台记录">
               <Wrench size={16} />
-            </button>
+            </button> : null
           )}
           <div className="cocreate-live-pill">
             <i />
@@ -2187,7 +2189,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
           <section className="cocreate-character-panel">
             <div className="cocreate-intel-note">
               <span>[ PARTNER ]</span>
-              <p>共创搭档会使用该角色在“共创”下的绑定API、预设、世界书、用户人设、历史记忆。</p>
+              <p>{isYelanManaged ? "共创搭档会参考角色设定、你的创作要求和故事记忆。" : "共创搭档会使用角色的配置、预设、世界书、用户人设和历史记忆。"}</p>
             </div>
             <div className="cocreate-partner-grid">
               {characters.map((character) => (
@@ -2701,7 +2703,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
         </div>
       )}
 
-      {backendLogOpen && (
+      {backendLogOpen && !isYelanManaged && (
         <div className="cocreate-modal-backdrop" role="presentation">
           <section className="cocreate-archive-dialog cocreate-backend-dialog" role="dialog" aria-modal="true" aria-labelledby="cocreate-backend-title">
             <div className="cocreate-backend-head">
@@ -2902,7 +2904,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
               >
                 <span>
                   <strong>流式输出</strong>
-                  <small>部分 API 支持；不支持时自动使用普通生成。</small>
+                  <small>{isYelanManaged ? "边写边显示内容；关闭后完整显示。" : "部分 API 支持；不支持时自动使用普通生成。"}</small>
                 </span>
                 <em>{sharedSettings.streamingEnabled ? "ON" : "OFF"}</em>
               </button>
@@ -2932,7 +2934,7 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                   />
                 </div>
               </label>
-              <label className="cocreate-setting-field">
+              {!isYelanManaged && <label className="cocreate-setting-field">
                 <span>会话记忆自动总结：每 {sharedSettings.memorySummaryInterval} 条对话</span>
                 <div className="cocreate-setting-field-row">
                   <input
@@ -2956,7 +2958,12 @@ export function CoCreateApp({ onClose, onNotice }: CoCreateAppProps) {
                 <small className="cocreate-setting-hint">
                   从上次总结后累计 {sessionMessagesSinceLastSummary} 条；达到间隔会自动触发。
                 </small>
-              </label>
+              </label>}
+              {isYelanManaged && <div className="cocreate-setting-field">
+                <span>整理作品记忆</span>
+                <button type="button" className="cocreate-setting-inline-button" disabled={!canSummarizeMemory} onClick={() => { setSettingsOpen(false); void handleSummarizeSessionMemory(); }}>立即整理</button>
+                <small className="cocreate-setting-hint">平时会自动整理，你也可以在需要时手动整理。</small>
+              </div>}
               <div className="cocreate-tool-settings">
                 <div className="cocreate-tool-settings-head">
                   <div>

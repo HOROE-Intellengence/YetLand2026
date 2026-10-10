@@ -14,6 +14,7 @@ import { store } from '../store/persistence';
 import { VoiceError } from '../voice/config';
 import { rememberVoiceTurn } from '../phone/memory';
 import { voiceMemoryContext, voiceMemoryScope } from '../services/voice-memory';
+import { withPhoneTextModel } from '../services/llm-scope';
 
 export interface MainInput {
   userId: string; sessionId: string; characterId: string; text: string;
@@ -22,6 +23,14 @@ export interface MainInput {
 }
 export interface MainOutput { text: string; model: string; usage?: { inputTokens: number; outputTokens: number } }
 export async function generateHqReply(input: MainInput): Promise<MainOutput> {
+  const phone = store.state().phoneVoiceSessions?.[input.sessionId];
+  if (phone?.userId === input.userId && phone.characterId === input.characterId) {
+    return withPhoneTextModel(() => generateScopedHqReply(input));
+  }
+  return generateScopedHqReply(input);
+}
+
+async function generateScopedHqReply(input: MainInput): Promise<MainOutput> {
   const { userId, sessionId, characterId, text, history, signal } = input;
   const character = charactersService.get(characterId), user = getUserById(userId);
   if (!character || !user || !charactersService.canAccess(characterId, userId)) throw new VoiceError('CHARACTER_NOT_FOUND', 404);

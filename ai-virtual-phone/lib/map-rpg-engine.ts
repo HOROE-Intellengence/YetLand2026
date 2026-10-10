@@ -5,6 +5,7 @@ import type { WorldSkeleton, WorldSkeletonInput, EventScene, GameSave, WorldNPC,
 import { STAT_LABELS, ALL_STATS } from "./map-types";
 import { simpleLLMCall } from "./api-helpers";
 import { scopedYelanConfig } from './yelan-memory-scope';
+import { isYelanManaged } from './yelan-managed-client';
 import { previewMessagesForApi, sendLLMRequest } from "./chat-engine";
 import type { ApiConfig } from "./settings-types";
 import { loadCharacters } from "./character-storage";
@@ -124,6 +125,7 @@ import { loadDMPrompts } from "./map-storage";
 
 function getActivePrompt(key: "scene" | "resolve" | "worldGen" | "ending", defaultVal: string): string {
   const custom = loadDMPrompts();
+  if (isYelanManaged) return custom[key]?.trim() && custom[key].trim() !== defaultVal.trim() ? `${defaultVal}\n\n# 用户创作要求\n${custom[key].trim()}` : defaultVal;
   return custom[key]?.trim() || defaultVal;
 }
 
@@ -1541,7 +1543,7 @@ export async function generateAdventureSummary(
 ): Promise<string> {
   const config = loadAdventureSummaryConfig();
   const prompt = [
-    customPrompt?.trim() || config.prompt?.trim() || DEFAULT_ADVENTURE_SUMMARY_PROMPT,
+    isYelanManaged ? [DEFAULT_ADVENTURE_SUMMARY_PROMPT, (customPrompt?.trim() || config.prompt?.trim()) !== DEFAULT_ADVENTURE_SUMMARY_PROMPT ? customPrompt?.trim() || config.prompt?.trim() : ''].filter(Boolean).join('\n\n# 用户总结要求\n') : customPrompt?.trim() || config.prompt?.trim() || DEFAULT_ADVENTURE_SUMMARY_PROMPT,
     "",
     "额外硬性要求：凡是指代玩家/用户本人时，必须写成 {{user}}，不要写具体姓名。",
   ].join("\n");

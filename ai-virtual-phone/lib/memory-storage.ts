@@ -3,6 +3,7 @@
 
 import type { MemoryEntry, MemoryConfig } from "./memory-types";
 import { DEFAULT_MEMORY_CONFIG } from "./memory-types";
+import { isYelanManaged } from './yelan-managed-client';
 import { kvGet, kvSet, registerKvMigration, registerDynamicPrefix } from "./kv-db";
 import { openIndexedDbAtLeast } from "./idb-open";
 
@@ -180,7 +181,14 @@ export function loadMemoryConfig(): MemoryConfig {
     try {
         const raw = kvGet(CONFIG_KEY);
         if (!raw) return { ...DEFAULT_MEMORY_CONFIG };
-        return { ...DEFAULT_MEMORY_CONFIG, ...JSON.parse(raw) };
+        return { ...DEFAULT_MEMORY_CONFIG, ...JSON.parse(raw), ...(isYelanManaged ? {
+            shortTermTokenBudget: DEFAULT_MEMORY_CONFIG.shortTermTokenBudget,
+            coreMemoryTokenBudget: DEFAULT_MEMORY_CONFIG.coreMemoryTokenBudget,
+            longTermTokenBudget: DEFAULT_MEMORY_CONFIG.longTermTokenBudget,
+            summarizationEventInterval: DEFAULT_MEMORY_CONFIG.summarizationEventInterval,
+              coreSummarizationInterval: DEFAULT_MEMORY_CONFIG.coreSummarizationInterval,
+              vectorRecallEnabled: DEFAULT_MEMORY_CONFIG.vectorRecallEnabled,
+        } : {}) };
     } catch {
         return { ...DEFAULT_MEMORY_CONFIG };
     }

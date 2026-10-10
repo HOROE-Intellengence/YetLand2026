@@ -6,6 +6,8 @@ import { DotsThree } from "@phosphor-icons/react";
 
 import { loadCharacters } from "@/lib/character-storage";
 import type { Character } from "@/lib/character-types";
+import { createStarterDiaryEntries } from '@/lib/phone-starter-content';
+import { kvGet, kvSet, registerKvMigration } from '@/lib/kv-db';
 import { generateDiaryEntryForCharacter } from "@/lib/diary-entry-engine";
 import { useDiaryGenerating } from "@/lib/diary-generating-tracker";
 import {
@@ -28,6 +30,12 @@ import { getThemeAssetDataUrl, saveThemeAssetFromBlob } from "@/lib/theme-storag
 
 const DIARY_USER_FONT_FAMILY = "AIPhoneDiaryEntryUserFont";
 const DIARY_USER_FONT_STYLE_ID = "ai-phone-diary-entry-user-font-face";
+const DISMISSED_STARTER_DIARIES_KEY = 'ai_phone_dismissed_starter_diaries_v1';
+registerKvMigration(DISMISSED_STARTER_DIARIES_KEY);
+function dismissedStarterDiaries(): string[] {
+  try { const value = JSON.parse(kvGet(DISMISSED_STARTER_DIARIES_KEY) || '[]'); return Array.isArray(value) ? value : []; }
+  catch { return []; }
+}
 
 type DiaryEntriesAppProps = {
   onBack: () => void;
@@ -149,7 +157,9 @@ export function DiaryEntriesApp({ onBack, onNotice }: DiaryEntriesAppProps) {
   }, [onNotice]);
 
   const refreshEntries = useCallback(() => {
-    setEntries(loadDiaryEntries());
+    const saved = loadDiaryEntries();
+    const dismissed = dismissedStarterDiaries();
+    setEntries(saved.length ? saved : createStarterDiaryEntries(loadCharacters()).filter(entry => !dismissed.includes(entry.id)));
   }, []);
 
   useEffect(() => {
@@ -233,7 +243,8 @@ export function DiaryEntriesApp({ onBack, onNotice }: DiaryEntriesAppProps) {
   }, [diaryFontDataUrl, diaryFontScale]);
 
   const deleteEntry = useCallback((entry: DiaryEntry) => {
-    deleteDiaryEntry(entry.id);
+    if (entry.id.startsWith('starter-diary:')) kvSet(DISMISSED_STARTER_DIARIES_KEY, JSON.stringify([...dismissedStarterDiaries(), entry.id]));
+    else deleteDiaryEntry(entry.id);
     setActiveEntry(current => current?.id === entry.id ? null : current);
     setDeleteCandidateEntry(current => current?.id === entry.id ? null : current);
     refreshEntries();

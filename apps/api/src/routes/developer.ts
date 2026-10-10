@@ -1,22 +1,44 @@
 import { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { bodyLimit } from 'hono/body-limit';
-import { ApiKeyApplicationSchema, ApiKeySmsSendSchema, ApiKeySmsVerifySchema } from '@yelan/shared';
+import {
+  ApiKeyApplicationSchema,
+  ApiKeySmsSendSchema,
+  ApiKeySmsVerifySchema,
+  ApiKeyEmailSendSchema,
+  API_PUBLIC_BASE_URL,
+} from '@yelan/shared';
 import { requireAuth } from '../middleware/auth';
 import { accountIdentity, gatewayDatabase } from '../gateway/service';
-import { GatewayError, normalizeVerifiedPhone } from '../gateway/database';
+import {
+  GatewayError,
+  normalizeVerifiedPhone,
+  normalizeVerifiedEmail,
+  type GatewayDatabase,
+  type Identity,
+} from '../gateway/database';
+import { configuredBirdEmailProvider, type KeyEmailProvider } from '../gateway/email-verification';
 
 export interface KeySmsProvider {
   send(userId: string, phone: string): Promise<{ challengeId: string }>;
   verify(userId: string, challengeId: string, code: string): Promise<{ phone: string }>;
 }
 
-// Production passes no provider. Simulation is injected only by a separate
-// loopback rehearsal process; no request parameter can enable it.
+// Simulation is injected only by a separate loopback rehearsal process.
 export function createDeveloperRoute(
-  options: { sms?: KeySmsProvider; simulation?: boolean; baseUrl?: string } = {},
+  options: {
+    sms?: KeySmsProvider;
+    email?: KeyEmailProvider | (() => KeyEmailProvider | undefined);
+    simulation?: boolean;
+    baseUrl?: string;
+    db?: () => GatewayDatabase;
+    user?: (id: string) => Identity | undefined;
+  } = {},
 ) {
   const sms = options.sms;
+  const getEmail = () => (typeof options.email === 'function' ? options.email() : options.email);
+  const database = options.db ?? gatewayDatabase;
+  const identity = options.user ?? accountIdentity;
   const route = new Hono();
   route.use('*', bodyLimit({ maxSize: 16 * 1024 }));
   route.onError((e, c) => {
@@ -28,40 +50,43 @@ export function createDeveloperRoute(
   });
   route.use('*', requireAuth());
   route.use('*', async (c, next) => {
-    const user = accountIdentity(c.get('userId') as string);
+    const user = identity(c.get('userId') as string);
     if (!user || user.isGuest || user.deletedAt)
       return c.json({ code: 'REGISTERED_ACCOUNT_REQUIRED', message: '请先登录注册账号' }, 403);
     c.header('Cache-Control', 'no-store');
     await next();
   });
-  route.get('/', (c) =>
-    c.json({
-      baseUrl: options.baseUrl ?? 'https://yetland.cn/v1',
+  route.get('/', (c) => {
+    const email = getEmail();
+    return c.json({
+      baseUrl: options.baseUrl ?? API_PUBLIC_BASE_URL,
       smsEnabled: !!sms,
-      applicationEnabled: !!sms,
+      emailEnabled: !!email,
+      applicationEnabled: !!sms || !!email,
       simulation: options.simulation ?? false,
-      message: sms
-        ? '填写名称并验证手机号后申请 Key。'
-        : '短信验证暂未开放，请等待开通；已有 Key 可继续使用。',
-      keys: gatewayDatabase().keys(c.get('userId') as string),
-      quota: gatewayDatabase().quota(c.get('userId') as string),
-    }),
-  );
-  route.get('/quota', (c) => c.json(gatewayDatabase().quota(c.get('userId') as string)));
+      message:
+        sms || email
+          ? '填写名称并验证手机号或邮箱后申请 Key。'
+          : '验证码服务暂未开放；已有 Key 可继续使用。',
+      keys: database().keys(c.get('userId') as string),
+      quota: database().quota(c.get('userId') as string),
+    });
+  });
+  route.get('/quota', (c) => c.json(database().quota(c.get('userId') as string)));
   route.post('/keys', async (c) => {
     const input = ApiKeyApplicationSchema.safeParse(await c.req.json().catch(() => null));
     if (!input.success)
       return c.json(
-        { code: 'INVALID_REQUEST', message: '请填写 Key 名称、版本并完成手机号验证' },
+        { code: 'INVALID_REQUEST', message: '请填写 Key 名称、版本并完成手机号或邮箱验证' },
         400,
       );
-    if (!sms)
+    if (!sms && !getEmail())
       return c.json(
-        { code: 'SMS_UNAVAILABLE', message: '短信验证暂未开放，当前不能申请 Key' },
+        { code: 'SMS_UNAVAILABLE', message: '验证码服务暂未开放，当前不能申请 Key' },
         503,
       );
-    const issued = gatewayDatabase().createVerifiedKey(
-      accountIdentity(c.get('userId') as string)!,
+    const issued = database().createVerifiedKey(
+      identity(c.get('userId') as string)!,
       {
         name: input.data.name,
         tier: input.data.tier,
@@ -81,6 +106,30 @@ export function createDeveloperRoute(
       await sms.send(c.get('userId') as string, normalizeVerifiedPhone(input.data.phone)),
     );
   });
+  route.post('/email/send', async (c) => {
+    const email = getEmail();
+    if (!email)
+      return c.json({ code: 'EMAIL_UNAVAILABLE', message: '邮件验证码服务暂未开放' }, 503);
+    const input = ApiKeyEmailSendSchema.safeParse(await c.req.json().catch(() => null));
+    if (!input.success) throw new GatewayError('INVALID_EMAIL', 400, '请输入有效的邮箱地址');
+    return c.json(await email.send(c.get('userId') as string, input.data.email));
+  });
+  route.post('/email/verify', async (c) => {
+    const email = getEmail();
+    if (!email)
+      return c.json({ code: 'EMAIL_UNAVAILABLE', message: '邮件验证码服务暂未开放' }, 503);
+    const input = ApiKeySmsVerifySchema.safeParse(await c.req.json().catch(() => null));
+    if (!input.success) throw new GatewayError('INVALID_CODE', 400, '请输入六位验证码');
+    const userId = c.get('userId') as string;
+    const verified = await email.verify(userId, input.data.challengeId, input.data.code);
+    const id = randomUUID();
+    const db = database();
+    db.db
+      .prepare('INSERT INTO email_verifications VALUES (?,?,?,?,?,NULL)')
+      .run(id, userId, normalizeVerifiedEmail(verified.email), 'api_key', new Date().toISOString());
+    db.audit('email.verify.bird', id);
+    return c.json({ verificationId: id });
+  });
   route.post('/sms/verify', async (c) => {
     if (!sms) return c.json({ code: 'SMS_UNAVAILABLE', message: '短信服务暂未开放' }, 503);
     const input = ApiKeySmsVerifySchema.safeParse(await c.req.json().catch(() => null));
@@ -88,7 +137,7 @@ export function createDeveloperRoute(
     const userId = c.get('userId') as string;
     const verified = await sms.verify(userId, input.data.challengeId, input.data.code);
     const id = randomUUID();
-    const db = gatewayDatabase();
+    const db = database();
     db.db
       .prepare('INSERT INTO phone_verifications VALUES (?,?,?,?,?,NULL)')
       .run(id, userId, normalizeVerifiedPhone(verified.phone), 'api_key', new Date().toISOString());
@@ -96,7 +145,7 @@ export function createDeveloperRoute(
     return c.json({ verificationId: id });
   });
   route.delete('/keys/:id', (c) => {
-    const db = gatewayDatabase();
+    const db = database();
     const key = db.key(c.req.param('id'));
     if (!key || key.userId !== c.get('userId'))
       return c.json({ code: 'NOT_FOUND', message: 'Key 不存在' }, 404);
@@ -105,4 +154,6 @@ export function createDeveloperRoute(
   });
   return route;
 }
-export const developerRoute = createDeveloperRoute();
+export const developerRoute = createDeveloperRoute({
+  email: () => configuredBirdEmailProvider(gatewayDatabase),
+});

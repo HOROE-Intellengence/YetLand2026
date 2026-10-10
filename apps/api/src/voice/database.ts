@@ -69,6 +69,11 @@ export class VoiceDatabase {
         turnId TEXT NOT NULL REFERENCES turns(id), requestId TEXT NOT NULL,
         PRIMARY KEY(turnId, requestId)
       );
+      CREATE TABLE IF NOT EXISTS voice_diagnostics (
+        sessionId TEXT PRIMARY KEY REFERENCES sessions(id), requestId TEXT NOT NULL UNIQUE,
+        requestHash TEXT NOT NULL, mode TEXT NOT NULL, kind TEXT NOT NULL,
+        inputText TEXT NOT NULL, createdAt TEXT NOT NULL, errorCode TEXT
+      );
     `);
   }
   recover(): void {
@@ -80,6 +85,9 @@ export class VoiceDatabase {
   }
   isHqSession(id: string): boolean {
     return Boolean(this.db.prepare('SELECT 1 FROM hq_sessions WHERE sessionId=?').get(id));
+  }
+  isDiagnosticSession(id: string): boolean {
+    return Boolean(this.db.prepare('SELECT 1 FROM voice_diagnostics WHERE sessionId=?').get(id));
   }
   turn(id: string): VoiceTurn | undefined {
     return this.db.prepare('SELECT * FROM turns WHERE id=?').get(id) as VoiceTurn | undefined;

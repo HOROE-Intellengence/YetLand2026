@@ -105,6 +105,26 @@ export const DEFAULT_READING_INTERACTION_CONFIG: ReadingInteractionConfig = {
 
 export async function hydrateReadingStorage(): Promise<void> {
     _booksCache = await db.books.toArray();
+    const starterKey = 'ai_phone_reading_starter_v1';
+    if (!kvGet(starterKey)) {
+        if (!_booksCache.length) {
+            const bookId = 'starter-reading';
+            const book: Book = { id: bookId, title: '窗边的片刻', author: '夜阑 · 初始读物', format: 'txt', totalChapters: 1, createdAt: new Date().toISOString() };
+            const chapter: BookChapter = { id: `${bookId}:0`, bookId, index: 0, title: '给日常留一点空白', paragraphs: [
+                '这是小手机内置的初始读物。你可以直接翻阅，也可以导入自己的书，与角色一起阅读。',
+                '午后的光落在窗边。杯子还温热，书页翻到一半，街上的声音隔着玻璃变得很远。',
+                '她把原本写得满满的清单收起来，留出一行空白。那一行不需要安排什么，只是提醒自己：今天也可以慢一点。',
+                '窗台上的小盆栽长出了一片新叶。她以前没有留意过，原来安静的东西，也一直在生长。',
+                '等茶凉下来的时候，她读完了这一页。没有大事发生，但这一刻值得记住。',
+            ] };
+            await db.transaction('rw', db.books, db.chapters, async () => {
+                await db.books.put(book);
+                await db.chapters.put(chapter);
+            });
+            _booksCache = [book];
+        }
+        kvSet(starterKey, 'true');
+    }
     _booksCache.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
@@ -112,6 +132,12 @@ export async function hydrateReadingStorage(): Promise<void> {
 
 export function loadBooks(): Book[] {
     return _booksCache || [];
+}
+
+export async function readReadingInspectionSnapshot() {
+    return db.transaction('r', db.books, db.chapters, db.annotations, async () => ({
+        books: await db.books.toArray(), chapters: await db.chapters.toArray(), annotations: await db.annotations.toArray(),
+    }));
 }
 
 export async function addBook(book: Book): Promise<void> {

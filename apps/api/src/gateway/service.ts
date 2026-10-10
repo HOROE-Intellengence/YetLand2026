@@ -46,7 +46,7 @@ export function gatewayUpstream(id: string): Upstream {
     e.protocol !== 'openai-compatible' ||
     !/^gemini-/i.test(e.model)
   ) {
-    throw new GatewayError('UPSTREAM_UNAVAILABLE', 503, '请在后台选择已启用的 Gemini 兼容接口');
+    throw new GatewayError('UPSTREAM_UNAVAILABLE', 503, 'API 模型暂不可用，请联系管理员检查上游配置');
   }
   let url: URL;
   try {

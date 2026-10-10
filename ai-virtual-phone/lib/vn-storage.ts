@@ -140,6 +140,11 @@ export function loadVnMessages(sessionId: string): VnMessage[] {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+export async function readVnInspectionSnapshot() {
+  if (_hydrated) return { sessions: [..._sessionsCache], messages: [..._messagesCache] };
+  return vnDb.transaction('r', vnDb.sessions, vnDb.messages, async () => ({ sessions: await vnDb.sessions.toArray(), messages: await vnDb.messages.toArray() }));
+}
+
 export function loadVnMessagesForChapter(sessionId: string, chapterIndex: number): VnMessage[] {
   return _messagesCache
     .filter((m) => m.sessionId === sessionId && m.chapterIndex === chapterIndex)

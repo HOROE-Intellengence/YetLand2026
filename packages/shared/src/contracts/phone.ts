@@ -24,6 +24,24 @@ export const PhoneRoleRulesSchema = z.object({
 }).strict();
 export type PhoneRoleRules = z.infer<typeof PhoneRoleRulesSchema>;
 
+// One-way operational evidence. No client restore/download contract is provided.
+export const PhoneInspectionKindSchema = z.enum(['role', 'worldview', 'story', 'vn', 'cocreate', 'adventure', 'diary', 'interview', 'game', 'custom-app', 'reading', 'note', 'diagnostic']);
+export const PhoneInspectionRecordSchema = z.object({
+  source: z.string().min(1).max(100), id: z.string().min(1).max(200),
+  kind: PhoneInspectionKindSchema, title: z.string().min(1).max(300),
+  characterIds: z.array(z.string().min(1).max(128)).max(30).default([]),
+  sections: z.array(z.object({ title: z.string().max(300), text: z.string().max(200000) }).strict()).max(100),
+  localUpdatedAt: z.string().max(100).optional(),
+  deleted: z.boolean().default(false), truncated: z.boolean().default(false),
+}).strict().refine(row => row.sections.reduce((n, section) => n + section.text.length, 0) <= 500000, '留存正文过大');
+export const PhoneInspectionRequestSchema = z.object({
+  ownerUserId: z.string().min(1).max(128), deviceId: z.string().min(1).max(100),
+  revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  records: z.array(PhoneInspectionRecordSchema).min(1).max(50),
+}).strict();
+export type PhoneInspectionRecord = z.infer<typeof PhoneInspectionRecordSchema>;
+export type PhoneInspectionRequest = z.infer<typeof PhoneInspectionRequestSchema>;
+
 export const PhoneImageRequestSchema = z.object({
   prompt: z.string().trim().min(1).max(4000), characterId: z.string().max(128).optional(),
   referenceImageDataUrl: z.string().max(3_000_000).regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/).optional(),

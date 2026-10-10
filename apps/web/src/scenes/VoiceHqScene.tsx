@@ -35,7 +35,7 @@ const ERRORS: Record<string, string> = {
 };
 
 export function VoiceHqScene() {
-  const goOpening = useSessionStore(s => s.goOpening);
+  const goOpening = useSessionStore(s => s.goCallModes);
   const goLogin = useSessionStore(s => s.goHqVoiceLogin);
   const loggedIn = Boolean(getToken());
   const { data: characters = [], error: characterError, isLoading } = useQuery({ queryKey: ['voice-hq-characters', getCurrentUserId()], queryFn: listCharacters, enabled: loggedIn });
@@ -343,7 +343,7 @@ export function VoiceHqScene() {
   return <section className={`${styles.root} ${hqStyles.root} ${conversationStarted ? styles.minimal : ''}`}>
     <header className={styles.header}>
       <button onClick={goOpening} className={styles.back} aria-label="返回">←</button>
-      {!conversationStarted && <><span>夜阑 · 语音（高质量）</span><span className={styles.tag}>一盏茶的时间</span></>}
+      {!conversationStarted && <><span>夜阑 · 高级通话</span><span className={styles.tag}>一盏茶的时间</span></>}
       {ifActive && <div className={hqStyles.tempBadge} role="status" aria-label={temperature == null ? 'IF 已生效，温度计算中' : `IF 已生效，当前温度 ${temperature}/5`} title="当前对话温度">
         {temperature == null ? '🌡️' : temperature >= 4 ? '🔥' : temperature <= 2 ? '❄️' : '🌡️'} {temperature ?? '—'}/5
       </div>}

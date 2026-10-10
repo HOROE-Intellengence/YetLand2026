@@ -44,6 +44,19 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
       socket.terminate();
       if (error) reject(error); else resolve(progress);
     };
+    const complete = () => {
+      if (settled) return;
+      if (!audioBytes || audioBytes % 2) {
+        finish(new VoiceError('VOICE_EMPTY_OR_INCOMPLETE_AUDIO', 502));
+        return;
+      }
+      // Current Live transcription events omit `finished`. A drained final turn
+      // closes nonempty transcripts; absent transcripts still use audio history.
+      if (progress.inputText.trim()) progress.inputTranscriptComplete = true;
+      if (progress.outputText.trim()) progress.outputTranscriptComplete = true;
+      request.onProgress(progress);
+      finish();
+    };
     const abort = () => finish(new VoiceError('VOICE_CANCELLED', 409));
     const deadline = setTimeout(() => finish(new VoiceError('VOICE_RESPONSE_TIMEOUT', 504)),
       90_000 + request.pcm.length / 32);
@@ -114,10 +127,9 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
           if (content.generationComplete && progress.outputText) progress.outputTranscriptComplete = true;
           if (progress.inputText.length + progress.outputText.length > 120_000) throw new VoiceError('VOICE_TRANSCRIPT_TOO_LARGE', 502);
           request.onProgress(progress);
-          if (content.turnComplete && !endGrace) {
-            if (!audioBytes || audioBytes % 2) throw new VoiceError('VOICE_EMPTY_OR_INCOMPLETE_AUDIO', 502);
+          if (content.turnComplete && content.interactionStatus !== 'IN_PROGRESS' && !endGrace) {
             // Input transcription has no ordering guarantee. Briefly drain late transcript events.
-            endGrace = setTimeout(() => finish(), 500);
+            endGrace = setTimeout(complete, 500);
           }
         } else if (message.usageMetadata) request.onProgress(progress);
         if (message.goAway && !endGrace) throw new VoiceError('VOICE_UPSTREAM_GOING_AWAY', 502);
@@ -129,6 +141,6 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
     socket.on('unexpected-response', (_req, response) => {
       response.resume(); finish(new VoiceError('VOICE_RELAY_REJECTED', 502));
     });
-    socket.on('close', () => finish(endGrace ? undefined : new VoiceError('VOICE_UPSTREAM_DISCONNECTED', 502)));
+    socket.on('close', () => endGrace ? complete() : finish(new VoiceError('VOICE_UPSTREAM_DISCONNECTED', 502)));
   });
 }

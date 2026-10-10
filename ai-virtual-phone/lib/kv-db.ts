@@ -191,6 +191,7 @@ export function kvGet(key: string): string | null {
 // ── Write: update cache + fire-and-forget to IDB ──
 export function kvSet(key: string, value: string): void {
     _cache.set(key, value);
+    if (typeof window !== 'undefined' && !key.startsWith('yelan-inspection-')) window.dispatchEvent(new CustomEvent('yelan-inspection-changed'));
     if (isManagedLegacyKey(key)) writeFallbackLocalStorage(key, value);
     kvDb.entries.put({ key, value }).then(() => {
         if (isManagedLegacyKey(key)) removeLegacyLocalStorageKeyIfValue(key, value);
@@ -204,6 +205,7 @@ export function kvSet(key: string, value: string): void {
 
 export async function kvSetAsync(key: string, value: string): Promise<void> {
     _cache.set(key, value);
+    if (typeof window !== 'undefined' && !key.startsWith('yelan-inspection-')) window.dispatchEvent(new CustomEvent('yelan-inspection-changed'));
     if (isManagedLegacyKey(key)) writeFallbackLocalStorage(key, value);
     try {
         await kvDb.entries.put({ key, value });
@@ -220,6 +222,7 @@ export async function kvSetAsync(key: string, value: string): Promise<void> {
 // ── Delete ──
 export function kvRemove(key: string): void {
     _cache.delete(key);
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('yelan-inspection-changed'));
     if (isManagedLegacyKey(key)) removeLegacyLocalStorageKey(key);
     kvDb.entries.delete(key).catch(err =>
         console.warn("[KvDB] delete failed:", key, err));

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
+import { recordPhoneDiagnostic } from '@/lib/phone-diagnostics';
 
 type CheckPhoneDebugErrorCardProps = {
   title?: string;
@@ -39,6 +41,7 @@ export function CheckPhoneDebugErrorCard({
 
     return `错误信息：${errorText}\nAI原始输出：${rawOutput}`;
   }, [debugNormalizeError, debugParseError, debugRawOutput, debugSanitizedOutput, error]);
+  useEffect(() => { if (isYelanManaged) recordPhoneDiagnostic('查手机生成失败', reasonText); }, [reasonText]);
 
   useEffect(() => {
     setOpen(true);
@@ -100,7 +103,7 @@ export function CheckPhoneDebugErrorCard({
         </div>
 
         <div className="modal-body cp-sync-error-body" data-ui="modal-body">
-          {!showReason ? (
+          {isYelanManaged ? <p>这次内容生成未完成，请关闭提示后重试。你的已有内容不会被清空。</p> : !showReason ? (
             <button type="button" className="ui-btn ui-btn-primary" onClick={() => setShowReason(true)}>
               查看原因
             </button>

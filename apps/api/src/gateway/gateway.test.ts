@@ -14,7 +14,7 @@ import { store } from '../store/persistence';
 import type { GatewayDependencies } from '../routes/api-gateway';
 import { chatMessages } from './conversations';
 import type { ApiChatPage } from '@yelan/shared';
-import { ApiKeyApplicationSchema } from '@yelan/shared';
+import { ApiKeyApplicationSchema, API_PUBLIC_MODELS } from '@yelan/shared';
 
 describe('public API gateway (isolated SQLite + controlled upstream)', () => {
   let dir: string, db: GatewayDatabase, app: Hono, deps: GatewayDependencies;
@@ -90,6 +90,77 @@ describe('public API gateway (isolated SQLite + controlled upstream)', () => {
     vi.unstubAllEnvs();
   });
 
+  it.each(['pure', 'advanced'] as const)(
+    'discovers and routes the public %s model without exposing the upstream',
+    async (tier) => {
+      const k = key(tier);
+      db.publish(0);
+      for (const path of ['/v1/models', '/v1/models/']) {
+        const models = await app.request(path, {
+          headers: { Authorization: `Bearer ${k.secret}` },
+        });
+        expect(models.status).toBe(200);
+        expect(models.headers.get('cache-control')).toBe('no-store');
+        expect(await models.json()).toEqual({
+          object: 'list',
+          data: [{ id: API_PUBLIC_MODELS[tier], object: 'model', created: 0, owned_by: 'yetland' }],
+        });
+      }
+      const result = await chat(k.secret, { ...body, model: API_PUBLIC_MODELS[tier] });
+      expect(result.status).toBe(200);
+      expect(await result.json()).toMatchObject({ model: API_PUBLIC_MODELS[tier] });
+      expect(sent[0]?.model).toBe('gemini-test');
+      expect(sent[0]?.messages).toEqual(
+        tier === 'pure'
+          ? body.messages
+          : [{ role: 'system', content: 'Initial expression rules' }, ...body.messages],
+      );
+      const wrong = API_PUBLIC_MODELS[tier === 'pure' ? 'advanced' : 'pure'];
+      expect((await chat(k.secret, { ...body, model: wrong })).status).toBe(404);
+      expect(sent).toHaveLength(1);
+    },
+  );
+  it('rewrites fragmented SSE model metadata while retaining content, tools, usage and raw archives', async () => {
+    const k = key();
+    const payload = {
+      model: 'gemini-test',
+      choices: [
+        {
+          index: 0,
+          delta: {
+            content: '你好 gemini-test',
+            tool_calls: [{ id: 'tool-one' }],
+          },
+        },
+      ],
+      usage: { prompt_tokens: 3, completion_tokens: 2 },
+    };
+    const wire = `data: ${JSON.stringify(payload)}\r\n\r\ndata: [DONE]\n\n`;
+    const bytes = new TextEncoder().encode(wire);
+    responder = () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
+            controller.close();
+          },
+        }),
+        { headers: { 'content-type': 'text/event-stream' } },
+      );
+    const result = await chat(k.secret, {
+      ...body,
+      model: API_PUBLIC_MODELS.pure,
+      stream: true,
+    } as typeof body);
+    const output = await result.text();
+    expect(output).toBe(
+      `data: ${JSON.stringify({ ...payload, model: API_PUBLIC_MODELS.pure })}\r\n\r\ndata: [DONE]\n\n`,
+    );
+    const row = db.call(result.headers.get('x-request-id')!)!;
+    expect(row.status).toBe('succeeded');
+    expect(row.outputText).toBe('你好 gemini-test');
+    expect(JSON.parse(row.upstreamRequest).model).toBe('gemini-test');
+  });
   it('forwards pure requests without prompt/parameter changes and archives identity + real output', async () => {
     const k = key();
     const r = await chat(k.secret);

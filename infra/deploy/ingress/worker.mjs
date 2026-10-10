@@ -1,5 +1,6 @@
 // Dedicated ingress only; never log Authorization, cookies, or signed URLs.
 import { previewLogin } from './preview-login.mjs';
+import { faviconPath, faviconSvg, withFavicon } from './favicon.mjs';
 const origins = new Map([
   ['global.yetland.cn', 'https://yetland.cn'],
   ['phone-global.yetland.cn', 'https://phone.yetland.cn'],
@@ -17,6 +18,13 @@ export default {
       return new Response(null, {status: 308, headers: {Location: incoming.href, 'Cache-Control': 'private, no-store'}});
     }
     if (!env.ENTRY_TOKEN) return new Response('Ingress unavailable', {status: 503});
+    if (incoming.pathname === faviconPath && ['GET', 'HEAD'].includes(request.method)) {
+      return new Response(request.method === 'HEAD' ? null : faviconSvg, { headers: {
+        'Content-Type': 'image/svg+xml',
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+      } });
+    }
     if (request.method === 'GET' && incoming.pathname === '/__preview/login') return previewLogin();
     const target = new URL(incoming.pathname + incoming.search, origin);
     const headers = new Headers(request.headers);
@@ -67,10 +75,11 @@ export default {
     if (incoming.hostname === 'phone-global.yetland.cn' || incoming.hostname === 'phone.yetland.com') {
       responseHeaders.set('Content-Security-Policy', 'frame-ancestors https://ingress.yetland.com');
     }
-    return new Response(upstream.body, {
+    const response = new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: responseHeaders,
     });
+    return request.method === 'GET' ? withFavicon(response) : response;
   },
 };

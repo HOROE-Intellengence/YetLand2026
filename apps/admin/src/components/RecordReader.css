@@ -1,0 +1,42 @@
+.record-reader {
+  max-width: 900px;
+  margin: 16px auto;
+}
+.record-message {
+  padding: 18px 22px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card, transparent);
+}
+.record-message-user {
+  border-left: 3px solid var(--accent, #b79c74);
+}
+.record-message h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  opacity: 0.72;
+}
+.record-prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.85;
+  font-family: inherit;
+  font-size: 15px;
+}
+.conversation-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0 24px;
+}
+.conversation-tabs button[aria-pressed='true'] {
+  border-color: var(--accent, #b79c74);
+  background: var(--bg-hover, #353027);
+}
+.conversation-category {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}

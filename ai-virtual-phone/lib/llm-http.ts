@@ -6,6 +6,7 @@
 
 import type { LlmRequestPayload } from "./llm-provider-adapter";
 import { isYelanManaged } from './yelan-managed-client';
+import { phoneServiceError, recordPhoneDiagnostic } from './phone-diagnostics';
 
 export type FetchLlmPayloadOptions = {
     signal?: AbortSignal;
@@ -34,9 +35,13 @@ export async function fetchLlmPayload(
         body: bodyText,
         signal: options.signal,
     });
+    if (isYelanManaged && !response.ok) {
+        recordPhoneDiagnostic('模型调用失败', { status: response.status, response: await response.text() });
+        throw new Error('这次回复未完成，请稍后重试。');
+    }
     if (isYelanManaged && !payload.body.stream && response.ok) {
         const data = await response.json();
-        if (data?.__yelan_error) throw new Error(data.error?.message || '回复未完整收到，请稍后重试。');
+        if (data?.__yelan_error) throw new Error(phoneServiceError(data.error?.message || '回复未完整收到，请稍后重试。'));
         return new Response(JSON.stringify(data), { status: response.status, headers: response.headers });
     }
     return response;

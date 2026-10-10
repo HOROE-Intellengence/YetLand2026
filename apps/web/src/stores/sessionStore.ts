@@ -2,9 +2,10 @@
 import { create } from 'zustand';
 import { DEFAULT_USER_BOUNDARY, type Character, type Stage, type Boundary } from '@yelan/shared';
 
-type Scene = 'home' | 'intro' | 'opening' | 'login' | 'name' | 'select' | 'create' | 'chat' | 'end' | 'voice' | 'voice-hq' | 'api' | 'phone';
+type Scene = 'home' | 'intro' | 'opening' | 'call-modes' | 'login' | 'name' | 'select' | 'create' | 'chat' | 'end' | 'voice' | 'voice-hq' | 'api' | 'phone';
 
 interface SessionState {
+  goCallModes: () => void;
   phoneLogin: boolean;
   goPhone: () => void;
   goPhoneLogin: () => void;
@@ -46,6 +47,7 @@ interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
+  goCallModes: () => set({ scene: 'call-modes', phoneLogin: false, hqVoiceLogin: false, voiceLogin: false, apiLogin: false }),
   phoneLogin: false,
   goPhone: () => set({ scene: 'phone', phoneLogin: false, apiLogin: false, voiceLogin: false, hqVoiceLogin: false }),
   goPhoneLogin: () => set({ scene: 'login', phoneLogin: true, apiLogin: false, voiceLogin: false, hqVoiceLogin: false }),

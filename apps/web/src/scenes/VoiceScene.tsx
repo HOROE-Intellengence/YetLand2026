@@ -19,7 +19,7 @@ const ERRORS: Record<string, string> = {
 };
 
 export function VoiceScene() {
-  const goOpening = useSessionStore(s => s.goOpening);
+  const goOpening = useSessionStore(s => s.goCallModes);
   const goLogin = useSessionStore(s => s.goVoiceLogin);
   const loggedIn = Boolean(getToken());
   const { data: characters = [], error: characterError, isLoading } = useQuery({ queryKey: ['voice-characters', getCurrentUserId()], queryFn: listCharacters, enabled: loggedIn });
@@ -291,7 +291,7 @@ export function VoiceScene() {
   return <section className={`${styles.root} ${conversationStarted ? styles.minimal : ''}`}>
     <header className={styles.header}>
       <button onClick={goOpening} className={styles.back} aria-label="返回">←</button>
-      {!conversationStarted && <><span>夜阑 · 语音</span><span className={styles.tag}>一盏茶的时间</span></>}
+      {!conversationStarted && <><span>夜阑 · 即时通话</span><span className={styles.tag}>一盏茶的时间</span></>}
     </header>
     <div className={styles.main}>
       {!conversationStarted && <><p className={styles.eyebrow}>让声音靠近一点</p><h1>就在这</h1></>}

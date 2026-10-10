@@ -5,6 +5,7 @@ import { sidecarCallWithSchema } from '../sidecar-ai/client';
 import { getUserProfile, recordPreference } from '../sidecar-ai/preference-recorder';
 import { deleteAllMemories } from '../services/memories';
 import { readCharacterMemory } from '../services/character-memory';
+import { isPhoneTextModelScope } from '../services/llm-scope';
 
 vi.mock('../services/characters', () => ({ charactersService: {
   get: (id: string) => ({ id, isActive: true }),
@@ -24,6 +25,16 @@ describe('phone shared memory', () => {
     store.__resetForTests();
     store.state().sidecarEnabled.preferenceRecorder = true;
     vi.mocked(sidecarCallWithSchema).mockReset().mockResolvedValue(result);
+  });
+  it('runs memory extraction in the phone model scope', async () => {
+    vi.mocked(sidecarCallWithSchema).mockImplementationOnce(async () => {
+      expect(isPhoneTextModelScope()).toBe(true);
+      await Promise.resolve();
+      expect(isPhoneTextModelScope()).toBe(true);
+      return result;
+    });
+    await ingestPhoneMemory('u1', { ...event, eventId: 'scope-test' });
+    expect(isPhoneTextModelScope()).toBe(false);
   });
 
   it('shares across applications but isolates users, characters, modes and branches', async () => {

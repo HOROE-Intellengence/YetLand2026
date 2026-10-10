@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { Pagination } from '../components/Pagination';
 
 interface Material { id: string; userId: string; characterId: string | null; prompt: string; model: string; createdAt: string; bytes: number; thumbnailDataUrl: string }
 interface Page { items: Material[]; total: number; page: number; pageSize: number }
@@ -35,7 +36,7 @@ export function Materials() {
           <small style={{ overflowWrap: 'anywhere' }}>用户：{item.userId}<br />角色：{item.characterId || '无'}<br />{item.model} · {Math.round(item.bytes / 1024)} KB<br />{new Date(item.createdAt).toLocaleString()}</small>
         </article>)}
       </div>
-      <div style={{ display: 'flex', gap: 12, marginTop: 16 }}><button className="btn" disabled={page <= 1} onClick={() => setPage(value => value - 1)}>上一页</button><span>第 {page} 页</span><button className="btn" disabled={page * data.pageSize >= data.total} onClick={() => setPage(value => value + 1)}>下一页</button></div>
+      <Pagination page={page} total={data.total} pageSize={data.pageSize} onChange={next => { setData(null); setPage(next); }} />
     </>}
   </section>;
 }

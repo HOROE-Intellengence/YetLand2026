@@ -3,8 +3,12 @@ import { api, getAuthHeaders, getBase } from '../api/client';
 import { DataTable, type Column } from '../components/DataTable';
 import { formatUserLabel, useUserNameMap } from '../hooks/useUserNameMap';
 import { formatDateTime } from '../lib/datetime';
+import { VoiceTestPanel } from './VoiceTestPanel';
+import { RecordReader } from '../components/RecordReader';
+import { Pagination } from '../components/Pagination';
 
 interface Session {
+  diagnostic?: boolean;
   id: string; userId: string; characterId: string; voiceName: string; createdAt: string; turnCount: number;
 }
 interface AudioAsset { id: string; durationMs: number }
@@ -59,6 +63,7 @@ export function VoiceRecords() {
   const names = useUserNameMap();
   const [characters, setCharacters] = useState<Record<string, string>>({});
   const [userId, setUserId] = useState(''), [from, setFrom] = useState(''), [to, setTo] = useState('');
+  const [mode, setMode] = useState('');
   const [query, setQuery] = useState({ params: '', page: 1, revision: 0 });
   const [list, setList] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState('');
@@ -77,6 +82,7 @@ export function VoiceRecords() {
   useEffect(() => {
     let active = true;
     setLoading(true); setError('');
+    setSelected(null);
     api.get<Listing>(`/api/admin/voice/sessions?${query.params}&page=${query.page}`)
       .then(data => { if (active) setList(data); })
       .catch(e => { if (active) { setError((e as Error).message); setList(null); } })
@@ -94,7 +100,7 @@ export function VoiceRecords() {
   }, [selected, detailRevision]);
 
   const columns: Column<Session>[] = [
-    { key: '_mode', header: '模式', render: row => row.id.startsWith('hq_') ? '语音（高质量）' : '语音' },
+    { key: '_mode', header: '模式', render: row => `${row.id.startsWith('hq_') ? '高级通话' : '即时通话'}${row.diagnostic ? ' · 联通测试' : ''}` },
     { key: 'createdAt', header: '开始时间', render: row => formatDateTime(row.createdAt) },
     { key: 'userId', header: '用户', render: row => <span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{formatUserLabel(row.userId, names)}</span> },
     { key: 'characterId', header: '角色', render: row => characters[row.characterId] ?? row.characterId },
@@ -104,15 +110,18 @@ export function VoiceRecords() {
   ];
   return <div>
     <h2>语音记录</h2>
+    <details style={{ marginBottom: 16 }}><summary>运维通话测试</summary><VoiceTestPanel onComplete={() => setQuery(q => ({ ...q, page: 1, revision: q.revision + 1 }))} /></details>
     <form style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12, marginBottom: 16 }} onSubmit={e => {
       e.preventDefault();
       if (from && to && from > to) { setError('开始日期不能晚于结束日期'); return; }
       const params = new URLSearchParams();
+      if (mode) params.set('mode', mode);
       if (userId.trim()) params.set('userId', userId.trim());
       if (from) params.set('from', new Date(`${from}T00:00:00+08:00`).toISOString());
       if (to) params.set('to', new Date(new Date(`${to}T00:00:00+08:00`).getTime() + 86400000).toISOString());
       setQuery(q => ({ params: params.toString(), page: 1, revision: q.revision + 1 }));
     }}>
+      <label>通话类型<select value={mode} onChange={e => setMode(e.target.value)}><option value="">全部通话</option><option value="live">即时通话</option><option value="hq">高级通话</option></select></label>
       <label>用户 ID<input value={userId} onChange={e => setUserId(e.target.value)} placeholder="全部用户" /></label>
       <label>开始日期<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
       <label>结束日期<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
@@ -122,11 +131,7 @@ export function VoiceRecords() {
     {error && <p role="alert">{error}</p>}
     {loading ? <p>加载语音记录…</p> : list && <>
       <DataTable columns={columns} rows={list.rows} rowKey={row => row.id} emptyMessage="暂无语音记录。" />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
-        <span>共 {list.total} 个会话 · 第 {list.page} 页</span>
-        <button className="btn btn-sm" disabled={list.page <= 1} onClick={() => setQuery(q => ({ ...q, page: q.page - 1 }))}>上一页</button>
-        <button className="btn btn-sm" disabled={list.page * list.pageSize >= list.total} onClick={() => setQuery(q => ({ ...q, page: q.page + 1 }))}>下一页</button>
-      </div>
+      <Pagination page={list.page} total={list.total} pageSize={list.pageSize} loading={loading} onChange={page => { setLoading(true); setSelected(null); setQuery(q => ({ ...q, page })); }} />
     </>}
     {selected && <div className="modal-overlay" onClick={() => setSelected(null)}>
       <div className="modal" role="dialog" aria-modal="true" aria-label="语音会话详情" onClick={e => e.stopPropagation()}
@@ -142,11 +147,11 @@ export function VoiceRecords() {
             <h3>第 {index + 1} 轮 · {statuses[turn.status] ?? turn.status}</h3>
             <p className="muted">{formatDateTime(turn.createdAt)}</p>
             {turn.errorCode && <p role="status">失败原因：{turn.errorCode}</p>}
-            <h4>用户</h4>
-            <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{turn.inputText || '暂无转写文本'}{!turn.inputTranscriptComplete && turn.inputText ? '（转写未完成）' : ''}</p>
+            <RecordReader value={turn.inputText || '暂无转写文本'} label="用户" />
+            {!turn.inputTranscriptComplete && turn.inputText && <p className="muted">转写未完成</p>}
             <AudioPreview asset={turn.inputAudio} label="用户录音" />
-            <h4>AI 回复</h4>
-            <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{turn.outputText || '暂无回复文本'}{!turn.outputTranscriptComplete && turn.outputText ? '（转写未完成）' : ''}</p>
+            <RecordReader value={turn.outputText || '暂无回复文本'} label="AI" />
+            {!turn.outputTranscriptComplete && turn.outputText && <p className="muted">转写未完成</p>}
             <AudioPreview asset={turn.outputAudio} label="AI 语音" />
           </section>)}
       </div>

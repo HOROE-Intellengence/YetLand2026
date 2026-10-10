@@ -30,6 +30,18 @@
   font-size: 11px;
   margin-top: 34px;
 }
+.api-scene-sponsor {
+  color: #b89a63;
+  text-decoration: none;
+}
+.api-scene-sponsor:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.api-scene-sponsor:focus-visible {
+  outline: 2px solid #b89a63;
+  outline-offset: 3px;
+}
 .api-scene button {
   color: inherit;
   background: #20232b;
@@ -89,6 +101,18 @@
   overflow-wrap: anywhere;
   color: #d3bb96;
 }
+.api-scene-model {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0;
+}
+.api-scene-model code {
+  display: block;
+  margin-top: 8px;
+}
 .api-scene-key {
   display: flex;
   align-items: center;
@@ -117,6 +141,29 @@
   flex-direction: column;
   gap: 10px;
   margin: 18px 0;
+}
+.api-scene-methods {
+  border: 0;
+  padding: 0;
+  margin: 22px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.api-scene-methods legend {
+  margin-bottom: 12px;
+}
+.api-scene-methods label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.api-scene-methods input {
+  accent-color: #d3b585;
+}
+.api-scene .api-scene-mail-notice {
+  color: #d3bb96;
 }
 .api-scene-field input {
   width: 100%;

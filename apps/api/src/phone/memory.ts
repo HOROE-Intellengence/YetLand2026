@@ -5,6 +5,7 @@ import { recordPreference } from '../sidecar-ai/preference-recorder';
 import { readCharacterMemory } from '../services/character-memory';
 import { sidecarReady } from '../sidecar-ai/client';
 import type { PhoneMemoryEvent } from './contracts';
+import { withPhoneTextModel } from '../services/llm-scope';
 
 export class PhoneError extends Error {
   constructor(public code: string, public status: 400 | 401 | 403 | 404 | 409 | 503 = 400) { super(code); }
@@ -21,6 +22,10 @@ export function accessibleCharacter(userId: string, characterId: string): string
 const inflight = new Map<string, { hash: string; promise: Promise<{ ok: true; duplicate: boolean }> }>();
 
 export async function ingestPhoneMemory(userId: string, event: PhoneMemoryEvent): Promise<{ ok: true; duplicate: boolean }> {
+  return withPhoneTextModel(() => ingestPhoneMemoryScoped(userId, event));
+}
+
+async function ingestPhoneMemoryScoped(userId: string, event: PhoneMemoryEvent): Promise<{ ok: true; duplicate: boolean }> {
   const characterId = accessibleCharacter(userId, event.characterId);
   const normalized = { characterId, mode: event.mode, branchId: event.branchId ?? '', sourceApp: event.sourceApp, text: event.text };
   const key = JSON.stringify([userId, event.eventId]);

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { ApiCompletionSchema } from '@yelan/shared';
+import { ApiCompletionSchema, API_PUBLIC_MODELS } from '@yelan/shared';
 import { type GatewayDatabase, GatewayError } from '../gateway/database';
 import type { Identity, KeyRow } from '../gateway/database';
 import { gatewayDatabase, accountIdentity, gatewayUpstream } from '../gateway/service';
@@ -71,10 +71,18 @@ export function createGatewayRoute(deps = defaultGatewayDependencies) {
   route.on('GET', ['/models', '/models/'], (c) => {
     const db = deps.db();
     if (!db.settings().enabled) throw new GatewayError('GATEWAY_DISABLED', 503, 'API 服务暂时停用');
-    const upstream = deps.upstream(db.settings().upstreamId);
+    deps.upstream(db.settings().upstreamId);
+    c.header('Cache-Control', 'no-store');
     return c.json({
       object: 'list',
-      data: [{ id: upstream.model, object: 'model', created: 0, owned_by: 'yetland' }],
+      data: [
+        {
+          id: API_PUBLIC_MODELS[c.get('apiKey').tier],
+          object: 'model',
+          created: 0,
+          owned_by: 'yetland',
+        },
+      ],
     });
   });
   route.on('POST', ['/chat/completions', '/chat/completions/'], async (c) => {

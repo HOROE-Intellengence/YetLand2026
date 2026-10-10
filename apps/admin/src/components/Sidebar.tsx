@@ -13,7 +13,6 @@ const groups: { label: string; items: NavItem[] }[] = [
   {
     label: 'API 管理',
     items: [
-      { label: '聊天记录', hash: 'api-overview', icon: <LayoutDashboard /> },
       { label: 'Key 管理', hash: 'api-keys', icon: <Key /> },
       { label: '高级版前置', hash: 'api-prelude', icon: <FileText /> },
     ],
@@ -49,9 +48,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     label: '用户',
     items: [
       { label: '用户管理', hash: 'users', icon: <Users /> },
-      { label: '会话', hash: 'sessions', icon: <MessageSquare /> },
-      { label: '语音记录', hash: 'voice-records', icon: <MessageSquare /> },
-      { label: '小手机聊天记录', hash: 'phone-chat-logs', icon: <MessageSquare /> },
+      { label: '对话', hash: 'conversations', icon: <MessageSquare /> },
       { label: '素材库', hash: 'materials', icon: <Sparkles /> },
       { label: '烛账', hash: 'candle', icon: <Flame /> },
       { label: '配额', hash: 'quota', icon: <Gauge /> },

@@ -1,4 +1,5 @@
 "use client";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
@@ -1124,7 +1125,7 @@ export function ChatSettingsPanel({
                                 />
                             </div>
                         </div>
-                        <div className="menu-item">
+                        {!isYelanManaged && <div className="menu-item">
                             <ChatInfoIcon icon={Sparkles} color={BINDING_ACCENTS.preset} />
                             <div className="menu-label-group">
                                 <span className="menu-label">线下摘要自动补提</span>
@@ -1139,7 +1140,7 @@ export function ChatSettingsPanel({
                                     }}
                                 />
                             </div>
-                        </div>
+                        </div>}
                         <button className="menu-item" onClick={() => setShowScreenEffects(true)}>
                             <ChatInfoIcon icon={Sparkles} color={BINDING_ACCENTS.preset} />
                             <div className="menu-label-group">
@@ -1246,7 +1247,7 @@ export function ChatSettingsPanel({
                         <ChatInfoIcon icon={Code} color="var(--c-danger)" />
                         <div className="menu-label-group">
                             <span className="menu-label menu-label-danger">清理原生tool调用历史——防报错</span>
-                            <span className="menu-desc">切换到文本协议 API 前使用</span>
+                            <span className="menu-desc">{isYelanManaged ? '让已有消息重新使用当前的显示规则' : '切换到文本协议 API 前使用'}</span>
                         </div>
                     </button>
                     <button className="menu-item" onClick={() => setShowConfirmClear(true)}>

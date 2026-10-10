@@ -465,7 +465,7 @@ export function UserProfilePanel({ onClose, className }: UserProfilePanelProps) 
                             <Puzzle size={18} className="text-[var(--c-icon)] opacity-70" strokeWidth={1.25}/>
                             <div className="flex flex-col flex-1 text-left gap-0.5">
                                 <span className="ts-14 font-semibold text-[var(--c-text-title)]">扩展插件</span>
-                                <span className="ts-11 text-[var(--c-text)] opacity-70">JS 插件拦截聊天管线、注入提示词、自由渲染界面</span>
+                                <span className="ts-11 text-[var(--c-text)] opacity-70">安装或编写自定义扩展，调整聊天与界面</span>
                             </div>
                             <ChevronRight size={16} className="text-[var(--c-icon)] opacity-50" />
                         </button>
@@ -1357,8 +1357,8 @@ function OfflinePushSettingsPage({ onBack }: { onBack: () => void }) {
             <div className="page-menu profile-settings-menu">
                 {(
                     <>
-                        <p className="menu-group-desc mx-2">运行位置</p>
-                        <div className="menu-group">
+                        {!isYelanManaged && <p className="menu-group-desc mx-2">运行位置</p>}
+                        {!isYelanManaged && <div className="menu-group">
                             <div className="menu-item" style={{ alignItems: "stretch", flexDirection: "column", gap: 10 }}>
                                 <div className="flex items-start gap-3">
                                     <ProfileSettingsIcon icon={CloudUpload} color={BINDING_ACCENTS.api} />
@@ -1401,7 +1401,7 @@ function OfflinePushSettingsPage({ onBack }: { onBack: () => void }) {
                                     <span className="menu-desc !mt-0">{pushScheduleHint}</span>
                                 )}
                             </div>
-                        </div>
+                        </div>}
                         <p className="menu-group-desc mx-2">系统推送</p>
                         <div className="menu-group">
                             <div className="menu-item">

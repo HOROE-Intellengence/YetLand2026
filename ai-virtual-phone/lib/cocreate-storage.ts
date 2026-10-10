@@ -1,4 +1,5 @@
 import { kvGet, kvSet, registerKvMigration } from "./kv-db";
+import { isYelanManaged } from './yelan-managed-client';
 import type {
   CoCreateCastMember,
   CoCreateChapter,
@@ -65,7 +66,7 @@ function normalizeSettings(value: unknown): CoCreateSettings {
     disabledToolNames: normalizeDisabledToolNames(rawSettings?.disabledToolNames),
     streamingEnabled: rawSettings?.streamingEnabled === true,
     autoAccept: rawSettings?.autoAccept !== false,
-    memorySummaryInterval: clampMemorySummaryInterval(rawSettings?.memorySummaryInterval),
+    memorySummaryInterval: isYelanManaged ? DEFAULT_SETTINGS.memorySummaryInterval : clampMemorySummaryInterval(rawSettings?.memorySummaryInterval),
   };
 }
 

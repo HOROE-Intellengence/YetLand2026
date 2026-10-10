@@ -2,7 +2,7 @@ import type { PhoneRoleRules } from '../../packages/shared/src/contracts/phone';
 import { createBuiltinPreset } from './builtin-preset';
 import type { PresetConfig, RegexConfig, WorldBookConfig } from './settings-types';
 
-export type ManagedRole = { id: string; name: string; persona: string; avatar: null; updatedAt?: string; canEdit: boolean; rules: PhoneRoleRules };
+export type ManagedRole = { id: string; name: string; persona: string; avatar: string | null; updatedAt?: string; canEdit: boolean; rules: PhoneRoleRules };
 
 export function buildManagedRoleSettings(role: ManagedRole) {
   const now = Date.now();

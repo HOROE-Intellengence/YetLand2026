@@ -28,6 +28,7 @@ interface InventoryResponse {
   entries: ApiEntry[];
   mainApiId: string | null;
   sidecarApiId: string | null;
+  phoneApiId: string | null;
   sidecarTaskApiIds: Partial<Record<SidecarTaskKey, string | null>>;
   mainReasoningEffort: ReasoningEffort;
   mainReasoningEffortCipher: ReasoningEffort;
@@ -122,6 +123,7 @@ export function ServiceConfig() {
   const entries = useMemo(() => inventory?.entries ?? [], [inventory?.entries]);
   const selectedMain = useMemo(() => entries.find((entry) => entry.id === inventory?.mainApiId), [entries, inventory]);
   const selectedSidecar = useMemo(() => entries.find((entry) => entry.id === inventory?.sidecarApiId), [entries, inventory]);
+  const selectedPhone = useMemo(() => entries.find((entry) => entry.id === inventory?.phoneApiId), [entries, inventory]);
   const taskApiNames = useMemo(() => {
     const result: Partial<Record<SidecarTaskKey, string>> = {};
     for (const key of sidecarTaskKeys) {
@@ -179,14 +181,14 @@ export function ServiceConfig() {
     }
   }
 
-  async function select(role: 'main' | 'sidecar', id: string) {
+  async function select(role: 'main' | 'sidecar' | 'phone', id: string) {
     if (!reason.trim()) {
       toastErr('切换前先填原因');
       return;
     }
     try {
       await api.post('/api/admin/llm-apis/select', { role, id, reason: reason.trim() });
-      success(role === 'main' ? '主模型 API 已切换' : '侧袋 API 已切换');
+      success(role === 'main' ? '主模型 API 已切换' : role === 'phone' ? '小手机文本 API 已切换' : '侧袋 API 已切换');
       await load();
     } catch (e) {
       toastErr((e as Error).message);
@@ -284,7 +286,7 @@ export function ServiceConfig() {
           >
             <RefreshCw size={14} /> {configReloading ? '重载中...' : '重载配置'}
           </button>
-          <span className="pill">主: {selectedMain?.name ?? '-'} / 侧袋: {selectedSidecar?.name ?? '-'}</span>
+          <span className="pill">主: {selectedMain?.name ?? '-'} / 侧袋: {selectedSidecar?.name ?? '-'} / 小手机: {selectedPhone?.name ?? '-'}</span>
         </div>
       </div>
 
@@ -305,6 +307,7 @@ export function ServiceConfig() {
                 <td>
                   {inventory?.mainApiId === entry.id && <span className="badge badge-ok" style={{ marginRight: 6 }}>主</span>}
                   {inventory?.sidecarApiId === entry.id && <span className="badge badge-warn" style={{ marginRight: 6 }}>侧袋</span>}
+                  {inventory?.phoneApiId === entry.id && <span className="badge badge-ok" style={{ marginRight: 6 }}>小手机文本</span>}
                   {sidecarTaskKeys
                     .filter((key) => inventory?.sidecarTaskApiIds?.[key] === entry.id)
                     .map((key) => (
@@ -314,12 +317,22 @@ export function ServiceConfig() {
                 <td>
                   <button className="btn btn-sm" onClick={() => select('main', entry.id)} style={{ marginRight: 6 }}>设主</button>
                   <button className="btn btn-sm" onClick={() => select('sidecar', entry.id)} style={{ marginRight: 6 }}>设侧袋</button>
+                  <button className="btn btn-sm" disabled={entry.protocol !== 'openai-compatible'} onClick={() => select('phone', entry.id)} style={{ marginRight: 6 }}>设小手机</button>
                   <button className="btn btn-sm btn-danger" onClick={() => remove(entry.id)}><Trash2 size={12} /></button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="card">
+        <h3>小手机文本渠道</h3>
+        <p style={{ fontSize: 12, color: 'var(--paper-dim)' }}>统一用于小手机聊天、各 App 生成、记忆整理及高质量语音中的文本生成。API Key 只保存在服务端。</p>
+        <div className="field"><label htmlFor="phone-text-api">当前渠道</label><select id="phone-text-api" value={inventory?.phoneApiId ?? ''} onChange={e => { if (e.target.value) void select('phone', e.target.value); }}>
+          <option value="" disabled>未配置</option>
+          {entries.filter(entry => entry.protocol === 'openai-compatible').map(entry => <option key={entry.id} value={entry.id}>{entry.name} · {entry.model}{entry.ready ? '' : '（未就绪）'}</option>)}
+        </select></div>
       </div>
 
       <div className="card">

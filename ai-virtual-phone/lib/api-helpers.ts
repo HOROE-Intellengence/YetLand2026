@@ -5,6 +5,7 @@
 import type { ApiConfig } from "./settings-types";
 import { pushApiLog } from "./api-log-store";
 import { isYelanManaged, yelanHeaders } from './yelan-managed-client';
+import { phoneServiceError } from './phone-diagnostics';
 
 const SIMPLE_ANTHROPIC_AUTO_MAX_TOKENS = 8192;
 
@@ -177,7 +178,7 @@ export async function simpleLLMCall(
                 messages: messages.map(m => ({ role: m.role, content: m.content })),
                 rawResponse: `[API 错误 ${res.status}] ${errText.slice(0, 2000)}`,
             });
-            return { content: null, error: `API 错误 ${res.status}: ${errText.slice(0, 200)}` };
+            return { content: null, error: phoneServiceError(`API 错误 ${res.status}: ${errText.slice(0, 200)}`) };
         }
 
         const data = await res.json();
@@ -197,7 +198,7 @@ export async function simpleLLMCall(
         if (!content) {
             console.warn("[simpleLLMCall] Empty response. Keys:", JSON.stringify(Object.keys(data || {})),
                 "Full:", JSON.stringify(data).slice(0, 500));
-            return { content: null, error: describeEmptyLLMResponse(data, finishReason, wasTruncated, config), finishReason, wasTruncated };
+            return { content: null, error: phoneServiceError(describeEmptyLLMResponse(data, finishReason, wasTruncated, config)), finishReason, wasTruncated };
         }
 
         return { content, finishReason, wasTruncated };
@@ -210,7 +211,7 @@ export async function simpleLLMCall(
             messages: messages.map(m => ({ role: m.role, content: m.content })),
             rawResponse: `[请求失败] ${err instanceof Error ? err.message : String(err)}`,
         });
-        return { content: null, error: `请求失败: ${err instanceof Error ? err.message : String(err)}` };
+        return { content: null, error: phoneServiceError(`请求失败: ${err instanceof Error ? err.message : String(err)}`) };
     }
 }
 

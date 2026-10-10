@@ -153,6 +153,11 @@ export function loadStoryMessages(sessionId: string): StoryMessage[] {
     .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
 }
 
+export async function readStoryInspectionSnapshot() {
+  if (_hydrated) return { sessions: [..._sessionsCache], messages: [..._messagesCache] };
+  return storyDb.transaction('r', storyDb.sessions, storyDb.messages, async () => ({ sessions: await storyDb.sessions.toArray(), messages: await storyDb.messages.toArray() }));
+}
+
 export function createOrGetStorySession(characterId: string): StorySession {
   const normalized = normalizeStorySessions(_sessionsCache);
   if (normalized.changed) {

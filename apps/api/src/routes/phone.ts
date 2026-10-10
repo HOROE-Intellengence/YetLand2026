@@ -14,6 +14,8 @@ import { phoneRole, savePhoneRoleRules } from '../phone/role-rules';
 import { store } from '../store/persistence';
 import { VoiceError } from '../voice/config';
 import { generateManagedImage, imageConfigured, ImageError } from '../services/managed-images';
+import { PhoneInspectionRequestSchema } from '@yelan/shared';
+import { phoneInspections } from '../phone/inspection';
 
 export const phoneRoute = new Hono();
 phoneRoute.use('*', requireAuth());
@@ -24,6 +26,14 @@ phoneRoute.onError((error, c) => error instanceof ImageError ? c.json({ code: er
   : error instanceof PhoneError
   ? c.json({ code: error.code }, error.status)
   : c.json({ code: 'PHONE_INTERNAL_ERROR' }, 500));
+
+phoneRoute.post('/inspection', async c => {
+  const parsed = PhoneInspectionRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ code: 'INVALID_INSPECTION' }, 400);
+  const userId = c.get('userId') as string;
+  if (parsed.data.ownerUserId !== userId) return c.json({ code: 'INSPECTION_OWNER_MISMATCH' }, 403);
+  return c.json(phoneInspections().ingest(userId, parsed.data));
+});
 
 phoneRoute.post('/memory/events', async c => {
   const body = PhoneMemoryEventSchema.safeParse(await c.req.json().catch(() => null));
@@ -100,7 +110,7 @@ phoneRoute.post('/characters/:id/chat/completions', async c => {
   const characterId = accessibleCharacter(userId, c.req.param('id'));
   const body = PhoneCompletionRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return c.json({ code: 'INVALID_PHONE_COMPLETION' }, 400);
-  const config = getLlmApiConfig('main');
+  const config = getLlmApiConfig('phone');
   if (!config || config.protocol !== 'openai-compatible') throw new PhoneError('PHONE_MODEL_UNAVAILABLE', 503);
   let branchId: string | undefined;
   try {

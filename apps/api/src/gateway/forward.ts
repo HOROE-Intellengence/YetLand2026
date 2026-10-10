@@ -1,8 +1,54 @@
 import { randomUUID } from 'node:crypto';
 import type { ApiCompletion } from '@yelan/shared';
+import { API_PUBLIC_MODELS } from '@yelan/shared';
 import { type GatewayDatabase, GatewayError } from './database';
 import type { KeyRow } from './database';
 import type { Upstream } from './service';
+
+// Rewrite only protocol metadata, never assistant text or archived upstream bytes.
+class PublicModelStream {
+  private decoder = new TextDecoder();
+  private encoder = new TextEncoder();
+  private buffer = '';
+  constructor(private model: string) {}
+  private rewrite(event: string): string {
+    const lines = event.split(/\r?\n/);
+    const data = lines.filter((line) => line.startsWith('data:'));
+    if (!data.length) return event;
+    try {
+      const value = JSON.parse(data.map((line) => line.slice(5).trimStart()).join('\n'));
+      if (!value || typeof value !== 'object' || !('model' in value)) return event;
+      value.model = this.model;
+      let emitted = false;
+      return lines
+        .filter((line) => {
+          if (!line.startsWith('data:')) return true;
+          if (emitted) return false;
+          emitted = true;
+          return true;
+        })
+        .map((line) => (line.startsWith('data:') ? `data: ${JSON.stringify(value)}` : line))
+        .join(event.includes('\r\n') ? '\r\n' : '\n');
+    } catch {
+      return event;
+    }
+  }
+  feed(bytes: Uint8Array): Uint8Array {
+    this.buffer += this.decoder.decode(bytes, { stream: true });
+    let output = '';
+    let boundary: RegExpExecArray | null;
+    while ((boundary = /\r?\n\r?\n/.exec(this.buffer))) {
+      output += this.rewrite(this.buffer.slice(0, boundary.index)) + boundary[0];
+      this.buffer = this.buffer.slice(boundary.index + boundary[0].length);
+    }
+    return this.encoder.encode(output);
+  }
+  flush(): Uint8Array {
+    const output = this.rewrite(this.buffer + this.decoder.decode());
+    this.buffer = '';
+    return this.encoder.encode(output);
+  }
+}
 
 // Observe SSE without changing bytes. Keep real upstream responses separate from client-supplied history.
 export class SseObserver {
@@ -53,13 +99,20 @@ export async function forwardCompletion(
 ): Promise<Response> {
   const settings = db.settings();
   if (!settings.enabled) throw new GatewayError('GATEWAY_DISABLED', 503, 'API 服务暂时停用');
-  if (body.model !== upstream.model) throw new GatewayError('MODEL_NOT_FOUND', 404, '该模型未开放');
+  const publicModel = API_PUBLIC_MODELS[key.tier];
+  // Keep existing clients working; public aliases may only select the Key's tier.
+  if (body.model !== publicModel && body.model !== upstream.model)
+    throw new GatewayError('MODEL_NOT_FOUND', 404, '模型不存在或与 Key 版本不匹配');
   const published = key.tier === 'advanced' ? db.published() : undefined;
   if (key.tier === 'advanced' && !published)
     throw new GatewayError('PRELUDE_NOT_PUBLISHED', 503, '高级版前置尚未发布');
-  const upstreamBody = published
-    ? { ...body, messages: [{ role: 'system', content: published.content }, ...body.messages] }
-    : body;
+  const upstreamBody = {
+    ...body,
+    model: upstream.model,
+    ...(published
+      ? { messages: [{ role: 'system', content: published.content }, ...body.messages] }
+      : {}),
+  };
   const id = randomUUID();
   const started = Date.now();
   db.begin(key, {
@@ -80,6 +133,7 @@ export async function forwardCompletion(
   let outputController: ReadableStreamDefaultController<Uint8Array> | undefined;
   let upstreamReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   const observer = new SseObserver();
+  const publicStream = new PublicModelStream(publicModel);
   const onAbort = () => {
     clientClosed = true;
     controller.abort();
@@ -184,7 +238,7 @@ export async function forwardCompletion(
           ? parsed.choices[0].message.content
           : '',
       );
-      return new Response(raw, {
+      return new Response(JSON.stringify({ ...parsed, model: publicModel }), {
         status: 200,
         headers: {
           'content-type': 'application/json',
@@ -203,28 +257,41 @@ export async function forwardCompletion(
       },
       async pull(out) {
         try {
-          const { value, done } = await reader.read();
-          if (done) {
-            const success = observer.done && !observer.error;
-            finish(
-              success ? 'succeeded' : 'interrupted',
-              200,
-              success ? undefined : observer.error ? 'UPSTREAM_STREAM_ERROR' : 'UPSTREAM_TRUNCATED',
-            );
-            out.close();
-            return;
-          }
-          record(value);
-          observer.feed(value);
-          out.enqueue(value);
-          if (observer.done) {
-            finish(
-              observer.error ? 'failed' : 'succeeded',
-              200,
-              observer.error ? 'UPSTREAM_STREAM_ERROR' : undefined,
-            );
-            out.close();
-            await reader.cancel();
+          // A network chunk may not contain a complete event. Keep reading until
+          // there is output; returning without enqueueing can stall a pending read.
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) {
+              const tail = publicStream.flush();
+              if (tail.byteLength) out.enqueue(tail);
+              const success = observer.done && !observer.error;
+              finish(
+                success ? 'succeeded' : 'interrupted',
+                200,
+                success
+                  ? undefined
+                  : observer.error
+                    ? 'UPSTREAM_STREAM_ERROR'
+                    : 'UPSTREAM_TRUNCATED',
+              );
+              out.close();
+              return;
+            }
+            record(value);
+            observer.feed(value);
+            const visible = publicStream.feed(value);
+            if (visible.byteLength) out.enqueue(visible);
+            if (observer.done) {
+              finish(
+                observer.error ? 'failed' : 'succeeded',
+                200,
+                observer.error ? 'UPSTREAM_STREAM_ERROR' : undefined,
+              );
+              out.close();
+              await reader.cancel();
+              return;
+            }
+            if (visible.byteLength) return;
           }
         } catch (e) {
           controller.abort();

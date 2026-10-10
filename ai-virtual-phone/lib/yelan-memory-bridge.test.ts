@@ -4,16 +4,26 @@ const fixtures = vi.hoisted(() => ({
   request: vi.fn(), values: new Map<string, string>(),
   timelines: new Map<string, Array<{ id: string; sourceApp: string; content: string; timestamp: string }>>(),
   dwelling: vi.fn(),
+  automatic: true, allowed: undefined as string[] | undefined,
 }));
 vi.mock('./yelan-managed-client', () => ({ isYelanManaged: true, yelanRequest: fixtures.request }));
 vi.mock('./character-storage', () => ({ loadCharacters: () => [{ id: 'a' }, { id: 'b' }] }));
-vi.mock('./short-term-assembler', () => ({ loadNativeTimeline: (id: string) => fixtures.timelines.get(id) || [] }));
+vi.mock('./short-term-assembler', () => ({ loadNativeTimeline: (id: string) => fixtures.timelines.get(id) || [], filterTimelineByAllowedSources: (entries: any[], allowed?: string[]) => allowed ? entries.filter(entry => allowed.includes(entry.sourceApp)) : entries }));
+vi.mock('./memory-storage', () => ({ loadMemoryConfig: () => ({ autoSummarizeEnabled: fixtures.automatic, shortTermAllowedSources: fixtures.allowed }) }));
 vi.mock('./kv-db', () => ({ kvGet: (key: string) => fixtures.values.get(key), kvSet: (key: string, value: string) => fixtures.values.set(key, value) }));
 vi.mock('./dwelling-storage', () => ({ loadDwellingLayout: fixtures.dwelling }));
 import { flushYelanMemory } from './yelan-memory-bridge';
 
 describe('phone memory upload acknowledgement', () => {
-  beforeEach(() => { fixtures.values.clear(); fixtures.timelines.clear(); fixtures.request.mockReset(); fixtures.dwelling.mockReset().mockResolvedValue(null); });
+  beforeEach(() => { fixtures.values.clear(); fixtures.timelines.clear(); fixtures.request.mockReset(); fixtures.dwelling.mockReset().mockResolvedValue(null); fixtures.automatic = true; fixtures.allowed = undefined; });
+  it('respects user automatic-memory and source choices, while allowing manual recording', async () => {
+    fixtures.timelines.set('a', [{ id: 'chat', sourceApp: 'chat', timestamp: 'today', content: '聊天事件' }, { id: 'story', sourceApp: 'story', timestamp: 'today', content: '故事事件' }]);
+    fixtures.automatic = false; fixtures.allowed = ['chat']; fixtures.request.mockResolvedValue({ ok: true });
+    await flushYelanMemory(true); expect(fixtures.request).not.toHaveBeenCalled();
+    await flushYelanMemory(); expect(fixtures.request).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fixtures.request.mock.calls[0][1].body).text).toContain('聊天事件');
+    expect(JSON.parse(fixtures.request.mock.calls[0][1].body).text).not.toContain('故事事件');
+  });
   it('uploads saved fictional dwelling text only for its owner role and reuses acknowledgements', async () => {
     fixtures.dwelling.mockImplementation(async id => id === 'a' ? { updatedAt: '2026-10-07', layout: { rooms: [{
       id: 'room', name: '书房', description: '蓝色窗帘', imageAssetId: 'private-image-reference',

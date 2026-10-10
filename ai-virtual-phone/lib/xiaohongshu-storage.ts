@@ -1,5 +1,6 @@
 import { kvGet, kvSet, registerKvMigration } from "./kv-db";
 import { resolveUserIdentity } from "./settings-storage";
+import { createStarterXiaohongshuNotes } from './phone-starter-content';
 import {
   DEFAULT_XIAOHONGSHU_PROFILE,
   DEFAULT_XIAOHONGSHU_SETTINGS,
@@ -329,7 +330,7 @@ export function createDefaultXiaohongshuState(): XiaohongshuState {
   return {
     profile: getDefaultXiaohongshuProfile(),
     settings: { ...DEFAULT_XIAOHONGSHU_SETTINGS, participantCharacterIds: [] },
-    notes: [],
+    notes: createStarterXiaohongshuNotes(),
     feedHiddenNoteIds: [],
     notifications: [],
     userInteractions: normalizeXiaohongshuUserInteractions(null),
@@ -368,7 +369,7 @@ export function loadXiaohongshuState(): XiaohongshuState {
     return {
       profile: normalizeXiaohongshuProfile(parsed.profile),
       settings: normalizeXiaohongshuSettings(parsed.settings),
-      notes,
+      notes: notes.length ? notes : createStarterXiaohongshuNotes(),
       feedHiddenNoteIds: normalizeIdList(parsed.feedHiddenNoteIds ?? parsed.feed_hidden_note_ids),
       notifications,
       userInteractions,

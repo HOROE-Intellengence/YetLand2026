@@ -21,6 +21,7 @@ import { getDwellingImageAvailability, generateDwellingRoomImage, cancelDwelling
 import { deleteMediaRef, loadMediaObjectUrl } from "@/lib/media-cache-storage";
 import { RoomView, type DwellingRoomImageStatus } from "./room-view";
 import { StoryHtmlRenderer } from "@/components/ui/story-html-renderer";
+import { createStarterDwelling, createStarterItemHtml } from '@/lib/phone-starter-content';
 
 type DwellingAppProps = {
     onClose: () => void;
@@ -133,7 +134,7 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
     useEffect(() => {
         const chars = loadCharacters();
         setCharacters(chars);
-        if (chars.length === 1) setActiveCharId(chars[0].id);
+        if (chars.length > 0) setActiveCharId(chars[0].id);
         // Pre-load all characters' cached layouts + item HTML so ✓ shows immediately
         (async () => {
             for (const c of chars) {
@@ -144,6 +145,9 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
                 if (cached) {
                     cs.layout = cached.layout;
                     cs.itemHtmlCache = loadAllItemHtmlForChar(c.id);
+                } else {
+                    cs.layout = createStarterDwelling();
+                    cs.itemHtmlCache = createStarterItemHtml(cs.layout);
                 }
             }
             rerender();
@@ -163,6 +167,9 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
             if (cached) {
                 cs.layout = cached.layout;
                 cs.itemHtmlCache = loadAllItemHtmlForChar(activeCharId);
+            } else {
+                cs.layout = createStarterDwelling();
+                cs.itemHtmlCache = createStarterItemHtml(cs.layout);
             }
             rerender();
         })();
@@ -303,7 +310,7 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
             return () => { cancelled = true; };
         }
 
-        if (imageEnabled && imageConfigured && !cs.generatingImageRooms.has(room.id) && !cs.imageErrors[room.id]) {
+        if (room.id !== 'starter-room' && imageEnabled && imageConfigured && !cs.generatingImageRooms.has(room.id) && !cs.imageErrors[room.id]) {
             void handleGenerateRoomImage(activeCharId, room.id);
         }
     }, [activeCharId, activeRoomIdx, imageEnabled, imageConfigured, visible, csForImage, roomForImage, handleGenerateRoomImage]);
@@ -622,7 +629,7 @@ export function DwellingApp({ onClose, visible, onIdle }: DwellingAppProps) {
                             <>
                                 <div className="dw-confirm-msg">
                                     还有 {exploreAllConfirm.count} 件物品没有探索过<br />
-                                    全部探索会调用 {exploreAllConfirm.count} 次模型<br />
+                                    将依次探索 {exploreAllConfirm.count} 件物品<br />
                                     过程中可以随时停止
                                 </div>
                                 <div className="dw-confirm-actions">

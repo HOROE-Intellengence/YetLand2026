@@ -1,4 +1,5 @@
 "use client";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 
 import { Component, useState, useEffect, useCallback, type CSSProperties, type ReactNode } from "react";
 import { Trash2, Zap, Clock, Users, Archive, AlertCircle, Search, Brain, FileText, MoreHorizontal, Plus, Edit3, X, Check, ChevronRight, Filter, type LucideIcon } from "lucide-react";
@@ -820,11 +821,13 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
 
     // ── Settings View ──
     if (view === "settings") {
-        const currentPrompt = editingPrompt ?? config.summarizationPrompt ?? DEFAULT_SUMMARIZATION_PROMPT;
-        const currentCorePrompt = editingCorePrompt ?? config.coreMemoryPrompt ?? DEFAULT_CORE_MEMORY_PROMPT;
-        const isModified = currentPrompt !== (config.summarizationPrompt ?? DEFAULT_SUMMARIZATION_PROMPT);
+        const shownPrompt = isYelanManaged && config.summarizationPrompt === DEFAULT_SUMMARIZATION_PROMPT ? '' : config.summarizationPrompt ?? '';
+        const shownCorePrompt = isYelanManaged && config.coreMemoryPrompt === DEFAULT_CORE_MEMORY_PROMPT ? '' : config.coreMemoryPrompt ?? '';
+        const currentPrompt = editingPrompt ?? (isYelanManaged ? shownPrompt : config.summarizationPrompt ?? DEFAULT_SUMMARIZATION_PROMPT);
+        const currentCorePrompt = editingCorePrompt ?? (isYelanManaged ? shownCorePrompt : config.coreMemoryPrompt ?? DEFAULT_CORE_MEMORY_PROMPT);
+        const isModified = currentPrompt !== (isYelanManaged ? shownPrompt : config.summarizationPrompt ?? DEFAULT_SUMMARIZATION_PROMPT);
         const isDefault = (config.summarizationPrompt ?? DEFAULT_SUMMARIZATION_PROMPT) === DEFAULT_SUMMARIZATION_PROMPT;
-        const isCoreModified = currentCorePrompt !== (config.coreMemoryPrompt ?? DEFAULT_CORE_MEMORY_PROMPT);
+        const isCoreModified = currentCorePrompt !== (isYelanManaged ? shownCorePrompt : config.coreMemoryPrompt ?? DEFAULT_CORE_MEMORY_PROMPT);
         const isCoreDefault = (config.coreMemoryPrompt ?? DEFAULT_CORE_MEMORY_PROMPT) === DEFAULT_CORE_MEMORY_PROMPT;
 
         return (
@@ -987,7 +990,7 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                             }} />
                         </div>
                     </div>
-                    <div className="menu-item">
+                    {!isYelanManaged && <div className="menu-item">
                         <MemorySettingsIcon icon={Search} color={BINDING_ACCENTS.embedding} />
                         <div className="menu-label-group">
                             <span className="menu-label">向量召回</span>
@@ -1000,12 +1003,12 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                                 saveMemoryConfig(next);
                             }} />
                         </div>
-                    </div>
+                    </div>}
                 </div>
 
                 {/* Token budget sliders */}
-                <p className="menu-group-desc mx-2">控制截断量</p>
-                <div className="menu-group">
+                {!isYelanManaged && <p className="menu-group-desc mx-2">控制截断量</p>}
+                {!isYelanManaged && <div className="menu-group">
                     <MemorySettingsSliderItem
                         icon={Users}
                         color={BINDING_ACCENTS.voice}
@@ -1039,11 +1042,11 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                         step={MEMORY_TOKEN_BUDGET_STEP.coreMemoryTokenBudget}
                         onChange={value => saveBudget("coreMemoryTokenBudget", value)}
                     />
-                </div>
+                </div>}
 
                 {/* Summarization interval */}
-                <p className="menu-group-desc mx-2">自动总结间隔</p>
-                <div className="menu-group">
+                {!isYelanManaged && <p className="menu-group-desc mx-2">自动总结间隔</p>}
+                {!isYelanManaged && <div className="menu-group">
                     <MemorySettingsSliderItem
                         icon={Clock}
                         color={BINDING_ACCENTS.api}
@@ -1066,17 +1069,17 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                         step={1}
                         onChange={saveCoreInterval}
                     />
-                </div>
+                </div>}
 
                 {/* Summarization Prompt Editor */}
-                <p className="menu-group-desc mx-2">长期记忆提示词</p>
+                <p className="menu-group-desc mx-2">{isYelanManaged ? "希望记住的重点" : "长期记忆提示词"}</p>
                 <div className="menu-group">
                     <div className="menu-item">
                         <MemorySettingsIcon icon={FileText} color={BINDING_ACCENTS.preset} />
                         <div className="menu-label-group">
-                            <span className="menu-label">长期记忆总结提示词</span>
+                            <span className="menu-label">{isYelanManaged ? "记忆整理偏好" : "长期记忆总结提示词"}</span>
                             <span className="menu-desc">
-                                变量：{"{{char}}"} 角色、{"{{earliest}}"} 起始时间、{"{{latest}}"} 结束时间、{"{{events}}"} 记录集合
+                                {isYelanManaged ? "补充你希望角色记住的重点，留空时采用默认安排。" : "可填写角色、时间和记录变量。"}
                             </span>
                         </div>
                         {!isDefault && (
@@ -1104,14 +1107,14 @@ export function MemoryBankPage({ view, selectedCharId, onSelectChar, onNotice }:
                     </div>
                 </div>
 
-                <p className="menu-group-desc mx-2">核心记忆提示词</p>
+                <p className="menu-group-desc mx-2">{isYelanManaged ? "希望长期记住的重点" : "核心记忆提示词"}</p>
                 <div className="menu-group">
                     <div className="menu-item">
                         <MemorySettingsIcon icon={FileText} color={BINDING_ACCENTS.embedding} />
                         <div className="menu-label-group">
-                            <span className="menu-label">核心记忆总结提示词</span>
+                            <span className="menu-label">{isYelanManaged ? "重要经历整理偏好" : "核心记忆总结提示词"}</span>
                             <span className="menu-desc">
-                                变量：{"{{char}}"} 角色、{"{{earliest}}"} 起始时间、{"{{latest}}"} 结束时间、{"{{events}}"} 长期记忆集合
+                                {isYelanManaged ? "补充你希望角色记住的重点，留空时采用默认安排。" : "可填写角色、时间和记录变量。"}
                             </span>
                         </div>
                         {!isCoreDefault && (

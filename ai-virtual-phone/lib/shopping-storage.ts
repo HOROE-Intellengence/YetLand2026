@@ -1,6 +1,7 @@
 import { kvGet, kvSet, registerKvMigration } from "./kv-db";
 import type { ShoppingCategory, ShoppingSearchResult, ShoppingShippingEvent, ShoppingState } from "./shopping-types";
 import { DEFAULT_SHOPPING_REFRESH_PROMPT, DEFAULT_SHOPPING_SEARCH_PROMPT, SHOPPING_RECOMMENDATION_CATEGORIES } from "./shopping-engine";
+import { starterProducts } from './checkphone-defaults';
 
 const SHOPPING_STATE_KEY = "ai_phone_shopping_state_v1";
 export const SHOPPING_STATE_UPDATED_EVENT = "shopping-state-updated";
@@ -168,10 +169,17 @@ function normalizeSearchResult(value: unknown): ShoppingSearchResult | undefined
 }
 
 export function createDefaultShoppingState(): ShoppingState {
+  const products = structuredClone(starterProducts);
+  const categoryProductIds: Record<string, string[]> = {
+    digital: ['starter-lamp'], home: ['starter-cup'], style: ['starter-bag'],
+    beauty: ['starter-balm'], food: ['starter-tea'], hobby: ['starter-notebook'],
+  };
   return {
     catalog: {
-      categories: [],
-      recommendations: [],
+      categories: SHOPPING_RECOMMENDATION_CATEGORIES.map(category => ({ ...category,
+        subtitle: '初始好物 · 刷新后生成新的推荐', items: products.filter(product => categoryProductIds[category.id]?.includes(product.id)),
+      })),
+      recommendations: products,
     },
     savedItems: [],
     cartItems: [],
@@ -216,8 +224,8 @@ export function loadShoppingState(): ShoppingState {
               subtitle: "历史首页推荐",
               items: legacyRecommendations,
             }]
-            : [],
-        recommendations,
+            : createDefaultShoppingState().catalog.categories,
+        recommendations: recommendations.length ? recommendations : createDefaultShoppingState().catalog.recommendations,
       },
       searchResult: normalizeSearchResult(parsed.searchResult),
       savedItems: normalizeArray(parsed.savedItems, normalizeProduct).slice(0, 80),

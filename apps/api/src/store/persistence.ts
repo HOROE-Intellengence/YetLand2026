@@ -379,6 +379,7 @@ interface PersistedState {
     entries: Record<string, LlmApiEntry>;
     mainApiId: string | null;
     sidecarApiId: string | null;
+    phoneApiId?: string | null;
     sidecarTaskApiIds: Partial<Record<SidecarPromptKey, string | null>>;
     // 主 AI 推理档位（reasoning_effort）。普通场景默认 'low'（原为不传≈minimal）；
     // 暗号(IF 解锁)场景单独分档。仅在主模型族支持时才真正进 body。

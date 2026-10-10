@@ -6,6 +6,7 @@ import type { MapWorld, GameSave, CharacterAgent, StoryDirector, CharStats } fro
 import { formatChatTimestamp } from "./llm-prompt-assembler";
 import { kvGet, kvSet, kvRemove, registerKvMigration, registerDynamicPrefix } from "./kv-db";
 import { DEFAULT_ADVENTURE_BILINGUAL_PROMPT } from "./bilingual-prompt-defaults";
+import { isYelanManaged } from './yelan-managed-client';
 
 /** Roll 3d6×5 for each stat (CoC-style, range 15-90) */
 function roll3d6x5(): number {
@@ -74,6 +75,11 @@ if (typeof window !== "undefined") hydrateMapStorage();
 
 export function loadMapWorlds(): MapWorld[] {
   return [..._worldsCache].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export async function readMapInspectionSnapshot() {
+  if (_hydrated) return { worlds: [..._worldsCache], saves: [..._savesCache] };
+  return mapDb.transaction('r', mapDb.worlds, mapDb.saves, async () => ({ worlds: await mapDb.worlds.toArray(), saves: await mapDb.saves.toArray() }));
 }
 
 export function getMapWorld(id: string): MapWorld | null {
@@ -325,6 +331,7 @@ const DEFAULT_DM_TOKEN_CONFIG: DMTokenConfig = {
 };
 
 export function loadDMTokenConfig(): DMTokenConfig {
+  if (isYelanManaged) return { ...DEFAULT_DM_TOKEN_CONFIG };
   if (typeof window === "undefined") return DEFAULT_DM_TOKEN_CONFIG;
   try {
     const raw = kvGet(DM_TOKEN_CONFIG_KEY);
@@ -419,7 +426,7 @@ export function loadAdventureSummaryConfig(): AdventureSummaryConfig {
   if (typeof window === "undefined") return DEFAULT_ADVENTURE_SUMMARY_CONFIG;
   try {
     const raw = kvGet(ADVENTURE_SUMMARY_CONFIG_KEY);
-    if (raw) return { ...DEFAULT_ADVENTURE_SUMMARY_CONFIG, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULT_ADVENTURE_SUMMARY_CONFIG, ...JSON.parse(raw), ...(isYelanManaged ? { interval: DEFAULT_ADVENTURE_SUMMARY_CONFIG.interval } : {}) };
   } catch { /* ignore */ }
   return DEFAULT_ADVENTURE_SUMMARY_CONFIG;
 }

@@ -1,4 +1,6 @@
 "use client";
+import { isYelanManaged } from '@/lib/yelan-managed-client';
+import { recordPhoneDiagnostic } from '@/lib/phone-diagnostics';
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft, ChevronDown, MoreHorizontal, Plus, Play, Trash2 } from "lucide-react";
 import { loadCharacters } from "@/lib/character-storage";
@@ -86,6 +88,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
   const [dmTokenConfig, setDmTokenConfig] = useState<DMTokenConfig>(() => loadDMTokenConfig());
   const [summaryConfig, setSummaryConfig] = useState<AdventureSummaryConfig>(() => loadAdventureSummaryConfig());
   const [adventureConfig, setAdventureConfig] = useState<AdventureInteractionConfig>(() => loadAdventureInteractionConfig());
+  useEffect(() => { if (genError && isYelanManaged) recordPhoneDiagnostic('冒险世界生成失败', genError); }, [genError]);
 
   // Character selection (used during world creation)
   const [selectedCharIds, setSelectedCharIds] = useState<string[]>([]);
@@ -129,7 +132,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
       label: "总结提示词",
       helper: "冒险自动总结 Prompt — 达到自动总结间隔后，DM 根据此指令压缩近期日志，生成可长期保留的冒险摘要。",
       placeholder: DEFAULT_ADVENTURE_SUMMARY_PROMPT,
-      value: summaryConfig.prompt || DEFAULT_ADVENTURE_SUMMARY_PROMPT,
+      value: isYelanManaged ? summaryConfig.prompt === DEFAULT_ADVENTURE_SUMMARY_PROMPT ? '' : summaryConfig.prompt : summaryConfig.prompt || DEFAULT_ADVENTURE_SUMMARY_PROMPT,
       onChange: value => setSummaryConfig(prev => ({ ...prev, prompt: value })),
       minHeight: 180,
     },
@@ -146,7 +149,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
 
   const resetCurrentPrompt = () => {
     if (editingPromptTab === "summary") {
-      setSummaryConfig(prev => ({ ...prev, prompt: DEFAULT_ADVENTURE_SUMMARY_PROMPT }));
+      setSummaryConfig(prev => ({ ...prev, prompt: isYelanManaged ? '' : DEFAULT_ADVENTURE_SUMMARY_PROMPT }));
       return;
     }
     if (editingPromptTab === "bilingual") {
@@ -162,7 +165,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
       worldGen: DEFAULT_WORLD_GEN_PROMPT,
       ending: DEFAULT_DM_ENDING_PROMPT,
     };
-    setDmPrompts(prev => ({ ...prev, [editingPromptTab]: defaults[editingPromptTab] }));
+    setDmPrompts(prev => ({ ...prev, [editingPromptTab]: isYelanManaged ? '' : defaults[editingPromptTab] }));
   };
 
   // ── Create World (background generation) ──
@@ -301,7 +304,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
             <button
               type="button"
               aria-label="冒险设置"
-              onClick={() => { const s = loadDMPrompts(); setDmPrompts({ scene: s.scene || DEFAULT_DM_SCENE_PROMPT, resolve: s.resolve || DEFAULT_DM_RESOLVE_PROMPT, worldGen: s.worldGen || DEFAULT_WORLD_GEN_PROMPT, ending: s.ending || DEFAULT_DM_ENDING_PROMPT }); setMode("prompts"); }}
+              onClick={() => { const s = loadDMPrompts(); const choose = (custom: string, fallback: string) => isYelanManaged ? custom.trim() === fallback.trim() ? '' : custom : custom || fallback; setDmPrompts({ scene: choose(s.scene, DEFAULT_DM_SCENE_PROMPT), resolve: choose(s.resolve, DEFAULT_DM_RESOLVE_PROMPT), worldGen: choose(s.worldGen, DEFAULT_WORLD_GEN_PROMPT), ending: choose(s.ending, DEFAULT_DM_ENDING_PROMPT) }); setMode("prompts"); }}
               style={S.btn}
             >
               <MoreHorizontal size={22} strokeWidth={1.7} />
@@ -572,7 +575,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
             <div style={{ ...S.card, marginBottom: 0 }}>
               <div style={{ ...S.label }}>运行参数</div>
 
-              <div style={{ padding: "2px 0 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {!isYelanManaged && <div style={{ padding: "2px 0 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: "rgba(255,255,255,0.3)", marginBottom: 8, letterSpacing: "0.1em" }}>DM 上下文截断（Token）</div>
                 <div style={{ display: "flex", gap: 16 }}>
                   <div style={{ flex: 1 }}>
@@ -596,9 +599,9 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
                       style={{ width: "100%" }} />
                   </div>
                 </div>
-              </div>
+              </div>}
 
-              <div style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {!isYelanManaged && <div style={{ padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ ...S.label }}>冒险自动总结</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
                   <span style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>自动总结并传入全局记忆间隔</span>
@@ -620,7 +623,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
                   <span style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: "rgba(255,255,255,0.25)" }}>关闭</span>
                   <span style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: "rgba(255,255,255,0.25)" }}>100 条</span>
                 </div>
-              </div>
+              </div>}
 
               <div style={{ paddingTop: 12 }}>
                 <div style={{ ...S.label }}>双语翻译</div>
@@ -649,11 +652,11 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
               </div>
             </div>
 
-            <div style={{ ...S.label, marginBottom: -4 }}>提示词</div>
+            <div style={{ ...S.label, marginBottom: -4 }}>{isYelanManaged ? '创作要求' : '提示词'}</div>
 
             {/* Collapsible prompt editors */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {promptSections.map(section => {
+              {promptSections.filter(section => !isYelanManaged || section.key !== 'bilingual').map(section => {
                 const isOpen = expandedPromptTab === section.key;
                 return (
                   <div
@@ -704,12 +707,12 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
                     {isOpen && (
                       <div style={{ padding: "0 10px 10px" }}>
                         <div style={{ fontSize: "calc(10px*var(--app-text-scale,1))", color: "rgba(255,255,255,0.26)", lineHeight: 1.6, padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.025)", marginBottom: 8 }}>
-                          {section.helper}
+                          {isYelanManaged ? '补充你希望采用的风格、背景、剧情走向或总结重点。留空时使用默认安排。' : section.helper}
                         </div>
                         <textarea
                           value={section.value}
                           onChange={e => section.onChange(e.target.value)}
-                          placeholder={section.placeholder}
+                          placeholder={isYelanManaged ? '写下你的创作要求，例如：节奏舒缓，重视人物互动。' : section.placeholder}
                           style={{
                             ...S.input,
                             minHeight: section.minHeight ?? 220,
@@ -719,7 +722,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
                           }}
                         />
                         <div style={{ fontSize: "calc(9px*var(--app-text-scale,1))", color: "rgba(255,255,255,0.15)", textAlign: "center", marginTop: 6 }}>
-                          当前显示的即为实际使用的提示词，可直接修改
+                          {isYelanManaged ? '你的要求会与默认玩法规则一起生效。' : '当前显示的即为实际使用的提示词，可直接修改'}
                         </div>
                       </div>
                     )}
@@ -744,7 +747,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
                 background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: "calc(12px*var(--app-text-scale,1))",
                 cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
               }}>
-                重置当前提示词
+                {isYelanManaged ? '清空当前要求' : '重置当前提示词'}
               </button>
             </div>
           </div>
@@ -811,9 +814,9 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
           >
             <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--c-adv-accent-dim)" }}>
               <div style={{ color: "var(--c-adv-accent)", fontSize: "calc(15px*var(--app-text-scale,1))", fontWeight: 600, letterSpacing: "0.04em" }}>⚠ 世界生成失败</div>
-              <div style={{ color: "var(--c-adv-text-dim)", fontSize: "calc(12px*var(--app-text-scale,1))", marginTop: 6, lineHeight: 1.6 }}>{genError.reason}</div>
+              <div style={{ color: "var(--c-adv-text-dim)", fontSize: "calc(12px*var(--app-text-scale,1))", marginTop: 6, lineHeight: 1.6 }}>{isYelanManaged ? '这次世界生成未完成，请返回后重试。' : genError.reason}</div>
             </div>
-            {genError.raw ? (
+            {isYelanManaged ? <p style={{ padding: '14px 18px' }}>已有世界和冒险记录会保留。</p> : genError.raw ? (
               <div style={{ padding: "12px 18px", overflowY: "auto", flex: 1, minHeight: 0 }}>
                 <div style={{ color: "var(--c-adv-text-muted)", fontSize: "calc(10px*var(--app-text-scale,1))", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>AI 原始输出</div>
                 <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--c-adv-text)", fontSize: "calc(11px*var(--app-text-scale,1))", lineHeight: 1.65, fontFamily: '"Courier New", monospace', background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "10px 12px" }}>{genError.raw}</pre>
@@ -822,7 +825,7 @@ export default function MapLobby({ onClose, onStartGame }: Props) {
               <div style={{ padding: "14px 18px", color: "var(--c-adv-text-muted)", fontSize: "calc(11px*var(--app-text-scale,1))", flex: 1 }}>（模型没有返回任何内容，可能是网络中断或请求超时）</div>
             )}
             <div style={{ display: "flex", gap: 10, padding: "12px 18px 16px", borderTop: "1px solid var(--c-adv-accent-dim)" }}>
-              {genError.raw && (
+              {genError.raw && !isYelanManaged && (
                 <button
                   type="button"
                   onClick={() => { navigator.clipboard?.writeText(genError.raw).catch(() => {}); }}

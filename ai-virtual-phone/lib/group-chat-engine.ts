@@ -5,6 +5,7 @@ import { ChatSession, ChatMessage, loadChatAppSettings, createResponseBatchId, c
 import { extractTextToolDirectiveText } from "./text-tool-protocol";
 import type { ApiConfig, PresetConfig, RegexConfig } from "./settings-types";
 import { loadCharacters } from "./character-storage";
+import { isYelanManaged } from './yelan-managed-client';
 import { buildScreenEffectPromptHint } from "./chat-screen-effects";
 import { runChatPluginTransform } from "./chat-plugin-hooks";
 import { buildChatPluginPromptFragments } from "./chat-plugin-storage";
@@ -1192,7 +1193,7 @@ export async function generateGroupOfflineChatCompletion(
     // 要求模型补一段摘要，避免「静默结束」导致该轮线下记录没有摘要、进不了短期记忆事件流。
     // 不重发完整 llmMessages：长对话下 token/延迟成本高，且摘要本来就只针对本轮关键事件。
     // 会话里关了「摘要自动补提」就不再多发这一次请求：漏了就漏了，只调一次 API
-    const MAX_SUMMARY_RETRY = session.offlineSummaryRetry === false ? 0 : 2;
+    const MAX_SUMMARY_RETRY = !isYelanManaged && session.offlineSummaryRetry === false ? 0 : 2;
     const lastUserMessage = [...llmMessages].reverse().find(m => m.role === "user");
     for (let attempt = 0; attempt < MAX_SUMMARY_RETRY; attempt += 1) {
         if (parsed.summary.trim()) break;

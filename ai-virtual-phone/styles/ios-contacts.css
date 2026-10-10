@@ -1,0 +1,58 @@
+.ios-contacts { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; background: #fff; color: #161618; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Microsoft YaHei", sans-serif; }
+.phone-shell .ios-contacts, .phone-shell .ios-contacts * { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif !important; }
+.ios-contact-add-hint { margin: 0; padding: 0 18px 12px; font-size: 13px; color: #8e8e93; }
+.ios-contacts button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ios-contacts button:disabled { cursor: default; opacity: .35; }
+.ios-contacts button:focus-visible, .ios-contacts input:focus-visible, .ios-contacts textarea:focus-visible, .ios-contacts select:focus-visible { outline: 2px solid #007aff; outline-offset: 3px; }
+.ios-contacts-nav { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 56px 18px 12px; z-index: 2; }
+.ios-contacts-nav h1 { margin: 0; font-size: 18px; font-weight: 600; }
+.ios-circle-button { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 1px solid #f3f3f6; border-radius: 50%; background: #fafafc; color: #151518; box-shadow: 0 3px 16px #1b2e4d08; }
+.ios-nav-spacer { width: 44px; }
+.ios-text-button { padding: 8px 0; border: 0; background: transparent; color: #007aff; }
+.ios-contact-list { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 28px 10px 18px; scroll-behavior: smooth; }
+.ios-contact-letter { margin: 14px 0 0; border-bottom: 1px solid #e5e5e9; color: #8e8e93; font-size: 14px; font-weight: 400; padding-bottom: 4px; }
+.ios-contact-row { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 70px; padding: 12px 0; border: 0; background: #fff; text-align: left; color: #161618; }
+.ios-contact-row::after { content: ''; position: absolute; left: 58px; right: 0; bottom: 0; border-bottom: 1px solid #ededf0; }
+.ios-contact-row:active { background: #f5f5f7; }
+.ios-contact-avatar { display: grid; place-items: center; flex: 0 0 46px; width: 46px; height: 46px; border-radius: 50%; overflow: hidden; background: linear-gradient(155deg,#b9d9e8,#818fc2); color: #fff; font-size: 18px; font-weight: 600; }
+.ios-contact-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ios-contact-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+.ios-contact-mine { color: #8e8e93; font-size: 12px; }
+.ios-contact-row > svg { color: #c7c7cc; }
+.ios-contact-index { position: absolute; right: 3px; top: 124px; bottom: 115px; display: flex; flex-direction: column; justify-content: center; width: 20px; }
+.ios-contact-index button { flex: 0 1 20px; min-height: 12px; border: 0; padding: 0; color: #007aff; background: transparent; font-size: 10px; font-weight: 600; line-height: 1; }
+.ios-contacts-bottom { flex: 0 0 auto; padding: 14px 18px 22px; background: #fafafbd9; backdrop-filter: blur(16px); border-top: 1px solid #f4f4f6; }
+.ios-contact-tools { display: flex; gap: 12px; }
+.ios-contact-search { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; border-radius: 28px; padding: 0 14px; background: #fff; box-shadow: 0 3px 16px #1b2e4d08; }
+.ios-contact-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; padding: 12px 0; color: #161618; font-size: 16px; }
+.ios-contact-search button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #8e8e93; }
+.ios-contacts-bottom p { margin: 10px 0 0; text-align: center; font-size: 13px; color: #aeaeb2; }
+.ios-contact-detail { flex: 1; overflow-y: auto; background: #f2f2f7; padding: 24px 18px 35px; text-align: center; }
+.ios-contact-avatar.is-large { width: 88px; height: 88px; font-size: 32px; margin: 0 auto; }
+.ios-contact-detail h2 { margin: 12px 0 2px; font-size: 26px; font-weight: 500; }
+.ios-contact-kind { margin: 0; font-size: 13px; color: #8e8e93; }
+.ios-contact-message { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 18px auto; min-width: 105px; padding: 12px 22px; border: 0; border-radius: 12px; background: #fff; color: #007aff; font-size: 12px !important; }
+.ios-contact-info { border-radius: 12px; background: #fff; padding: 16px; margin-top: 12px; text-align: left; }
+.ios-contact-info h3 { font-size: 13px; font-weight: 500; color: #8e8e93; margin: 0 0 8px; }
+.ios-contact-info p { font-size: 14px; line-height: 1.7; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ios-contact-info small, .ios-contact-footnote { font-size: 12px; color: #8e8e93; }
+.ios-contact-info small { display: block; margin-top: 10px; }
+.ios-contact-footnote { padding: 4px 12px; }
+.ios-contact-empty { text-align: center; padding: 32px 15px; font-size: 14px; color: #8e8e93; }
+.ios-contact-notice { padding: 10px 18px; background: #eef5ff; color: #2860a5; font-size: 13px; }
+.ios-contact-notice button { float: right; border: 0; background: transparent; color: #007aff; }
+.ios-rules-form { overflow-y: auto; padding: 18px 18px 35px; background: #f2f2f7; }
+.ios-rules-form h2 { margin: 20px 0 12px; font-size: 17px; }
+.ios-rules-form label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; margin-bottom: 12px; }
+.ios-rules-form textarea, .ios-rules-form input:not([type=checkbox]), .ios-rules-form select { display: block; width: 100%; padding: 11px; border: 1px solid #e5e5ea; border-radius: 10px; background: #fff; color: #161618; font: inherit; font-size: 14px; }
+.ios-rules-form textarea { resize: vertical; }
+.ios-rules-form fieldset { border: 0; border-radius: 12px; background: #fff; margin: 0 0 12px; padding: 16px; }
+.ios-rules-form legend { font-size: 12px; color: #8e8e93; }
+.ios-rules-form .ios-toggle-row { flex-direction: row; justify-content: space-between; align-items: center; }
+.ios-rules-form input[type=checkbox] { accent-color: #34c759; width: 20px; height: 20px; }
+.ios-delete-button { padding: 4px 0; border: 0; background: transparent; color: #ff3b30; font-size: 13px !important; }
+.ios-primary-button { display: block; width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #007aff; color: #fff; margin-top: 20px; }
+.phone-shell[data-active-app="characters"]:has(.ios-contacts) .phone-status-bar { color: #161618; }
+.phone-shell-wrap .phone-shell[data-active-app="characters"]:has(.ios-contacts) .phone-status-bar > .status-time,
+.phone-shell-wrap .phone-shell[data-active-app="characters"]:has(.ios-contacts) .phone-status-bar > .status-right { visibility: visible; }
+.phone-shell[data-active-app="characters"]:has(.ios-contacts) .status-island { visibility: hidden; }

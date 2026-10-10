@@ -4009,7 +4009,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     }
 
     if (activeApp === "characters") {
-      if (isYelanManaged) return <YelanRoleApp onClose={() => setActiveApp(null)} />;
+      if (isYelanManaged) return <YelanRoleApp onClose={() => setActiveApp(null)} onChat={openChatSessionFromNotice} />;
       return (
         <PhoneCharacterApp
           onClose={() => setActiveApp(null)}
@@ -4819,7 +4819,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
                   })}
                 </footer>
               ) : null}
-              <DebugPromptPanel />
+              {!isYelanManaged && <DebugPromptPanel />}
               {!isYelanManaged && <QuickActionFloat />}
               <MascotFloat />
               {/* 预览弹窗宿主：独立于桌宠的展开/收起状态，否则桌宠收成小球时弹不出来 */}

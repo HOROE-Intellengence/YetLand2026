@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { store, type LlmApiEntry } from '../store/persistence';
 import type { SidecarPromptKey } from '@yelan/shared';
 import type { ReasoningEffort } from '@yelan/llm';
+import { isPhoneTextModelScope } from './llm-scope';
 
 export const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'] as const;
 export type ReasoningScenario = 'normal' | 'cipher';
 const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'low';
 
-export type LlmRole = 'main' | 'sidecar';
+export type LlmRole = 'main' | 'sidecar' | 'phone';
 export const SIDECAR_TASK_API_KEYS = ['outputStructurer', 'preferenceRecorder', 'quotaEnding', 'contextCompressor'] as const;
 export type SidecarTaskApiKey = typeof SIDECAR_TASK_API_KEYS[number];
 
@@ -127,6 +128,7 @@ export function listLlmApis() {
     })),
     mainApiId: inv.mainApiId,
     sidecarApiId: inv.sidecarApiId,
+    phoneApiId: inv.phoneApiId === undefined ? inv.mainApiId : inv.phoneApiId,
     sidecarTaskApiIds: inv.sidecarTaskApiIds ?? {},
     mainReasoningEffort: inv.mainReasoningEffort ?? DEFAULT_REASONING_EFFORT,
     mainReasoningEffortCipher: inv.mainReasoningEffortCipher ?? DEFAULT_REASONING_EFFORT,
@@ -194,6 +196,7 @@ export function deleteLlmApi(id: string): boolean {
   const first = Object.values(inv.entries)[0]?.id ?? null;
   if (inv.mainApiId === id) inv.mainApiId = first;
   if (inv.sidecarApiId === id) inv.sidecarApiId = first;
+  if (inv.phoneApiId === id) inv.phoneApiId = null;
   for (const [taskKey, taskApiId] of Object.entries(inv.sidecarTaskApiIds ?? {})) {
     if (taskApiId === id) {
       inv.sidecarTaskApiIds[taskKey as SidecarPromptKey] = null;
@@ -207,7 +210,9 @@ export function selectLlmApi(role: LlmRole, id: string | null): void {
   ensureLlmApiInventorySeeded();
   const inv = store.state().llmApiInventory;
   if (id && !inv.entries[id]) throw new Error('api entry not found');
+  if (role === 'phone' && id && inv.entries[id]?.protocol !== 'openai-compatible') throw new Error('小手机文本渠道需使用 OpenAI-compatible 协议');
   if (role === 'main') inv.mainApiId = id;
+  else if (role === 'phone') inv.phoneApiId = id;
   else inv.sidecarApiId = id;
   store.save();
 }
@@ -243,6 +248,13 @@ function taskBoundIds(inv: { sidecarTaskApiIds?: Partial<Record<SidecarPromptKey
 export function getLlmApiConfig(role: LlmRole, taskKey?: SidecarPromptKey): LlmApiConfig | null {
   ensureLlmApiInventorySeeded();
   const inv = store.state().llmApiInventory;
+  if (role === 'phone' || isPhoneTextModelScope()) {
+    // Missing field preserves legacy installs; an explicit unbinding or an
+    // unavailable selected phone entry fails closed, without model switching.
+    const id = inv.phoneApiId === undefined ? inv.mainApiId : inv.phoneApiId;
+    const entry = id ? inv.entries[id] : null;
+    return isReady(entry) && entry.protocol === 'openai-compatible' ? toConfig(entry) : null;
+  }
   // 侧袋任务可单独绑定模型：绑定且就绪 → 用它；否则落到管理员指定的 sidecar 默认。
   if (role === 'sidecar' && taskKey) {
     const taskEntryId = inv.sidecarTaskApiIds?.[taskKey];
@@ -263,6 +275,10 @@ export function getLlmApiConfig(role: LlmRole, taskKey?: SidecarPromptKey): LlmA
 
 /** 仅返回主路由可用的 provider（仅选中的 main，不含 sidecar/env 回退） */
 export function getMainRouterConfigs(): LlmApiConfig[] {
+  if (isPhoneTextModelScope()) {
+    const phone = getLlmApiConfig('phone');
+    return phone ? [phone] : [];
+  }
   ensureLlmApiInventorySeeded();
   const inv = store.state().llmApiInventory;
   const mainEntry = inv.mainApiId ? inv.entries[inv.mainApiId] : null;

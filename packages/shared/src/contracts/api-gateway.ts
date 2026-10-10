@@ -2,8 +2,16 @@ import { z } from 'zod';
 
 export const ApiTierSchema = z.enum(['pure', 'advanced']);
 export type ApiTier = z.infer<typeof ApiTierSchema>;
+export const API_PUBLIC_BASE_URL = 'https://ingress.yetland.com/v1';
+export const API_PUBLIC_MODELS: Record<ApiTier, string> = {
+  pure: 'yetland_opus_5_5_pure',
+  advanced: 'yetland_opus_5_5_plus',
+};
 export const ApiKeyNameSchema = z.string().trim().min(1, '请填写 Key 名称').max(80);
 export const ApiKeySmsSendSchema = z.object({ phone: z.string().trim().min(1).max(30) }).strict();
+export const ApiKeyEmailSendSchema = z
+  .object({ email: z.string().trim().toLowerCase().email().max(254) })
+  .strict();
 export const ApiKeySmsVerifySchema = z
   .object({
     challengeId: z.string().min(1).max(100),
@@ -94,8 +102,9 @@ export interface ApiKeyView {
   prefix: string;
   tier: ApiTier;
   status: 'active' | 'disabled' | 'revoked';
-  verification: 'admin_test' | 'sms';
+  verification: 'admin_test' | 'sms' | 'email';
   verifiedPhone: string | null;
+  verifiedEmail?: string | null;
   createdAt: string;
   expiresAt: string | null;
   lastUsedAt: string | null;

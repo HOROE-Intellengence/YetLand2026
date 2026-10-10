@@ -11,6 +11,8 @@ export interface RouteDef {
 }
 
 export const ROUTES: Record<string, RouteDef> = {
+  conversations: { hash: 'conversations', label: '对话', component: lazy(() => import('./Conversations').then(m => ({ default: m.Conversations }))) },
+  'phone-inspections': { hash: 'phone-inspections', label: '小手机内容巡查', component: lazy(() => import('./PhoneInspections').then(m => ({ default: m.PhoneInspectionPage }))) },
   'phone-chat-logs': { hash: 'phone-chat-logs', label: '小手机聊天记录', component: lazy(() => import('./PhoneChatLogs').then(m => ({ default: m.PhoneChatLogs }))) },
   'image-settings': { hash: 'image-settings', label: '图片服务', component: lazy(() => import('./ImageSettings').then(m => ({ default: m.ImageSettings }))) },
   materials: { hash: 'materials', label: '素材库', component: lazy(() => import('./Materials').then(m => ({ default: m.Materials }))) },

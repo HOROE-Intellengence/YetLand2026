@@ -43,6 +43,14 @@ describe('admin voice records', () => {
     expect(data.total).toBe(2);
     expect(data.rows.map((r: { id: string; turnCount: number }) => [r.id, r.turnCount])).toEqual([['s1', 1], ['s2', 0]]);
   });
+  it('filters voice modes before pagination with consistent counts', async () => {
+    db.db.prepare('INSERT INTO sessions VALUES (?, ?, ?, ?, ?, NULL)').run('hq_one', 'user1', 'character1', 'Leda', '2026-10-01T16:00:00.000Z');
+    const hq = await json<ListResult>(request('/sessions?mode=hq'));
+    expect(hq.total).toBe(1); expect(hq.rows.map(r => r.id)).toEqual(['hq_one']);
+    const live = await json<ListResult>(request('/sessions?mode=live'));
+    expect(live.total).toBe(2); expect(live.rows.every(r => !r.id.startsWith('hq_'))).toBe(true);
+    expect((await request('/sessions?mode=unknown')).status).toBe(400);
+  });
   it('filters exact users and UTC+8 date boundaries, without SQL interpolation', async () => {
     expect((await json<ListResult>(request('/sessions?userId=user1'))).total).toBe(1);
     expect((await json<ListResult>(request('/sessions?userId=' + encodeURIComponent("' OR 1=1 --")))).total).toBe(0);

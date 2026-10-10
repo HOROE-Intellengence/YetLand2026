@@ -9,6 +9,7 @@ import { setQuotaForDate, getQuotaForDate } from '../services/users';
 import { generateHqReply, type MainInput } from './main';
 import { mockSessionsRoute } from '../routes/sessions';
 import { mockChatRoute } from '../routes/chat';
+import { isPhoneTextModelScope } from '../services/llm-scope';
 
 let input: MainInput;
 beforeEach(() => {
@@ -29,6 +30,17 @@ beforeEach(() => {
     signal: new AbortController().signal, onPrompt: vi.fn() };
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); clearFlagCache(); });
+
+it('routes phone HQ text and temperature through phone scope, without changing ordinary voice', async () => {
+  store.state().phoneVoiceSessions = { [input.sessionId]: { userId: input.userId, characterId: input.characterId, mode: 'main', context: '' } };
+  vi.mocked(pipeline.resolveTemperature).mockImplementationOnce(async () => { expect(isPhoneTextModelScope()).toBe(true); return 3; });
+  vi.mocked(pipeline.streamMainLLM).mockImplementationOnce(async function* () {
+    expect(isPhoneTextModelScope()).toBe(true);
+    yield { chunk: { text: '小手机回复。', sentenceEnd: true, glow: false }, actualModel: 'gemini-3.5-flash-lite' };
+  });
+  expect((await generateHqReply(input)).model).toBe('gemini-3.5-flash-lite');
+  expect(isPhoneTextModelScope()).toBe(false);
+});
 it('reuses text prompt/main generator, passes full history and writes no other sidecar outputs', async () => {
   input.history = [{ role: 'user', content: '前一轮' }, { role: 'assistant', content: '前一答' }];
   const output = await generateHqReply(input);

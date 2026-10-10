@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { store } from '../store/persistence';
-import { getEnabledLlmApiConfigs, getLlmApiConfig, getMainRouterConfigs, getMainReasoningEffort, setMainReasoningEffort, upsertLlmApi } from './llm-api-inventory';
+import { deleteLlmApi, getEnabledLlmApiConfigs, getLlmApiConfig, getMainRouterConfigs, getMainReasoningEffort, listLlmApis, selectLlmApi, setMainReasoningEffort, upsertLlmApi } from './llm-api-inventory';
+import { withPhoneTextModel } from './llm-scope';
+import { getRouter, resetRouter } from '../llm/create-router';
 
 function apiEntry(id: string, apiKey: string) {
   const now = new Date().toISOString();
@@ -158,10 +160,63 @@ describe('llm api inventory sidecar task routing', () => {
   });
 });
 
+describe('phone text model selection', () => {
+  beforeEach(() => {
+    store.__resetForTests(); resetRouter();
+    store.state().llmApiInventory = {
+      entries: { main: apiEntry('main', 'main-test-key-12345'), sidecar: apiEntry('sidecar', 'sidecar-test-key-12345'), phone: { ...apiEntry('phone', 'phone-test-key-12345'), model: 'gemini-3.5-flash-lite' } },
+      mainApiId: 'main', sidecarApiId: 'sidecar', phoneApiId: 'phone', sidecarTaskApiIds: { preferenceRecorder: 'sidecar' },
+    };
+  });
+  it('uses one phone entry for main and every sidecar task within phone scope', () => {
+    expect(getLlmApiConfig('phone')?.id).toBe('phone');
+    withPhoneTextModel(() => {
+      expect(getLlmApiConfig('main')?.id).toBe('phone');
+      for (const task of ['outputStructurer', 'preferenceRecorder', 'quotaEnding', 'contextCompressor', 'atmosphereJudge'] as const) expect(getLlmApiConfig('sidecar', task)?.id).toBe('phone');
+      expect(getMainRouterConfigs().map(entry => entry.id)).toEqual(['phone']);
+    });
+    expect(getLlmApiConfig('main')?.id).toBe('main');
+    expect(getLlmApiConfig('sidecar', 'preferenceRecorder')?.id).toBe('sidecar');
+  });
+  it('isolates parallel asynchronous phone work from ordinary chat and router caches', async () => {
+    const normal = getRouter();
+    const phone = await withPhoneTextModel(async () => {
+      await Promise.resolve();
+      expect(getLlmApiConfig('sidecar')?.id).toBe('phone');
+      return getRouter();
+    });
+    expect(phone).not.toBe(normal);
+    expect(phone.getMainModel()).toBe('gemini-3.5-flash-lite');
+    expect(getRouter()).toBe(normal);
+    expect(getRouter().getMainModel()).toBe('test-model');
+  });
+  it('fails closed when a phone entry is disabled, removed or explicitly unbound', () => {
+    store.state().llmApiInventory.entries.phone!.enabled = false;
+    expect(withPhoneTextModel(() => getLlmApiConfig('sidecar'))).toBeNull();
+    expect(withPhoneTextModel(getMainRouterConfigs)).toEqual([]);
+    deleteLlmApi('phone');
+    expect(getLlmApiConfig('phone')).toBeNull();
+    expect(store.state().llmApiInventory.mainApiId).toBe('main');
+    expect(store.state().llmApiInventory.sidecarApiId).toBe('sidecar');
+  });
+  it('supports legacy state, persists an independent selection and keeps keys masked', () => {
+    delete store.state().llmApiInventory.phoneApiId;
+    expect(getLlmApiConfig('phone')?.id).toBe('main');
+    selectLlmApi('phone', 'phone');
+    expect(listLlmApis().phoneApiId).toBe('phone');
+    expect(listLlmApis().entries.every(entry => entry.apiKey === '')).toBe(true);
+    expect(store.state().llmApiInventory.mainApiId).toBe('main');
+    selectLlmApi('phone', null);
+    expect(getLlmApiConfig('phone')).toBeNull();
+  });
+});
+
 describe('upsertLlmApi id 生成', () => {
   beforeEach(() => {
     store.__resetForTests();
+    for (const key of ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'NVIDIA_API_KEY', 'SIDECAR_API_KEY', 'SIDECAR_TASK_API_KEY', 'SIDECAR_AUX_API_KEY']) vi.stubEnv(key, '');
   });
+  afterEach(() => vi.unstubAllEnvs());
 
   const base = { name: 'x', protocol: 'openai-compatible' as const, model: 'm', apiKey: 'k' };
 

@@ -348,6 +348,7 @@ export default function MusicApp({ onClose }: Props) {
                     onGoSearch={() => setTab("search")}
                     onOpenDaily={setDailyView}
                     onOpenPlaylist={setActivePlaylist}
+                    onGoLocal={() => setTab('local')}
                 />
             ))}
 
@@ -518,13 +519,14 @@ function greetingByHour(): { hello: string; sub: string } {
     return { hello: "夜深了", sub: "适合戴上耳机的时刻" };
 }
 
-function RecommendTab({ formatTime, onPlayNetease, onPlayAll, onGoSearch, onOpenDaily, onOpenPlaylist }: {
+function RecommendTab({ formatTime, onPlayNetease, onPlayAll, onGoSearch, onOpenDaily, onOpenPlaylist, onGoLocal }: {
     formatTime: (s: number) => string;
     onPlayNetease: (r: NeteaseSearchResult) => void;
     onPlayAll: (results: NeteaseSearchResult[]) => void;
     onGoSearch: () => void;
     onOpenDaily: (songs: NeteaseSearchResult[]) => void;
     onOpenPlaylist: (playlist: NeteasePlaylist) => void;
+    onGoLocal: () => void;
 }) {
     const [dailySongs, setDailySongs] = useState<NeteaseSearchResult[]>(() => readMusicCache("music-recommend-daily", []));
     const [playlists, setPlaylists] = useState<NeteasePlaylist[]>(() => readMusicCache("music-recommend-playlists", []));
@@ -573,6 +575,9 @@ function RecommendTab({ formatTime, onPlayNetease, onPlayAll, onGoSearch, onOpen
                 </button>
             </div>
 
+            {!hasRecommendContent && <button type="button" className="music-daily-card" onClick={onGoLocal} style={{ width: '100%', textAlign: 'left', border: 0, minHeight: 140 }}>
+                <div className="music-daily-inner"><span className="music-daily-date">初始曲目 · 无需刷新</span><div><div className="music-daily-title">窗边的十二秒</div><div className="music-daily-sub">听听内置环境音，也可以上传你喜欢的音乐</div></div></div>
+            </button>}
             {loading && !hasRecommendContent ? (
                 <div className="music-empty"><div className="music-empty-text">加载推荐中...</div></div>
             ) : (

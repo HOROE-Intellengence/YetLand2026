@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiChatPage, ApiKeyView } from '@yelan/shared';
 import { api, getAuthHeaders, getBase } from '../api/client';
 import { groupKeysByPhone, keyPhoneLabel } from './api-key-groups';
+import { RecordReader } from '../components/RecordReader';
 
 const root = '/api/admin/api-gateway';
 type User = { id: string; name: string };
@@ -145,7 +146,7 @@ export function ApiConversations({ onDiagnostics }: { onDiagnostics: (keyId: str
       <header className="gateway-heading">
         <h2>API 聊天记录</h2>
         <p className="muted">
-          按验证码绑定手机号分类，选择 Key 名称查看问答。共用 Key 的客户端显示在同一时间线。
+          按验证码绑定手机号或邮箱分类，选择 Key 名称查看问答。共用 Key 的客户端显示在同一时间线。
         </p>
       </header>
       <div className="gateway-toolbar">
@@ -176,8 +177,8 @@ export function ApiConversations({ onDiagnostics }: { onDiagnostics: (keyId: str
       <div className="gateway-chat-layout">
         <aside className="gateway-chat-keys" aria-label="Key 列表">
           <input
-            aria-label="搜索手机号、Key 名称或用户"
-            placeholder="搜索手机号、Key 名称或用户"
+            aria-label="搜索手机号、邮箱、Key 名称或用户"
+            placeholder="搜索手机号、邮箱、Key 名称或用户"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -242,8 +243,7 @@ export function ApiConversations({ onDiagnostics }: { onDiagnostics: (keyId: str
             )}
             {page.messages.map((message) => (
               <article key={message.id} className={`gateway-chat-message ${message.role}`}>
-                <span>{message.role === 'user' ? '用户' : 'AI'}</span>
-                <div>{message.content}</div>
+                <RecordReader value={message.content} label={message.role === 'user' ? '用户' : 'AI'} />
               </article>
             ))}
             {busy && <p className="muted">正在读取对话…</p>}

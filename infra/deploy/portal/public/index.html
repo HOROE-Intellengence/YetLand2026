@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090b0d">
+  <title>Yetland</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23090b0d'/%3E%3Cpath d='M10 12l10 12 10-12M20 24v8' fill='none' stroke='%23B08D45' stroke-width='3'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:dark;font-family:Inter,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:#090b0d;color:#edeee8;-webkit-font-smoothing:antialiased}
+    *{box-sizing:border-box}body{margin:0}
+    main{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px 90px;background:radial-gradient(ellipse at 50% 44%,#18201e66,transparent 58%)}
+    h1{font-size:clamp(58px,9vw,100px);line-height:1;font-weight:400;letter-spacing:-.065em;margin:0 0 52px;padding-right:.065em}
+    nav{display:flex;align-items:center;gap:0}
+    a{color:#aeb5af;text-decoration:none;font-size:16px;letter-spacing:3px;padding:16px 32px;transition:color .2s,background .2s;border-radius:6px}
+    a:hover{color:#d9edb8;background:#ffffff05}a:focus-visible{outline:1px solid #d9edb8;outline-offset:3px}
+    .divider{height:16px;width:1px;background:#ffffff24}
+    a{position:relative}.recommendation{position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:10px;letter-spacing:1px;line-height:1.5;color:#b6c99e;white-space:nowrap}
+    @media(max-width:480px){h1{margin-bottom:40px}a{padding:16px 27px;font-size:15px}}
+    @media(prefers-reduced-motion:reduce){a{transition:none}}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Yetland.</h1>
+    <nav aria-label="选择访问入口">
+      <a id="china" href="https://yetland.cn/" aria-label="中国入口">中国<span class="recommendation" hidden>推荐</span></a>
+      <span class="divider" aria-hidden="true"></span>
+      <a id="international" href="https://ingress.yetland.com/" aria-label="国际入口">国际<span class="recommendation" hidden>推荐</span></a>
+    </nav>
+  </main>
+  <script>
+    (async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+      try {
+        const response = await fetch('/region', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) return;
+        const { region } = await response.json();
+        if (!['china', 'international'].includes(region)) return;
+        const link = document.getElementById(region);
+        link.querySelector('.recommendation').hidden = false;
+        link.setAttribute('aria-label', `${region === 'china' ? '中国' : '国际'}入口，推荐`);
+      } catch { /* Detection must never block either link. */ }
+      finally { clearTimeout(timer); }
+    })();
+  </script>
+</body>
+</html>

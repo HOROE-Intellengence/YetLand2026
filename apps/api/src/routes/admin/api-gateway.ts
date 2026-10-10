@@ -16,6 +16,7 @@ import type { GatewayDependencies } from '../api-gateway';
 import { listLlmApis } from '../../services/llm-api-inventory';
 import { store } from '../../store/persistence';
 import { chatMessages, type ChatRow } from '../../gateway/conversations';
+import { birdEmailConfigured } from '../../gateway/email-verification';
 
 async function parse<T extends z.ZodTypeAny>(
   request: { json: () => Promise<unknown> },
@@ -70,6 +71,7 @@ export function createAdminGatewayRoute(deps: GatewayDependencies = defaultGatew
     c.json({
       settings: deps.db().settings(),
       smsEnabled: false,
+      emailEnabled: birdEmailConfigured(),
       baseUrl: 'https://yetland.cn/v1',
       upstreams: listLlmApis()
         .entries.filter((e) => e.protocol === 'openai-compatible' && /^gemini-/i.test(e.model))
@@ -208,6 +210,7 @@ export function createAdminGatewayRoute(deps: GatewayDependencies = defaultGatew
       response: row.response ?? db.rawResponse(row.id),
       verification: db.key(row.keyId)?.verification,
       verifiedPhone: db.key(row.keyId)?.verifiedPhone,
+      verifiedEmail: db.key(row.keyId)?.verifiedEmail,
     });
   });
   route.get('/export', (c) => {

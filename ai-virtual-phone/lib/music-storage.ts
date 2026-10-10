@@ -1,6 +1,12 @@
 // lib/music-storage.ts — IndexedDB local music storage (audio blobs + metadata)
 
 import { openIndexedDbAtLeast } from "./idb-open";
+import { kvGet, kvSet, registerKvMigration } from './kv-db';
+import { createStarterMusicAudio, createStarterMusicTrack } from './music-starter';
+
+const MUSIC_STARTER_KEY = 'ai_phone_music_starter_v1';
+registerKvMigration(MUSIC_STARTER_KEY);
+let starterPromise: Promise<void> | null = null;
 
 export type MusicTrack = {
     id: string;
@@ -50,6 +56,17 @@ export async function loadAllTracks(): Promise<MusicTrack[]> {
     if (!db) return [];
     const tx = db.transaction(META_STORE, "readonly");
     const tracks: MusicTrack[] = await runRequest(tx.objectStore(META_STORE).getAll());
+    if (!kvGet(MUSIC_STARTER_KEY)) {
+        if (!tracks.length) {
+            starterPromise ??= (async () => {
+                await saveTrack(createStarterMusicTrack(), createStarterMusicAudio());
+                kvSet(MUSIC_STARTER_KEY, 'true');
+            })().finally(() => { starterPromise = null; });
+            await starterPromise;
+            const seeded = await openDb();
+            if (seeded) tracks.push(...await runRequest<MusicTrack[]>(seeded.transaction(META_STORE, 'readonly').objectStore(META_STORE).getAll()));
+        } else kvSet(MUSIC_STARTER_KEY, 'true');
+    }
     tracks.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
     return tracks;
 }

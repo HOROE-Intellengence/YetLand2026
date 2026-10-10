@@ -1,21 +1,24 @@
 import { isYelanManaged, yelanRequest } from './yelan-managed-client';
 import { loadCharacters } from './character-storage';
-import { loadNativeTimeline } from './short-term-assembler';
+import { loadNativeTimeline, filterTimelineByAllowedSources } from './short-term-assembler';
 import { kvGet, kvSet } from './kv-db';
 import { memoryParts } from './yelan-memory-parts';
 import { loadDwellingLayout } from './dwelling-storage';
 import { dwellingMemoryEntry } from './yelan-dwelling-memory';
+import { loadMemoryConfig } from './memory-storage';
 
 let busy = false;
-export async function flushYelanMemory() {
+export async function flushYelanMemory(automatic = false) {
   if (!isYelanManaged || busy) return;
+  const config = loadMemoryConfig();
+  if (automatic && !config.autoSummarizeEnabled) return;
   busy = true;
   try {
     for (const character of loadCharacters()) {
       const key = `yelan-memory-ack:${character.id}`;
       const ack = new Set<string>(JSON.parse(kvGet(key) || '[]'));
       const dwelling = dwellingMemoryEntry(character.id, await loadDwellingLayout(character.id));
-      const pending = [...loadNativeTimeline(character.id), ...(dwelling ? [dwelling] : [])];
+      const pending = [...filterTimelineByAllowedSources(loadNativeTimeline(character.id), config.shortTermAllowedSources), ...(dwelling ? [dwelling] : [])];
       let remaining = 10;
       for (const entry of pending) {
         const narrative = ['story', 'vn', 'map', 'game'].includes(entry.sourceApp);
@@ -56,7 +59,7 @@ export async function flushYelanMemory() {
 export function startYelanMemoryBridge() {
   if (!isYelanManaged) return () => {};
   const timer = window.setInterval(() => {
-    void flushYelanMemory().catch(() => { /* Keep unacknowledged entries for a later retry. */ });
+    void flushYelanMemory(true).catch(() => { /* Keep unacknowledged entries for a later retry. */ });
   }, 30000);
   return () => window.clearInterval(timer);
 }
