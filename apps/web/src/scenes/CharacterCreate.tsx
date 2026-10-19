@@ -1,9 +1,10 @@
 // 创建属于你的那位 —— 用户自定义角色卡（feat/user-character-cards P3）
 // 流程：表单 → 两步确认（是否公开 / 公序良俗）→ 呼吸灯条 5s → 结束语 → 进入故事 / 完成
 import { useState, useRef, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_VOICE_NAME, VOICE_OPTIONS, type VoiceName, type HqVoiceProfileId, HQ_VOICE_OPTIONS, defaultHqVoiceProfile, type Character, type UserCharacterCreate } from '@yelan/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_VOICE_NAME, VOICE_OPTIONS, type VoiceName, type HqVoiceProfileId, HqVoiceOptionsResponseSchema, defaultHqVoiceProfile, type Character, type UserCharacterCreate } from '@yelan/shared';
 import { createMyCharacter } from '../api/my-characters';
+import { api } from '../api/client';
 import { useSessionStore } from '../stores/sessionStore';
 import styles from './CharacterCreate.module.css';
 
@@ -29,6 +30,13 @@ export function CharacterCreate() {
   const [name, setName] = useState('');
   const [voiceName, setVoiceName] = useState<VoiceName>(DEFAULT_VOICE_NAME);
   const [hqVoiceProfileId, setHqVoiceProfileId] = useState<HqVoiceProfileId>(defaultHqVoiceProfile(DEFAULT_VOICE_NAME));
+  const hqVoices = useQuery({
+    queryKey: ['hq-voice-options'],
+    queryFn: async () => HqVoiceOptionsResponseSchema.parse(await api('/api/voice-hq/profiles')),
+    staleTime: 0,
+  });
+  const hqVoiceOptions = hqVoices.data?.options ?? [];
+  const hqVoiceReady = !hqVoices.isPending && !hqVoices.isError && hqVoiceOptions.some(voice => voice.value === hqVoiceProfileId);
   const [background, setBackground] = useState('');
   const [corePrinciples, setCorePrinciples] = useState('');
   const [rules, setRules] = useState('');
@@ -55,6 +63,7 @@ export function CharacterCreate() {
   const removeTrigger = (i: number) => setTriggers((t) => t.filter((_, idx) => idx !== i));
 
   const openConfirm = () => {
+    if (!hqVoiceReady) { setError('请先加载并选择可用的高质量音色。'); return; }
     if (!name.trim()) {
       setError('至少要给 TA 一个名字。');
       return;
@@ -88,7 +97,7 @@ export function CharacterCreate() {
     relationshipByUser, relationshipByChar, location, action, taboo, makePublic]);
 
   const submit = async () => {
-    if (busy) return;
+    if (busy || !hqVoiceReady) return;
     setBusy(true);
     setError(null);
     try {
@@ -174,9 +183,12 @@ export function CharacterCreate() {
             {VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
           </select>
             <label htmlFor="character-hq-voice">高质量语音音色</label>
-            <select id="character-hq-voice" value={hqVoiceProfileId} onChange={e => setHqVoiceProfileId(e.target.value as HqVoiceProfileId)}>
-              {HQ_VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+            <select id="character-hq-voice" value={hqVoiceProfileId} disabled={hqVoices.isPending || hqVoices.isError} onChange={e => setHqVoiceProfileId(e.target.value)}>
+              {!hqVoiceOptions.some(v => v.value === hqVoiceProfileId) && <option value={hqVoiceProfileId} disabled>{hqVoices.isPending ? '正在加载音色…' : '请选择可用音色'}</option>}
+              {hqVoiceOptions.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
             </select>
+          {hqVoices.isError && <p role="alert">音色加载失败，请重试。</p>}
+          <button type="button" className={styles.ghostBtn} disabled={hqVoices.isFetching} onClick={() => void hqVoices.refetch()}>刷新音色列表</button>
           <span className={styles.nameLabel}>两种语音模式分别使用对应音色。</span>
         </div>
 
@@ -247,7 +259,7 @@ export function CharacterCreate() {
       </div>
 
       <div className={styles.footer}>
-        <button className={styles.primaryBtn} onClick={openConfirm}>
+        <button className={styles.primaryBtn} disabled={!hqVoiceReady} onClick={openConfirm}>
           生成
         </button>
       </div>
@@ -282,7 +294,7 @@ export function CharacterCreate() {
             <p className={styles.dialogTitle}>请确认角色卡符合公序良俗</p>
             <p className={styles.dialogSub}>（角色卡不应包括恐怖暴力、政治敏感等违反供应商协议的内容）</p>
             <div className={styles.dialogActions}>
-              <button className={styles.primaryBtn} disabled={busy} onClick={submit}>
+              <button className={styles.primaryBtn} disabled={busy || !hqVoiceReady} onClick={submit}>
                 {busy ? '铸成中…' : '我确认'}
               </button>
               <button className={styles.ghostBtn} disabled={busy} onClick={() => setStep('confirm1')}>

@@ -19,10 +19,14 @@ import { charactersService } from '../../services/characters';
 import { getUserById } from '../../services/users';
 import { audit } from './_audit';
 import { validationHook } from '../../middleware/validation';
+import { hasVoiceProfile } from '../../voice-hq/profiles';
 
 export const adminCharactersRoute = new Hono();
 
-adminCharactersRoute.get('/', (c) => c.json({ characters: charactersService.listAll() }));
+adminCharactersRoute.get('/', (c) => c.json({ characters: charactersService.listAll().map(row => {
+  const owner = row.ownerUserId ? getUserById(row.ownerUserId) : null;
+  return { ...row, ownerUserName: owner?.nickname?.trim() || owner?.name?.trim() || (row.origin === 'user' ? '未知用户' : '平台创建') };
+}) }));
 
 function importIssue(
   severity: 'warning' | 'error',
@@ -63,6 +67,9 @@ function buildImportPreview(raw: string, mode: AdminCharacterImportMode): AdminC
   const errors = [...normalized.errors];
   const warnings = [...normalized.warnings];
   const existing = normalized.character ? charactersService.getAdmin(normalized.character.slug) : null;
+  if (normalized.character && !hasVoiceProfile(normalized.character.hqVoiceProfileId)) {
+    errors.push(importIssue('error', 'HQ_VOICE_UNAVAILABLE', 'card.hqVoiceProfileId', '高质量音色不存在，请重新选择'));
+  }
 
   if (normalized.character && mode === 'create' && existing) {
     errors.push(importIssue('error', 'CHARACTER_EXISTS', 'card.slug', `slug 已存在：${existing.slug}`));
@@ -192,6 +199,9 @@ adminCharactersRoute.post(
   async (c) => {
     const body = c.req.valid('json');
     const id = body.id ?? body.slug;
+    if (!hasVoiceProfile(body.hqVoiceProfileId)) {
+      return c.json({ code: 'HQ_VOICE_UNAVAILABLE', message: '高质量音色不存在，请重新选择' }, 400);
+    }
     if (charactersService.get(id) || charactersService.get(body.slug)) {
       return c.json({ code: 'EXISTS', message: 'id or slug already exists' }, 409);
     }
@@ -227,6 +237,9 @@ adminCharactersRoute.patch(
     const existing = charactersService.getAdmin(id);
     if (!existing) return c.json({ code: 'NOT_FOUND', message: 'character not found' }, 404);
     const body = c.req.valid('json');
+    if (!hasVoiceProfile(body.hqVoiceProfileId)) {
+      return c.json({ code: 'HQ_VOICE_UNAVAILABLE', message: '高质量音色不存在，请重新选择' }, 400);
+    }
     const merged = charactersService.upsert({
       id: existing.id,
       slug: body.slug ?? existing.slug,

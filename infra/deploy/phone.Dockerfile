@@ -4,7 +4,7 @@ WORKDIR /app/ai-virtual-phone
 COPY ai-virtual-phone/package.json ai-virtual-phone/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY ai-virtual-phone ./
-COPY packages/shared/src/contracts/phone.ts /app/packages/shared/src/contracts/phone.ts
+COPY packages/shared/src/contracts /app/packages/shared/src/contracts
 ARG YELAN_WEB_ORIGIN
 ENV NEXT_PUBLIC_YELAN_WEB_ORIGIN=${YELAN_WEB_ORIGIN} \
     NEXT_PUBLIC_YELAN_PHONE_MANAGED=true \

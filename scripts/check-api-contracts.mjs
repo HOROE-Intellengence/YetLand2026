@@ -64,6 +64,7 @@ const DOMAIN_CONTRACT_MAP = {
   'voice-asr-assets': 'voice',
   'voice-hq': 'voice-hq',
   'admin/voice-hq': 'voice-hq',
+  'admin/phone-chat-logs': 'phone-chat-logs',
   'surveys': 'survey',
 };
 

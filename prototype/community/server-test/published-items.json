@@ -1,0 +1,285 @@
+{
+  "verifiedAt": "2026-10-15T06:45:58.814Z",
+  "items": [
+    {
+      "key": "c-observatory",
+      "title": "山顶观测员 · 许照",
+      "resourceId": "res-76a069aa-6dc6-4865-a288-8229bc7e8d1b",
+      "tid": 29,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/29"
+    },
+    {
+      "key": "c-repair",
+      "title": "修理铺师傅 · 罗榆",
+      "resourceId": "res-4363834a-0cf2-4958-8e84-73a890793da5",
+      "tid": 32,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/32"
+    },
+    {
+      "key": "c-tide",
+      "title": "潮汐测绘搭档 · 季澄",
+      "resourceId": "res-da71bdb3-c7c0-4074-b256-1ed3d655d669",
+      "tid": 33,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/33"
+    },
+    {
+      "key": "c-orbit",
+      "title": "轨道温室值班长 · 闻岚",
+      "resourceId": "res-e2fc579e-f616-4d0d-a5e7-7ff0db0651ac",
+      "tid": 34,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/34"
+    },
+    {
+      "key": "c-theatre",
+      "title": "戏台副导 · 唐弦",
+      "resourceId": "res-4ff5fe73-d76a-457a-820b-06b1dc896aa9",
+      "tid": 35,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/35"
+    },
+    {
+      "key": "c-dunes",
+      "title": "沙海驿站掌柜 · 乌棠",
+      "resourceId": "res-98307dbb-7564-4e2b-96b3-c4b9fe0d2f67",
+      "tid": 36,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/36"
+    },
+    {
+      "key": "c-museum",
+      "title": "社区策展人 · 顾晴",
+      "resourceId": "res-96a4ebe4-7e43-456e-a7ba-3396c7d73112",
+      "tid": 37,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/37"
+    },
+    {
+      "key": "c-noodle",
+      "title": "清晨面摊合伙人 · 何粟",
+      "resourceId": "res-87935a29-ef7d-445b-a5c5-8021cf72f19b",
+      "tid": 38,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/38"
+    },
+    {
+      "key": "c-audio",
+      "title": "声音整理师 · 叶听",
+      "resourceId": "res-820eb3f1-8baa-4545-baa2-5ade7ab6e1fe",
+      "tid": 39,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/39"
+    },
+    {
+      "key": "c-puzzle",
+      "title": "谜题设计搭档 · 方棱",
+      "resourceId": "res-39fc1372-cce4-4e0a-b358-0225ff787aa6",
+      "tid": 40,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/40"
+    },
+    {
+      "key": "c-walk",
+      "title": "城市漫步笔友 · 余步",
+      "resourceId": "res-708d0244-a109-47ab-b255-bfa4a3668e87",
+      "tid": 49,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/49"
+    },
+    {
+      "key": "c-library",
+      "title": "工具借阅员 · 殷禾",
+      "resourceId": "res-6307a45f-e5dd-424c-ae3e-013bc04d5834",
+      "tid": 50,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/50"
+    },
+    {
+      "key": "w-star-ridge",
+      "title": "星台山观测札记",
+      "resourceId": "res-c5f75c8c-aa51-4924-a5e9-84cebccb7fec",
+      "tid": 30,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/30"
+    },
+    {
+      "key": "w-loop-workshop",
+      "title": "回环街修理合作社",
+      "resourceId": "res-3b0d84a5-61ab-4544-a97f-432e0046dcc6",
+      "tid": 51,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/51"
+    },
+    {
+      "key": "w-white-sail",
+      "title": "白帆潮湾测绘册",
+      "resourceId": "res-1b2dca9d-c366-4f94-b827-855fdae0160b",
+      "tid": 52,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/52"
+    },
+    {
+      "key": "w-grain-orbit",
+      "title": "穗环轨道温室",
+      "resourceId": "res-4549df89-3486-4329-8972-955371cc7622",
+      "tid": 53,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/53"
+    },
+    {
+      "key": "w-four-seasons",
+      "title": "四时流动剧团",
+      "resourceId": "res-ba874c56-247c-4166-abce-652f96b88508",
+      "tid": 54,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/54"
+    },
+    {
+      "key": "w-amber-route",
+      "title": "琥珀沙海商道",
+      "resourceId": "res-940344fd-8c43-4812-90cc-e979c3019e22",
+      "tid": 55,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/55"
+    },
+    {
+      "key": "t-porcelain",
+      "title": "晴瓷蓝",
+      "resourceId": "res-6b313656-bed7-437d-b222-925d5d0e5599",
+      "tid": 31,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/31"
+    },
+    {
+      "key": "t-apricot",
+      "title": "杏茶暖光",
+      "resourceId": "res-94698d2f-2eff-4dab-8fb7-f743a82f98b2",
+      "tid": 56,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/56"
+    },
+    {
+      "key": "t-indigo",
+      "title": "靛夜航线",
+      "resourceId": "res-39b2220e-06c1-4001-bc7c-c4f497785002",
+      "tid": 57,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/57"
+    },
+    {
+      "key": "t-plum",
+      "title": "梅雾纸页",
+      "resourceId": "res-e40d275f-7ba3-47e3-af52-5abb45b878e4",
+      "tid": 58,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/58"
+    },
+    {
+      "key": "t-graphite",
+      "title": "石墨工作台",
+      "resourceId": "res-4449b1d8-04bd-4fd6-ae79-101ca375c6a1",
+      "tid": 59,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/59"
+    },
+    {
+      "key": "t-terracotta",
+      "title": "陶土海盐",
+      "resourceId": "res-996436f5-d253-4c9e-b9e3-18d1f488f53d",
+      "tid": 60,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/60"
+    },
+    {
+      "key": "guide-character",
+      "title": "教程｜把社区角色安装到自己的小手机",
+      "tid": 41,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/41"
+    },
+    {
+      "key": "guide-worldbook",
+      "title": "教程｜独立世界书的绑定、触发与解除",
+      "tid": 42,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/42"
+    },
+    {
+      "key": "guide-theme",
+      "title": "教程｜切换配色主题并恢复原外观",
+      "tid": 43,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/43"
+    },
+    {
+      "key": "guide-version",
+      "title": "教程｜发布新版本与保留自己的安装副本",
+      "tid": 44,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/44"
+    },
+    {
+      "key": "discuss-relationship",
+      "title": "讨论｜不靠默认恋爱，哪种合作关系更想继续？",
+      "tid": 45,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/45"
+    },
+    {
+      "key": "discuss-trigger",
+      "title": "讨论｜世界书触发到哪里才算刚刚好？",
+      "tid": 46,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/46"
+    },
+    {
+      "key": "discuss-theme",
+      "title": "讨论｜你最先想调的是背景、文字还是聊天气泡？",
+      "tid": 47,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/47"
+    },
+    {
+      "key": "discuss-opening",
+      "title": "讨论｜一个小任务怎样才不会变成第二份工作？",
+      "tid": 48,
+      "version": "1.0.0",
+      "visible": true,
+      "forumUrl": "https://forum.community.yetland.cn/topic/48"
+    }
+  ]
+}

@@ -5,10 +5,12 @@ import { saveCharacters } from './character-storage';
 import { buildManagedRoleSettings, type ManagedRole } from './yelan-role-rules';
 import { hydrateSettingsDb } from './settings-db';
 import { kvSet } from './kv-db';
+import { applyCommunityTheme } from './community-theme';
+import type { CommunityThemeState } from '../../packages/shared/src/contracts/community-resources';
 
 export async function bootstrapYelanLocal() {
   if (isYelanManaged) {
-    const boot = await yelanRequest<{ userId: string; characters: ManagedRole[]; imageGeneration?: boolean }>('/phone/bootstrap');
+    const boot = await yelanRequest<{ userId: string; characters: ManagedRole[]; imageGeneration?: boolean; inspectionEnabled?: boolean; communityTheme?: CommunityThemeState }>('/phone/bootstrap');
     await hydrateSettingsDb();
     kvSet('yelan-image-enabled', String(Boolean(boot.imageGeneration)));
     const roleSettings = boot.characters.map(buildManagedRoleSettings);
@@ -37,9 +39,10 @@ export async function bootstrapYelanLocal() {
       for (const slot of Object.values(binding.appOverrides)) if (slot) slot.apiConfigId = `yelan:${character.id}`;
     }
     saveBindingConfig(bindings);
+    await applyCommunityTheme(boot.communityTheme);
     try {
       const { startPhoneInspection } = await import('./phone-inspection-client');
-      startPhoneInspection(boot.userId);
+      if (boot.inspectionEnabled !== false) startPhoneInspection(boot.userId);
     } catch { /* Inspection availability must not prevent the phone from opening. */ }
     return;
   }

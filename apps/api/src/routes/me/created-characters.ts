@@ -9,6 +9,7 @@ import { requireAuth } from '../../middleware/auth';
 import { validationHook } from '../../middleware/validation';
 import { charactersService } from '../../services/characters';
 import { getUserById } from '../../services/users';
+import { hasVoiceProfile } from '../../voice-hq/profiles';
 
 export const mockCreatedCharactersRoute = new Hono();
 // 创建角色卡需登录 —— 游客（无有效 token）一律 401，绝不落到匿名号。
@@ -25,6 +26,9 @@ mockCreatedCharactersRoute.post(
   (c) => {
     const userId = c.get('userId') as string;
     const payload = c.req.valid('json');
+    if (!hasVoiceProfile(payload.hqVoiceProfileId)) {
+      return c.json({ code: 'HQ_VOICE_UNAVAILABLE', message: '高质量音色不存在，请重新选择' }, 400);
+    }
     const created = charactersService.createFromUser(userId, payload);
     const user = getUserById(userId);
     // 后台档案视图：角色名 / 用户名 / id + 结构化原文（非拼装 prompt 原文，防注入）。

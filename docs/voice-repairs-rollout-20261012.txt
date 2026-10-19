@@ -1,0 +1,93 @@
+夜阑语音剩余修复上线与验收记录
+日期：2026-10-12（America/New_York）
+
+结论
+此前批准的播放器、HQ ASR入口/轮询、错误分类与诊断记录均已接入生产并上线，不再是隔离原型。
+相关功能验收通过。Live正常链路没有增加等待、重试或TTS，但此次真实生成回归7次中仍有2次握手前网络超时，因此不能把“所有语音请求都已稳定成功”作为验收结论。
+
+一、发布版本与范围
+API：yelan-api:voice-repairs-20261012-r2。
+国内前端：yelan-web-caddy:voice-repairs-cn-20261012。
+海外前端：yelan-web-caddy:voice-repairs-com-20261012。
+本机 Windows Docker Desktop 构建，上传镜像包后校验 SHA256，由服务器加载；没有在服务器全量安装依赖或构建。
+API基于原生产pagination-20261010镜像，仅覆盖本次语音相关源码、默认Live提示卡，以及本机构建的管理后台。双入口前端从当前仓库分别使用国内/海外域名构建。小手机镜像保持原版。
+采用独立维护代理短暂阻断新请求，等待当前语音任务结束，停止API写入并完成一致性备份，再替换对应容器，恢复原访问规则。
+R1上线后真实故障测试发现阿里云使用FILE_403_FORBIDDEN，补入文件下载错误分类；R2同时补充Live连接错误的networkCode诊断。
+
+二、已落实项与证据
+
+1. 播放器缓存、恢复与重播
+- PcmPlayer先复制音频到有上限的队列；未解锁、暂停时也安全接受，下载游标不再越过被丢弃的音频。
+- 限制未播数据不超过180秒PCM；保留网络半个PCM采样的拼接/精确续取机制。
+- Live文字在AudioContext实际开始播放后显示；暂停时提供“播放回复”；可从已保存音频重播，不重新调用模型。
+- HQ共用播放器同步接入；“已听完”只在全部声音播放结束后写入，恢复时不重复下载/合成。
+- 切换/退出清理待播及已排队声音和进度回调。
+验收：生产播放器源码在真实Edge AudioContext中6场景全通过：未解锁、收包前暂停、中途暂停后继续接收、网络拆分采样、重置清理、缓存上限。
+验收：已发布网页在Edge中3个Live场景通过：正常播放、暂停恢复、空音频报错；前两项分别重播一次，均只有1次生成提交，第二次仅续读音频。
+验收：已发布HQ网页2个场景通过：收包前暂停、中途暂停；每次只提交1次、下载1次，恢复后完整播放，完成前没有“已听完”标记。
+页面场景使用受控API响应与测试音频，验证的是已上线前端实际行为；不是调用外部模型的端到端麦克风测试。
+
+2. HQ ASR国内资产入口与快速轮询
+- 生产VOICE_ASR_PUBLIC_ORIGIN已改为https://yetland.cn。
+- 轮询前10秒间隔500ms，随后2秒，仍查询原taskId；未增加任何模型重试。
+- 保留旧origin签名至切换前所签链接的最长有效期，兼容期自动失效；未关闭签名验证。
+验收：同一原失败录音真实ASR提交3次，全部成功；提交到拿到转写分别1189ms、840ms、1438ms。错误签名均403。
+验收：完整HQ通过线上HTTP接口连续2轮，均经过真实ASR→文字主模型→Fish→音频持久化并可回解。
+第1轮：ASR1214ms、主模型3305ms、TTS14579ms；服务端合计19108ms。
+第2轮：ASR1815ms、主模型2722ms、TTS12453ms；服务端合计17003ms。
+两次声音均非静音，Ogg分别132806/111891字节；转写与音频均落库。
+测试使用已有“上线对话验收20261009”合成验收账号，按用户授权复用输入录音。两轮ASR管理员记录均显示国内assetOrigin及成功taskId、轮询次数和提供商时间。
+旧签名在兼容窗口内实际访问200。兼容期结束后旧签名按期限失效；新签名仍走国内入口。
+
+3. 错误分类、持久化和管理员查看
+- Live区分额度耗尽、限流、鉴权失败、网络连接失败；保存closeCode/networkCode、脱敏message、握手状态和已收音频字节数。
+- ASR区分UNKNOWN、文件下载/访问失败、其他终态失败、查询超时和连接失败。
+- UNKNOWN/下载失败/终态失败不显示“继续查询”作为无效恢复；等待超时、连接中断可继续查询原taskId。
+- 新增voice_provider_events表，按turnId/stage记录最近阶段详情，保留任务ID、状态、错误、提交/执行时间、轮询与本地耗时。
+- 管理后台“语音会话详情→服务诊断记录”可查看；普通用户接口不返回提供商详情。
+- URL、签名、Bearer和已知环境凭据在记录前脱敏，不保存完整录音链接。
+验收：真实阿里云UNKNOWN任务返回HQ_ASR_TASK_UNKNOWN；故意使用错误签名的录音得到FILE_403_FORBIDDEN，最终版本准确映射HQ_ASR_DOWNLOAD_FAILED。复核原失败taskId，没有重复提交该付费任务。
+验收：最终部署镜像的实际VoiceService、WebSocket客户端和管理员路由，在临时隔离库中注入额度/限流/鉴权关闭事件；3种均准确分类、落库、管理员可读、匿名401，每种只建立1次连接，无自动重试。重开数据库后记录仍在。
+验收：生产HQ的真实任务日志及音频在API再次重建后保留，匿名及普通用户访问管理员详情均401。
+
+4. Live低延迟约束与仍存在的问题
+- 保留已上线口语提示卡、gemini-3.8-live、角色音色、100ms输入发送节奏、500ms最终转写宽限、25秒原握手上限。
+- 没有增加模型请求、回退模型、补TTS、自动重试或固定等待。错误诊断只在失败时增加记录。
+- R1第一次Live文字验收在握手前失败；随后单独3轮Live全部返回有效音频。
+- R2最终回归：文字及原失败录音成功，对照录音出现握手前ETIMEDOUT，0音频/0回复，失败状态与原因正确记录。
+- 本次上线后的真实Live生成累计5/7成功，2/7是连接失败，未观察到已生成文字却零音频的模型异常。样本很小，不能作为生产成功率估计。
+- Node20当前启用自动地址族选择，单地址尝试250ms；域名返回2个IPv4和2个IPv6。进一步20组交替建连对照中默认与强制IPv4均20/20成功，不能由此证明切IPv4会修复偶发超时。
+- 因证据不足，没有上线强制IP、额外等待或自动重连方案；现有网络偶发失败仍未根治。模型生成成功也不等于物理设备已经听到声音。
+
+三、回归与最终状态
+初次相关回归90/90通过；增加真实FILE_403_FORBIDDEN回归后，受影响的4个测试文件38/38通过，覆盖集合共91项。
+API/Web/Admin TypeScript检查通过；双入口Web及Admin生产构建通过；最终API源码10个文件SHA256与本机发布清单一致。
+API最终healthy，重启计数0（新容器创建不计作内部重启）；yetland.cn与ingress.yetland.com首页均HTTP200。
+未做真实手机麦克风、iOS/Safari、蓝牙切换和人工扬声器听感验收；没有把浏览器AudioContext计时测试当作人工听感验证。
+
+四、备份与回滚
+初次完整配置/证书/数据备份：
+/root/yelan-releases/images/voice-repairs-20261012/backup
+R2切换前追加数据与Compose/入口备份：
+/root/yelan-releases/images/voice-repairs-20261012/backup-r2
+数据备份完整读取校验；初次停写备份的各SQLite quick_check均ok。备份仅服务器私有目录保存，不加入Git。
+镜像包SHA256：4c178d31086d56df05bd796e28a95de621f6decf974bc6c109d15987b2b16242
+最终API包SHA256：ae5806d51eb75978de68009dea946b3083a25af285a2625cd68a99495d85790a
+仅回退R2到R1：
+ssh yelan-server "python3 /root/yelan-releases/images/voice-repairs-20261012/deploy-r2.py --rollback"
+全套回退本轮发布前的API和双入口Web：
+ssh yelan-server "python3 /root/yelan-releases/images/voice-repairs-20261012/deploy.py --rollback"
+执行全套回滚前须等待当前ASR任务结束，并考虑新国内origin签名的TTL；旧代码不支持本次签名兼容逻辑。不要用旧数据快照覆盖上线后新增用户数据。新表为附加表，旧代码可忽略。
+
+五、原始证据目录
+D:\YL\.server\voice-repairs-20261012\
+- online-ui-results.json / online-hq-ui-results.json：已上线实际网页受控播放验收。
+- buffer-test-results.json：生产播放器6场景真实AudioContext验证。
+- yelan-voice-repairs-acceptance/results.json：真实ASR与完整HQ结果。
+- yelan-live-repairs-regression-20261012/results.json：R1 Live3次成功。
+- yelan-live-repairs-regression-r2/results.json：R2 Live2成功、1网络失败。
+- yelan-asr-fault-results.json：真实ASR错误分类。
+- yelan-fault-service-r2-results.json：最终镜像隔离故障→持久化→管理员读取。
+- yelan-final-check.json：源码一致性、旧签名兼容、持久化、权限与初次网络失败。
+- yelan-network-family.json：40次建连对照（不等于40次语音生成）。
+- deployment.json / deployment-r2.json：发布结果。

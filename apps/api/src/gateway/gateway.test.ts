@@ -408,6 +408,45 @@ describe('public API gateway (isolated SQLite + controlled upstream)', () => {
     expect(sent).toHaveLength(1);
     expect(db.overview(range()).failed).toBe(1);
   });
+  it.each([{ choices: [] }, { choices: [{ message: { content: '' } }] },
+    { choices: [{ message: { content: '\u200b' } }] },
+    { choices: [{ message: { content: null, reasoning_content: 'only thinking' }, finish_reason: 'length' }] }])(
+    'rejects a successful HTTP response without assistant output: %j', async ({ choices }) => {
+      responder = () => Response.json({ choices });
+      const response = await chat(key().secret);
+      expect(response.status).toBe(502);
+      expect(await response.json()).toMatchObject({ error: { code: 'UPSTREAM_EMPTY_RESPONSE' } });
+      expect(db.call(response.headers.get('x-request-id')!)).toMatchObject({ status: 'failed' });
+      expect(sent).toHaveLength(1);
+    },
+  );
+  it('keeps valid tool-only completions successful', async () => {
+    responder = () => Response.json({ choices: [{ message: { content: null,
+      tool_calls: [{ id: 'call-1', function: { name: 'ping', arguments: '{}' } }] }, finish_reason: 'tool_calls' }] });
+    const response = await chat(key().secret);
+    expect(response.status).toBe(200);
+    expect(db.call(response.headers.get('x-request-id')!)?.status).toBe('succeeded');
+  });
+  it('emits an explicit stream error for role/usage/DONE without output', async () => {
+    responder = () => new Response('data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n' +
+      'data: {"choices":[],"usage":{"completion_tokens":1}}\n\ndata: [DONE]\n\n',
+    { headers: { 'content-type': 'text/event-stream' } });
+    const response = await chat(key().secret, { ...body, stream: true } as typeof body);
+    const wire = await response.text();
+    expect(wire).toContain('UPSTREAM_EMPTY_RESPONSE');
+    expect(wire.match(/\[DONE\]/g)).toHaveLength(1);
+    expect(db.call(response.headers.get('x-request-id')!)).toMatchObject({
+      status: 'failed', errorCode: 'UPSTREAM_EMPTY_RESPONSE',
+    });
+    expect(sent).toHaveLength(1);
+  });
+  it('preserves valid tool-only streams', async () => {
+    const wire = 'data: {"choices":[{"delta":{"tool_calls":[{"id":"call-1","function":{"name":"ping","arguments":"{}"}}]}}]}\n\ndata: [DONE]\n\n';
+    responder = () => new Response(wire, { headers: { 'content-type': 'text/event-stream' } });
+    const response = await chat(key().secret, { ...body, stream: true } as typeof body);
+    expect(await response.text()).toBe(wire);
+    expect(db.call(response.headers.get('x-request-id')!)?.status).toBe('succeeded');
+  });
   it('holds account concurrency across both tiers and releases it after stream cancellation', async () => {
     db.setSettings({ ...db.settings(), accountConcurrency: 1 });
     db.publish(0);

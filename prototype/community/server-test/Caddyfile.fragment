@@ -1,0 +1,35 @@
+community.yetland.cn {
+  header X-Robots-Tag "noindex, nofollow, noarchive"
+  route {
+    handle /__community-access {
+      reverse_proxy community-test-gate:3042
+    }
+    forward_auth community-test-gate:3042 {
+      uri /check
+    }
+    reverse_proxy community-test-bridge:3038
+  }
+}
+
+forum.community.yetland.cn {
+  header X-Robots-Tag "noindex, nofollow, noarchive"
+  route {
+    forward_auth community-test-gate:3042 {
+      uri /check
+    }
+    reverse_proxy community-test-forum:4567
+  }
+}
+
+phone.community.yetland.cn {
+  header X-Robots-Tag "noindex, nofollow, noarchive"
+  header Content-Security-Policy "frame-ancestors https://community.yetland.cn"
+  route {
+    forward_auth community-test-gate:3042 {
+      uri /check
+    }
+    reverse_proxy community-test-phone:3001 {
+      flush_interval -1
+    }
+  }
+}

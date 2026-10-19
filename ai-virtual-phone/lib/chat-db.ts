@@ -24,6 +24,11 @@ class ChatDatabase extends Dexie {
 
 export const chatDb = new ChatDatabase();
 
+export async function readChatInspectionSnapshot() {
+    return chatDb.transaction('r',chatDb.sessions,chatDb.messages,chatDb.contacts,async()=>({sessions:await chatDb.sessions.toArray(),messages:await chatDb.messages.toArray(),contacts:await chatDb.contacts.toArray()}));
+}
+function notifyInspection(){if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('yelan-inspection-changed'));}
+
 // ── Initialization + Migration from localStorage ──
 
 const LS_MESSAGES_KEY = "ai_phone_chat_messages_v1";
@@ -143,16 +148,17 @@ function safeParse<T>(raw: string | null): T[] {
 // ── Async persistence helpers (fire-and-forget) ──
 
 export function dbPutMessage(msg: ChatMessage): void {
-    chatDb.messages.put(msg).catch(err => console.warn("[ChatDB] put message failed:", err));
+    chatDb.messages.put(msg).then(notifyInspection).catch(err => console.warn("[ChatDB] put message failed:", err));
 }
 
 /** Await durability before acknowledging an imported server voice turn. */
 export async function dbPutMessageAsync(msg: ChatMessage): Promise<void> {
     await chatDb.messages.put(msg);
+    notifyInspection();
 }
 
 export function dbPutMessages(msgs: ChatMessage[]): void {
-    chatDb.messages.bulkPut(msgs).catch(err => console.warn("[ChatDB] bulkPut messages failed:", err));
+    chatDb.messages.bulkPut(msgs).then(notifyInspection).catch(err => console.warn("[ChatDB] bulkPut messages failed:", err));
 }
 
 export function dbDeleteMessage(id: string): void {

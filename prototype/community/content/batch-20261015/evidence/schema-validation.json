@@ -1,0 +1,198 @@
+{
+  "checkedAt": "2026-10-15T06:00:21.123Z",
+  "schemaSource": "current SubmissionSchema and referenced Zod contracts",
+  "items": [
+    {
+      "key": "c-observatory",
+      "type": "character",
+      "bytes": 2666,
+      "schema": "passed"
+    },
+    {
+      "key": "c-repair",
+      "type": "character",
+      "bytes": 2663,
+      "schema": "passed"
+    },
+    {
+      "key": "c-tide",
+      "type": "character",
+      "bytes": 2582,
+      "schema": "passed"
+    },
+    {
+      "key": "c-orbit",
+      "type": "character",
+      "bytes": 2600,
+      "schema": "passed"
+    },
+    {
+      "key": "c-theatre",
+      "type": "character",
+      "bytes": 2477,
+      "schema": "passed"
+    },
+    {
+      "key": "c-dunes",
+      "type": "character",
+      "bytes": 2549,
+      "schema": "passed"
+    },
+    {
+      "key": "c-museum",
+      "type": "character",
+      "bytes": 2468,
+      "schema": "passed"
+    },
+    {
+      "key": "c-noodle",
+      "type": "character",
+      "bytes": 2510,
+      "schema": "passed"
+    },
+    {
+      "key": "c-audio",
+      "type": "character",
+      "bytes": 2540,
+      "schema": "passed"
+    },
+    {
+      "key": "c-puzzle",
+      "type": "character",
+      "bytes": 2537,
+      "schema": "passed"
+    },
+    {
+      "key": "c-walk",
+      "type": "character",
+      "bytes": 2429,
+      "schema": "passed"
+    },
+    {
+      "key": "c-library",
+      "type": "character",
+      "bytes": 2447,
+      "schema": "passed"
+    },
+    {
+      "key": "w-star-ridge",
+      "type": "worldbook",
+      "bytes": 4397,
+      "schema": "passed"
+    },
+    {
+      "key": "w-loop-workshop",
+      "type": "worldbook",
+      "bytes": 4313,
+      "schema": "passed"
+    },
+    {
+      "key": "w-white-sail",
+      "type": "worldbook",
+      "bytes": 4214,
+      "schema": "passed"
+    },
+    {
+      "key": "w-grain-orbit",
+      "type": "worldbook",
+      "bytes": 4211,
+      "schema": "passed"
+    },
+    {
+      "key": "w-four-seasons",
+      "type": "worldbook",
+      "bytes": 4184,
+      "schema": "passed"
+    },
+    {
+      "key": "w-amber-route",
+      "type": "worldbook",
+      "bytes": 4127,
+      "schema": "passed"
+    },
+    {
+      "key": "t-porcelain",
+      "type": "theme",
+      "bytes": 2217,
+      "schema": "passed"
+    },
+    {
+      "key": "t-apricot",
+      "type": "theme",
+      "bytes": 2239,
+      "schema": "passed"
+    },
+    {
+      "key": "t-indigo",
+      "type": "theme",
+      "bytes": 2229,
+      "schema": "passed"
+    },
+    {
+      "key": "t-plum",
+      "type": "theme",
+      "bytes": 2221,
+      "schema": "passed"
+    },
+    {
+      "key": "t-graphite",
+      "type": "theme",
+      "bytes": 2247,
+      "schema": "passed"
+    },
+    {
+      "key": "t-terracotta",
+      "type": "theme",
+      "bytes": 2235,
+      "schema": "passed"
+    },
+    {
+      "key": "guide-character",
+      "type": "tutorial",
+      "bytes": 1643,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "guide-worldbook",
+      "type": "tutorial",
+      "bytes": 1830,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "guide-theme",
+      "type": "tutorial",
+      "bytes": 1506,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "guide-version",
+      "type": "tutorial",
+      "bytes": 1740,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "discuss-relationship",
+      "type": "discussion",
+      "bytes": 947,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "discuss-trigger",
+      "type": "discussion",
+      "bytes": 875,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "discuss-theme",
+      "type": "discussion",
+      "bytes": 953,
+      "format": "markdown forum body"
+    },
+    {
+      "key": "discuss-opening",
+      "type": "discussion",
+      "bytes": 854,
+      "format": "markdown forum body"
+    }
+  ]
+}

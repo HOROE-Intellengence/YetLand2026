@@ -1,0 +1,94 @@
+name: yelan-community-test
+services:
+  gate:
+    image: yelan-api:empty-reply-20261013
+    container_name: community-test-gate
+    restart: unless-stopped
+    command: ['node', '/gate/access-gate.mjs']
+    environment:
+      COMMUNITY_GATE_CONFIG: /run/community/gate.json
+    volumes:
+      - ./source/prototype/community/server-test/access-gate.mjs:/gate/access-gate.mjs:ro
+      - ./secrets/gate.json:/run/community/gate.json:ro
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3042/check',{redirect:'manual',headers:{'X-Forwarded-Host':'community.yetland.cn'}}).then(r=>process.exit([204,303].includes(r.status)?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [community]
+  bridge:
+    image: yelan-api:empty-reply-20261013
+    container_name: community-test-bridge
+    restart: unless-stopped
+    command: ['node', 'apps/api/node_modules/tsx/dist/cli.mjs', '--tsconfig', 'apps/api/tsconfig.json', 'apps/api/src/community-prototype/server.ts']
+    environment:
+      DEPLOY_MODE: local
+      NODE_ENV: development
+      YELAN_STATE_DIR: /app/.local/community-prototype/accounts
+      COMMUNITY_NODEBB_URL: http://nodebb:4567
+      COMMUNITY_LISTEN_HOST: 0.0.0.0
+      COMMUNITY_PUBLIC_ORIGIN: https://community.yetland.cn
+      COMMUNITY_FORUM_ORIGIN: https://forum.community.yetland.cn
+      COMMUNITY_PHONE_ORIGIN: https://phone.community.yetland.cn
+      COMMUNITY_COOKIE_DOMAIN: community.yetland.cn
+    volumes:
+      - ./source/apps/api/src:/app/apps/api/src:ro
+      - ./source/packages/shared/src:/app/packages/shared/src:ro
+      - ./source/prototype/community/public:/app/prototype/community/public:ro
+      - ./data/state:/app/.local/community-prototype
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3038/api/resources').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [community]
+  redis:
+    image: bitnamilegacy/redis:8.0
+    container_name: community-test-redis
+    restart: unless-stopped
+    user: '0:0'
+    entrypoint: ['redis-server']
+    command: ['--appendonly', 'yes', '--dir', '/data', '--requirepass', '${COMMUNITY_REDIS_PASSWORD}']
+    volumes: ['./data/redis:/data']
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${COMMUNITY_REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [community]
+  nodebb:
+    image: ghcr.io/nodebb/nodebb@sha256:471cd975804086ad47f15e10c6c6d9c632721f0c444bf7eb1ce93c2540c4f53e
+    container_name: community-test-forum
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      NODEBB_URL: https://forum.community.yetland.cn
+      COMMUNITY_PUBLIC_ORIGIN: https://community.yetland.cn
+      COMMUNITY_FORUM_ORIGIN: https://forum.community.yetland.cn
+      YELAN_BRIDGE_SECRET: '${COMMUNITY_BRIDGE_SECRET}'
+    entrypoint: ['bash', '/prototype/boot-nodebb.sh']
+    volumes:
+      - ./data/config:/opt/config
+      - ./data/build:/usr/src/app/build
+      - ./data/uploads:/usr/src/app/public/uploads
+      - ./source/prototype/community/boot-nodebb.sh:/prototype/boot-nodebb.sh:ro
+      - ./source/prototype/community/configure-nodebb.cjs:/prototype/configure-nodebb.cjs:ro
+      - ./source/prototype/community/nodebb-plugin-yelan-local:/usr/src/app/node_modules/nodebb-plugin-yelan-local:ro
+    networks: [community]
+  phone:
+    image: yelan-phone:community-test-20261015
+    container_name: community-test-phone
+    restart: unless-stopped
+    environment:
+      YELAN_COMMUNITY_PROTOTYPE: 'true'
+      YELAN_PHONE_MANAGED: 'true'
+      NEXT_PUBLIC_YELAN_PHONE_MANAGED: 'true'
+      NEXT_PUBLIC_SELF_HOSTED_MODE: 'true'
+      NEXT_PUBLIC_YELAN_WEB_ORIGIN: https://community.yetland.cn
+      YELAN_API_ORIGIN: http://bridge:3038
+      NEXT_TELEMETRY_DISABLED: '1'
+    networks: [community]
+networks:
+  community:
+    name: yelan-community-test

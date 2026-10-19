@@ -1,0 +1,89 @@
+{
+  "type": "worldbook",
+  "title": "琥珀沙海商道",
+  "subtitle": "2 条常驻规则与 8 条关键词条目，让琥珀沙海商道有事可聊。",
+  "description": "【内容】琥珀沙海是架空奇幻商道，驿站与市集遵循可说明的交易约定。自然现象与路程不对应现实沙漠，不作真实户外指引。\n【结构】共 10 条：2 条常驻基础规则，8 条普通关键词条目（逗号分隔同义词，不使用正则），包含地点、人物、道具与事件。\n【适用角色】沙海驿站掌柜乌棠；也适用于用户自有的旅人、货单员或商队伙伴角色。这是独立条目包，与角色卡里描述背景的 worldbook 字段不是同一种结构。\n【安装绑定】先在“我的资源”确认已有自己的私有角色；打开本资源，选择“绑定到我的角色”，点“安装并绑定角色”。以后在“我的资源”使用“绑定所选角色”或“解绑 角色名”。只作用于小手机角色规则，不是主聊天全局世界书。\n【触发示例】输入“铜响市集今天开门吗？”将命中“铜响市集”；常驻两条不需要关键词。普通词是否命中依现有上下文组装，未提到的其他条目不应当作已触发。\n【保留与限制】绑定追加到现有规则，不清空预设、正则或用户条目；角色世界书合计上限 100 条，超出会拒绝绑定，应由用户自行整理，不自动截断。解绑移除包加入且未经改写的条目，用户手动修改或新增内容保留。重复安装使用同版本私有副本；更新需显式安装新版本。\n【来源】本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+  "tags": [
+    "独立世界书",
+    "小手机角色",
+    "10条设定"
+  ],
+  "version": "1.0.0",
+  "consent": true,
+  "worldbook": {
+    "schema": "yelan-worldbook",
+    "schemaVersion": 1,
+    "entries": [
+      {
+        "key": "",
+        "content": "琥珀沙海是架空奇幻商道，驿站与市集遵循可说明的交易约定。自然现象与路程不对应现实沙漠，不作真实户外指引。",
+        "constant": true,
+        "useRegex": false,
+        "position": "before_char"
+      },
+      {
+        "key": "",
+        "content": "来客有权保留身份、拒绝交易与改变方向；水与住处不用于胁迫。传言写明来源，不将预言当必然发生的事实。",
+        "constant": true,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "铜响市集,市集",
+        "content": "铜响市集用铜牌标摊位，牌上写物品现状和交换意向，不以喊价暗示真实货币行情；可以只逛不买。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "三泉驿,驿站",
+        "content": "三泉驿有静室、公共长桌和行李架，住客先选择是否听消息；掌柜不会向陌生人公开住客名单。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "路线凭条,路条",
+        "content": "路线凭条分已确认驿站与待核消息两栏；目的地可以留空，签名不是默认契约，不替用户作承诺。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "阿砾,货单员",
+        "content": "货单员阿砾只核对件数和封条状态，见到差异会并列写明，不直接指控旅人偷窃。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "玻璃砂瓶,砂瓶",
+        "content": "玻璃砂瓶中不同色层只作为旅途纪念，不能判断真实天气；是否交换纪念物须由物主同意。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "风铃桥,桥头",
+        "content": "风铃桥是连接市集与驿站的虚构地标，声音只表述故事氛围，不作风力或安全判断。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "停市日,封摊",
+        "content": "停市日摊主整理货单，来客可讨论未完成的交易；没有强制追债事件，冲突先核对约定。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      },
+      {
+        "key": "客桌地图,旧图",
+        "content": "客桌地图允许写新的故事地点，新增先问用户愿不愿意去；未知区域保持空白，不设强制命运路线。",
+        "constant": false,
+        "useRegex": false,
+        "position": "after_char"
+      }
+    ]
+  }
+}

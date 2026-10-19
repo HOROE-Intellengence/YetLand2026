@@ -738,6 +738,55 @@
   height: 24px;
 }
 
+/* 首轮回复后的星星引导：遮罩限制在聊天容器内，镂空处保留真实按钮。 */
+.chat-reply-guide {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.chat-reply-guide-mask {
+  position: absolute;
+  inset: 0;
+}
+
+.chat-reply-guide-mask path {
+  fill: rgb(15 23 42 / 66%);
+  pointer-events: visiblePainted;
+}
+
+.chat-reply-guide-spotlight {
+  position: absolute;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px rgb(255 255 255 / 16%), 0 0 24px rgb(255 255 255 / 32%);
+}
+
+.chat-reply-guide-hint {
+  position: absolute;
+  padding: 13px 18px;
+  border-radius: 14px;
+  background: #fff;
+  color: #172b3a;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 20%);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.chat-reply-guide-hint::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
 .chat-offline-toggle {
   position: relative;
 }

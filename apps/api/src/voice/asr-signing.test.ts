@@ -17,6 +17,18 @@ describe('ASR signed input audio', () => {
   let root: string, db: VoiceDatabase, input: VoiceAsset, other: VoiceAsset, output: VoiceAsset;
   const bytes = Buffer.from('OggS-example-persisted-audio');
   const auth = (id = 'one') => ({ Authorization: `Bearer token-${id}` });
+  it('accepts a previous-origin signature only during the bounded deployment overlap', () => {
+    const now = Date.now(), link = createAsrAudioLink(input, 'one', now);
+    const params = new URL(link.url!).searchParams;
+    vi.stubEnv('VOICE_ASR_PUBLIC_ORIGIN', 'https://domestic.example.com');
+    expect(verifyAsrAudioLink(input, params, now)).toBe(false);
+    vi.stubEnv('VOICE_ASR_PREVIOUS_ORIGIN', 'https://voice.example.com');
+    vi.stubEnv('VOICE_ASR_PREVIOUS_ORIGIN_UNTIL', String(Math.floor(now / 1000) + 900));
+    expect(verifyAsrAudioLink(input, params, now)).toBe(true);
+    expect(verifyAsrAudioLink(input, params, now + 900000)).toBe(false);
+    params.set('signature', '0'.repeat(64));
+    expect(verifyAsrAudioLink(input, params, now)).toBe(false);
+  });
   beforeEach(async () => {
     store.__resetForTests();
     for (const id of ['one', 'two']) {

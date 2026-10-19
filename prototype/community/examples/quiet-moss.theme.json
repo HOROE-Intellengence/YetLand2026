@@ -1,0 +1,21 @@
+{
+  "schema": "yelan-phone-theme",
+  "schemaVersion": 1,
+  "name": "苔绿手记",
+  "fontFamily": "system",
+  "cssOverrides": {
+    "--c-header-bg": "#f7f5ef",
+    "--c-page-body-bg": "#edf1e8",
+    "--c-card": "#f7f5efe8",
+    "--c-card-border": "#d5ddcf",
+    "--c-panel": "#f7f5ef",
+    "--c-panel-border": "#d5ddcf",
+    "--c-text-title": "#26332c",
+    "--c-text": "#526b58",
+    "--c-icon-active": "#526b58",
+    "--c-icon": "#81947e",
+    "--c-input": "#e5eadf",
+    "--c-bubble-self": "#d7e4d1",
+    "--c-bubble-other": "#f7f5ef"
+  }
+}

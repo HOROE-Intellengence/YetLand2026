@@ -60,5 +60,14 @@ export function verifyAsrAudioLink(asset: VoiceAsset, params: URLSearchParams, n
   const issued = Number(issuedRaw), expires = Number(expiresRaw), seconds = Math.floor(now / 1000);
   if (!Number.isSafeInteger(issued) || !Number.isSafeInteger(expires) ||
       issued > seconds + 30 || expires <= seconds || expires <= issued || expires - issued > MAX_TTL_SECONDS) return false;
-  return timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(signature(asset, issued, expires, config), 'hex'));
+  if (timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(signature(asset, issued, expires, config), 'hex'))) return true;
+  // A bounded deployment overlap keeps already-issued asset links valid while
+  // new ASR tasks use the domestic origin. Never derive an origin from Host.
+  const until = Number(process.env.VOICE_ASR_PREVIOUS_ORIGIN_UNTIL);
+  if (!Number.isSafeInteger(until) || seconds >= until || until - seconds > MAX_TTL_SECONDS || expires > until) return false;
+  try {
+    const previous = new URL(process.env.VOICE_ASR_PREVIOUS_ORIGIN ?? '');
+    if (previous.protocol !== 'https:' || previous.username || previous.password || previous.pathname !== '/' || previous.search || previous.hash) return false;
+    return timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(signature(asset, issued, expires, { ...config, origin: previous.origin }), 'hex'));
+  } catch { return false; }
 }

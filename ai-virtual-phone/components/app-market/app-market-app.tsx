@@ -1,5 +1,7 @@
 "use client";
 
+import { isYelanManaged } from "@/lib/yelan-managed-client";
+import { DevelopmentNotice } from "@/components/development-notice";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
@@ -301,7 +303,12 @@ function AppIcon({ iconDataUrl, seed = "", className = "" }: {
   );
 }
 
-export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onNotice, launchContext }: AppMarketAppProps) {
+export function AppMarketApp(props: AppMarketAppProps) {
+  if (isYelanManaged) return <DevelopmentNotice title="应用市场" onClose={props.onClose} />;
+  return <AvailableAppMarketApp {...props} />;
+}
+
+function AvailableAppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onNotice, launchContext }: AppMarketAppProps) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const repackInputRef = useRef<HTMLInputElement | null>(null);
   const manualLoadSeqRef = useRef(0);

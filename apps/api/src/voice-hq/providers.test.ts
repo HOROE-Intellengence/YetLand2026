@@ -1,9 +1,26 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { pollAsr, submitAsr, synthesize } from './providers';
+import { pollAsr, submitAsr, synthesize, asrPollInterval } from './providers';
+import { redactProviderText } from '../voice/provider-errors';
 const profile: HqProfile = { id: 'young-female', label: 'test', voiceName: 'test', model: 's2.1-pro-free', provider: 'fish', referenceId: 'fish-test-ref', speed: 1, libraryId: null, revision: 1, style: '' };
 import type { HqProfile } from './profiles';
 beforeEach(() => { vi.stubEnv('VOICE_HQ_FISH_API_KEY', 'test-tts'); vi.stubEnv('VOICE_HQ_ASR_API_KEY', 'test-asr'); });
 afterEach(() => vi.unstubAllEnvs());
+it.each([
+  ['UNKNOWN', '', 'HQ_ASR_TASK_UNKNOWN'],
+  ['FAILED', 'FILE_DOWNLOAD_FAILED', 'HQ_ASR_DOWNLOAD_FAILED'],
+  ['FAILED', 'FILE_403_FORBIDDEN', 'HQ_ASR_DOWNLOAD_FAILED'],
+  ['SUCCEEDED', 'FILE_DOWNLOAD_FAILED', 'HQ_ASR_DOWNLOAD_FAILED'],
+])('classifies %s and keeps redacted task evidence without resubmitting', async (status, code, expected) => {
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ output: { task_status: status,
+    submit_time: '2026-10-12 01:00:00', results: [{ subtask_status: 'FAILED', code, message: 'Failed https://host/audio?signature=secret Bearer test-asr' }] } }));
+  await expect(pollAsr('task-1', new AbortController().signal, fetcher, 1)).rejects.toMatchObject({ code: expected,
+    details: { taskId: 'task-1', taskStatus: status, providerCode: code, message: 'Failed [URL] Bearer [REDACTED]' } });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+it('bounds fast polling to ten seconds and redacts known secrets', () => {
+  expect([0,9999,10000,20000].map(asrPollInterval)).toEqual([500,500,2000,2000]);
+  expect(redactProviderText('key=test-asr https://example.test/?token=abc')).not.toContain('test-asr');
+});
 it('uses the exact free model header and reference id, returns real decoded PCM', async () => {
   const pcm = Buffer.alloc(4800, 1), h = Buffer.alloc(44);
   h.write('RIFF'); h.writeUInt32LE(36+pcm.length,4);h.write('WAVEfmt ',8);h.writeUInt32LE(16,16);h.writeUInt16LE(1,20);h.writeUInt16LE(1,22);h.writeUInt32LE(24000,24);h.writeUInt32LE(48000,28);h.writeUInt16LE(2,32);h.writeUInt16LE(16,34);h.write('data',36);h.writeUInt32LE(pcm.length,40);

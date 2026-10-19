@@ -95,6 +95,7 @@ export class VoiceService {
   }
   private fail(id: string, error: unknown): void {
     const code = error instanceof VoiceError ? error.code : 'VOICE_STORAGE_FAILED';
+    this.db.providerEvent(id, 'live_error', { code, ...(error instanceof VoiceError ? error.details : {}) });
     this.db.db.prepare('UPDATE turns SET status=?,errorCode=?,updatedAt=? WHERE id=?').run(
       code === 'VOICE_CANCELLED' ? 'interrupted' : 'failed', code, new Date().toISOString(), id);
   }

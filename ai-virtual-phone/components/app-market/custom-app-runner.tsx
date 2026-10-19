@@ -4,6 +4,9 @@ import { useCallback, useMemo, useRef, useState, useEffect, useLayoutEffect } fr
 import { CheckCircle2, Circle, FileJson, Layers, LoaderCircle, MoreHorizontal, RefreshCw, Sparkles, Trash2, X } from "lucide-react";
 
 import type { InstalledCustomApp } from "@/lib/custom-app-types";
+import { previewCaptureScript, retainPreviewScene } from '@/lib/phone-preview-capture';
+import { isYelanManaged } from '@/lib/yelan-managed-client';
+import { DevelopmentNotice } from '@/components/development-notice';
 import {
   readCustomAppCollection,
   uninstallCustomAppAsync,
@@ -530,7 +533,7 @@ html, body { min-height: 100%; }
 })();
 </script>`;
 
-  const safeBridge = bridge;
+  const safeBridge = bridge + (isYelanManaged ? previewCaptureScript(frameId) : '');
   if (/<head[\s>]/i.test(base)) {
     return base.replace(/<head([^>]*)>/i, `<head$1>${safeBridge}`);
   }
@@ -795,7 +798,14 @@ function serializeToolContext(context: CustomAppToolExecutorPayload["context"]):
   };
 }
 
-export function CustomAppRunner({
+export function CustomAppRunner(props: CustomAppRunnerProps) {
+  if (isYelanManaged) {
+    return props.embedded ? null : <DevelopmentNotice title="自定义应用" onClose={props.onClose} />;
+  }
+  return <AvailableCustomAppRunner {...props} />;
+}
+
+function AvailableCustomAppRunner({
   app,
   onClose,
   onNotice,
@@ -1934,6 +1944,7 @@ export function CustomAppRunner({
       const data = event.data;
       if (!data || typeof data !== "object") return;
       const record = data as Record<string, unknown>;
+      if(record.type==='yelan.inspection.scene'&&record.frameId===frameId){void retainPreviewScene(app.id,record.html,record.media,record.at);return;}
       if (record.source !== "ai-phone-custom-app-frame" || record.frameId !== frameId) return;
       if (record.type === "event.complete") {
         if (!backgroundEvent || record.backgroundRunId !== backgroundEvent.runId) return;

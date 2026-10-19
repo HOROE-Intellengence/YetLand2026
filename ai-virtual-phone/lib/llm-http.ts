@@ -12,6 +12,10 @@ export type FetchLlmPayloadOptions = {
     signal?: AbortSignal;
 };
 
+export function hasVisibleReplyText(text: string): boolean {
+    return text.replace(/\u00AD|\u034F|\u180E|[\u200B-\u200F]|[\u2060-\u2064]|\uFEFF/g, '').trim().length > 0;
+}
+
 export async function fetchLlmPayload(
     payload: LlmRequestPayload,
     options: FetchLlmPayloadOptions = {},

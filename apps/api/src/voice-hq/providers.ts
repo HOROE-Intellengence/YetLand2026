@@ -4,11 +4,11 @@ import { decodeAudio } from '../voice/audio';
 import type { HqProfile } from './profiles';
 import asrDefault from './asr-provider.json';
 import { voiceFetch } from '../voice/local-proxy';
+import { redactProviderText } from '../voice/provider-errors';
 
 export type Fetch = typeof fetch;
 async function json(url: string, init: RequestInit, fetcher: Fetch, limit = 24 * 1024 * 1024): Promise<Record<string, unknown>> {
   const response = await fetcher(url, { ...init, redirect: 'error' });
-  if (!response.ok) throw new VoiceError(`HQ_UPSTREAM_HTTP_${response.status}`, 502);
   if (Number(response.headers.get('content-length')) > limit) throw new VoiceError('HQ_UPSTREAM_TOO_LARGE', 502);
   const reader = response.body?.getReader(); if (!reader) throw new VoiceError('HQ_UPSTREAM_EMPTY', 502);
   const chunks: Uint8Array[] = []; let total = 0;
@@ -19,8 +19,12 @@ async function json(url: string, init: RequestInit, fetcher: Fetch, limit = 24 *
       chunks.push(value);
     }
   } finally { reader.releaseLock(); }
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>; }
-  catch { throw new VoiceError('HQ_UPSTREAM_INVALID_JSON', 502); }
+  let data: Record<string, unknown>;
+  try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>; }
+  catch { throw new VoiceError(response.ok ? 'HQ_UPSTREAM_INVALID_JSON' : `HQ_UPSTREAM_HTTP_${response.status}`, 502); }
+  if (!response.ok) throw new VoiceError(`HQ_UPSTREAM_HTTP_${response.status}`, 502,
+    { httpStatus: response.status, providerCode: redactProviderText(data.code), message: redactProviderText(data.message) });
+  return data;
 }
 function httpsBase(raw: string): string {
   const url = new URL(raw);
@@ -83,27 +87,46 @@ function output(data: Record<string, unknown>): Record<string, unknown> {
   if (data.output_result && typeof data.output_result === 'object') return output(data.output_result as Record<string, unknown>);
   return data;
 }
-export async function submitAsr(url: string, signal: AbortSignal, fetcher: Fetch = voiceFetch): Promise<string> {
+export async function submitAsr(url: string, signal: AbortSignal, fetcher: Fetch = voiceFetch,
+  onDiagnostic?: (details: Record<string, unknown>) => void): Promise<string> {
   const cfg = asrConfig();
+  const started = Date.now();
   const data = await json(`${cfg.base}/services/audio/asr/transcription`, {
     method: 'POST', headers: { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json', 'X-DashScope-Async': 'enable' },
     body: JSON.stringify({ model: cfg.model, input: { file_urls: [url] }, parameters: { channel_id: [0] } }),
     signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
   }, fetcher, 1024 * 1024);
   const taskId = output(data).task_id;
-  if (typeof taskId !== 'string' || !/^[\w-]{1,150}$/.test(taskId)) throw new VoiceError('HQ_ASR_SUBMISSION_UNKNOWN', 502);
+  if (typeof taskId !== 'string' || !/^[\w-]{1,150}$/.test(taskId)) throw new VoiceError('HQ_ASR_SUBMISSION_UNKNOWN', 502,
+    { providerCode: redactProviderText(data.code), message: redactProviderText(data.message) });
+  onDiagnostic?.({ provider: 'aliyun-asr', taskId, assetOrigin: new URL(url).origin, submissionMs: Date.now() - started });
   return taskId;
 }
-export async function pollAsr(taskId: string, signal: AbortSignal, fetcher: Fetch = voiceFetch, intervalMs = 2000): Promise<string> {
+export const asrPollInterval = (elapsedMs: number) => elapsedMs < 10000 ? 500 : 2000;
+export async function pollAsr(taskId: string, signal: AbortSignal, fetcher: Fetch = voiceFetch, intervalMs?: number,
+  onDiagnostic?: (details: Record<string, unknown>) => void): Promise<string> {
   const cfg = asrConfig();
   const bounded = AbortSignal.any([signal, AbortSignal.timeout(180000)]);
+  const started = Date.now(); let lastStatus = '', polls = 0;
+  let diagnostic: Record<string, unknown> = { provider: 'aliyun-asr', taskId };
+  try {
   while (!bounded.aborted) {
     const data = output(await json(`${cfg.base}/tasks/${encodeURIComponent(taskId)}`, {
       headers: { Authorization: `Bearer ${cfg.key}` }, signal: bounded,
     }, fetcher, 1024 * 1024));
-    if (data.task_status === 'PENDING' || data.task_status === 'RUNNING') { await delay(intervalMs, undefined, { signal: bounded }); continue; }
     const results = data.results as Array<{ subtask_status: string; transcription_url: string }> | undefined;
-    if (data.task_status !== 'SUCCEEDED' || results?.length !== 1 || results[0]?.subtask_status !== 'SUCCEEDED') throw new VoiceError('HQ_ASR_TASK_FAILED', 502);
+    const subtask = results?.[0] as Record<string, unknown> | undefined;
+    diagnostic = { provider: 'aliyun-asr', taskId, taskStatus: data.task_status, subtaskStatus: subtask?.subtask_status,
+      providerCode: redactProviderText(subtask?.code ?? data.code), message: redactProviderText(subtask?.message ?? data.message),
+      submitTime: redactProviderText(data.submit_time), scheduledTime: redactProviderText(data.scheduled_time ?? data.schedule_time), endTime: redactProviderText(data.end_time),
+      pollCount: ++polls, elapsedMs: Date.now() - started };
+    if (data.task_status !== lastStatus) { onDiagnostic?.(diagnostic); lastStatus = String(data.task_status); }
+    if (data.task_status === 'PENDING' || data.task_status === 'RUNNING') { await delay(intervalMs ?? asrPollInterval(Date.now() - started), undefined, { signal: bounded }); continue; }
+    if (data.task_status !== 'SUCCEEDED' || results?.length !== 1 || results[0]?.subtask_status !== 'SUCCEEDED') {
+      const code = data.task_status === 'UNKNOWN' ? 'HQ_ASR_TASK_UNKNOWN' :
+        /FILE_(?:401|403|404|5\d\d)_|(?:FILE|AUDIO|URL).*DOWNLOAD|DOWNLOAD.*(?:FILE|AUDIO|URL)/i.test(String(diagnostic.providerCode)) ? 'HQ_ASR_DOWNLOAD_FAILED' : 'HQ_ASR_TASK_FAILED';
+      throw new VoiceError(code, 502, diagnostic);
+    }
     const resultUrl = new URL(results[0].transcription_url);
     if (resultUrl.protocol !== 'https:' || resultUrl.username || resultUrl.password || !resultUrl.hostname.endsWith('.aliyuncs.com')) throw new VoiceError('HQ_ASR_RESULT_URL', 502);
     const result = await json(resultUrl.href, { signal: bounded }, fetcher, 2 * 1024 * 1024); // No API key sent to storage.
@@ -112,5 +135,11 @@ export async function pollAsr(taskId: string, signal: AbortSignal, fetcher: Fetc
     if (!text || text.length > 4000) throw new VoiceError('HQ_ASR_EMPTY_OR_TOO_LONG', 422);
     return text;
   }
-  throw new VoiceError('HQ_ASR_TIMEOUT', 504);
+  } catch (error) {
+    if (signal.aborted) throw new VoiceError('HQ_CANCELLED', 409, diagnostic);
+    if (bounded.aborted) throw new VoiceError('HQ_ASR_TIMEOUT', 504, { ...diagnostic, elapsedMs: Date.now() - started });
+    if (error instanceof VoiceError) throw new VoiceError(error.code, error.status, error.details ?? diagnostic);
+    throw new VoiceError('HQ_ASR_CONNECTION_FAILED', 502, diagnostic);
+  }
+  throw new VoiceError(signal.aborted ? 'HQ_CANCELLED' : 'HQ_ASR_TIMEOUT', signal.aborted ? 409 : 504, diagnostic);
 }

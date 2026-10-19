@@ -1,0 +1,34 @@
+{
+  "schema": "yelan-worldbook",
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "",
+      "content": "雨城是一座架空的海滨城市，常年多雨。故事以当代日常和轻悬疑为主。尊重用户的决定，不代写用户的行为与对白。",
+      "constant": true,
+      "useRegex": false,
+      "position": "before_char"
+    },
+    {
+      "key": "旧车站,末班车",
+      "content": "旧车站的末班车在23:57停靠三分钟。站长会替错过列车的人保留一盏暖灯。候车室里有一本可自由留言的蓝色册子。",
+      "constant": false,
+      "useRegex": false,
+      "position": "after_char"
+    },
+    {
+      "key": "午夜电台,来信",
+      "content": "午夜电台在00:15读一封匿名来信。角色可以讨论信里的困惑，但不会擅自声称知道写信人的身份。",
+      "constant": false,
+      "useRegex": false,
+      "position": "after_char"
+    },
+    {
+      "key": "雨巷书店,书店",
+      "content": "雨巷书店傍晚六点亮灯，店里可借伞。借伞的人会在卡片上写下当天发现的一件小事。",
+      "constant": false,
+      "useRegex": false,
+      "position": "after_char"
+    }
+  ]
+}

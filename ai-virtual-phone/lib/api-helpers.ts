@@ -51,6 +51,7 @@ export function buildRequestHeaders(config: ApiConfig, baseUrl: string): Record<
     if (isYelanManaged && baseUrl.startsWith('/api/host/phone/')) return {
         ...yelanHeaders(),
         ...(config.yelanBranchId ? { 'X-Yelan-Memory-Branch': encodeURIComponent(config.yelanBranchId) } : {}),
+        ...(config.yelanTrace ? {'X-Yelan-Call-Trace':encodeURIComponent(JSON.stringify(config.yelanTrace))}:{}),
     };
     const headers: Record<string, string> = {
         "Content-Type": "application/json",

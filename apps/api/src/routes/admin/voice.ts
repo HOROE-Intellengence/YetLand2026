@@ -85,6 +85,7 @@ export function createAdminVoiceRoute(
       createdAt: t.createdAt,
       status: t.status,
       errorCode: t.errorCode,
+      providerEvents: db.providerEvents(t.id),
       inputText: t.inputText,
       outputText: t.outputText,
       inputTranscriptComplete: Boolean(t.inputTranscriptComplete),

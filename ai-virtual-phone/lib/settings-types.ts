@@ -145,6 +145,7 @@ export type RegexConfig = SettingItemMeta & {
 export type ApiConfig = {
     /** Request-local managed memory scope; never a provider credential. */
     yelanBranchId?: string;
+    yelanTrace?: {sourceApp:string;sessionId?:string;operation?:string;turnId?:string};
     id: string;
     name?: string;
     provider: string;

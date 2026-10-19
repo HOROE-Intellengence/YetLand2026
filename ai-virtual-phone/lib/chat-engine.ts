@@ -8,6 +8,7 @@ import { emitChatPluginEvent, runChatPluginTransform } from "./chat-plugin-hooks
 import { buildChatPluginPromptFragments } from "./chat-plugin-storage";
 import type { LlmRequestPayload } from "./chat-plugin-types";
 import type { Character } from "./character-types";
+import { tracePhoneCall } from './phone-call-trace';
 import {
     ChatSession,
     ChatMessage,
@@ -54,7 +55,7 @@ import {
 } from "./llm-provider-adapter";
 import { setDebugPromptSnapshot, type DebugPromptSnapshot } from "./debug-store";
 import { extractFinishReason } from "./api-helpers";
-import { fetchLlmPayload } from "./llm-http";
+import { fetchLlmPayload, hasVisibleReplyText } from "./llm-http";
 import { loadMemoryConfig, incrementEventCounter } from "./memory-storage";
 import { retrieveCoreMemoriesForPrompt, retrieveMemoriesForPrompt } from "./memory-service";
 import { formatCoreMemories, formatLongTermMemories } from "./memory-injector";
@@ -815,6 +816,7 @@ export async function sendLLMStreamRequest(
     } : undefined;
     const requestMessages = toLlmRequestMessages(afterPlugins.messages);
     const request = buildProviderRequest(config, effectivePreset, requestMessages, { stream: true });
+    tracePhoneCall(request,options);
     publishDebugPromptSnapshot({ request, config, preset: effectivePreset, meta, options, requestKind: "completion" });
     const llmAbort = new AbortController();
     const llmTimeout = setTimeout(() => llmAbort.abort(), 500_000);
@@ -838,7 +840,7 @@ export async function sendLLMStreamRequest(
             },
         };
         const { content: streamedContent, rawResponse } = await readSseStream(response, request.providerKind, streamLogCallbacks, !options?.skipTimestampStrip);
-        if (!streamedContent.trim()) {
+        if (!hasVisibleReplyText(streamedContent)) {
             throw new ChatEngineError("流式响应没有解析到文本增量。");
         }
         let rawOutput = options?.skipTimestampStrip ? streamedContent.trim() : stripHallucinatedTimestamps(streamedContent.trim());
@@ -866,6 +868,9 @@ export async function sendLLMStreamRequest(
                 followUpCount: options?.followUpCount,
             });
             rawOutput = applyOutputRegex(rawOutput, regexes, { macroEngine, activeTags });
+        }
+        if (!hasVisibleReplyText(rawOutput)) {
+            throw new ChatEngineError("本次回复没有可显示的内容，请检查文本规则或重试。");
         }
         return { content: rawOutput, rawResponse, providerKind: request.providerKind };
     } catch (error: unknown) {
@@ -909,6 +914,7 @@ export async function sendLLMRequest(
     const effectivePreset = afterPlugins.preset;
     const requestMessages = toLlmRequestMessages(afterPlugins.messages);
     const request = buildProviderRequest(config, effectivePreset, requestMessages);
+    tracePhoneCall(request,options);
     publishDebugPromptSnapshot({ request, config, preset: effectivePreset, meta, options, requestKind: "completion" });
     const requestBodyJson = JSON.stringify(request.body);
     const requestBodySize = requestBodyJson.length;
@@ -965,7 +971,7 @@ export async function sendLLMRequest(
 
         rawOutput = await applyChatPluginLlmResponse(rawOutput, pluginPurpose, options?.debugSessionId);
 
-        if (!rawOutput && parsed.toolCalls.length === 0) {
+        if (!hasVisibleReplyText(rawOutput) && parsed.toolCalls.length === 0) {
             const emptyDetails = emptyResponseDetails(parsed.raw);
             console.warn("[ChatEngine] Empty response from API!", {
                 provider: config.provider,
@@ -1003,7 +1009,11 @@ export async function sendLLMRequest(
             appTags: options?.appTags,
             followUpCount: options?.followUpCount,
         });
-        return applyOutputRegex(rawOutput, regexes, { macroEngine, activeTags });
+        const filteredOutput = applyOutputRegex(rawOutput, regexes, { macroEngine, activeTags });
+        if (!hasVisibleReplyText(filteredOutput)) {
+            throw new ChatEngineError("本次回复没有可显示的内容，请检查文本规则或重试。");
+        }
+        return filteredOutput;
     } catch (error: unknown) {
         if (error instanceof DOMException && (error as DOMException).name === "AbortError") {
             throw new ChatEngineError("AI 回复超时（500秒），请重试。");
@@ -1104,6 +1114,7 @@ export async function sendLLMToolStreamRequest(
     const afterPlugins = await applyChatPluginLlmRequest(preset, messages, pluginPurpose, options?.debugSessionId);
     const effectivePreset = afterPlugins.preset;
     const request = buildProviderRequest(config, effectivePreset, afterPlugins.messages, { tools, stream: true, maxTokens: options?.maxTokens });
+    tracePhoneCall(request,options);
     publishDebugPromptSnapshot({ request, config, preset: effectivePreset, meta, options, requestKind: "native-tools-stream", tools });
     const llmAbort = new AbortController();
     const llmTimeout = setTimeout(() => llmAbort.abort(), 500_000);
@@ -1258,6 +1269,7 @@ export async function sendLLMToolRequest(
     const afterPlugins = await applyChatPluginLlmRequest(preset, messages, pluginPurpose, options?.debugSessionId);
     const effectivePreset = afterPlugins.preset;
     const request = buildProviderRequest(config, effectivePreset, afterPlugins.messages, { tools });
+    tracePhoneCall(request,options);
     publishDebugPromptSnapshot({ request, config, preset: effectivePreset, meta, options, requestKind: "native-tools", tools });
     const llmAbort = new AbortController();
     const llmTimeout = setTimeout(() => llmAbort.abort(), 500_000);
@@ -2644,6 +2656,9 @@ async function generateChatCompletionCore(
         }
         // 剔除预设配置的文本片段（<思考结束> 等残留标签），不进入消息/提示词
         filteredOutput = stripPresetTexts(filteredOutput, preset);
+        if (!hasVisibleReplyText(filteredOutput)) {
+            throw new ChatEngineError("本次回复没有可显示的内容，请检查文本规则或重试。");
+        }
 
         // Parse actions (朋友圈 etc) — strip from display text but keep tool tags
         const { cleanText: afterActionStrip, actions } = parseActionTags(filteredOutput);

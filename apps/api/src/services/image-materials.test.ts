@@ -4,9 +4,45 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { ImageMaterials, imageThumbnail, THUMBNAIL_LIMIT } from './image-materials';
+import { ImageMaterials, imageThumbnail, THUMBNAIL_LIMIT, MATERIAL_IMAGE_LIMIT, materialContent } from './image-materials';
 
 describe('generated image material persistence', () => {
+  it('retains small legacy image originals even when a thumbnail cannot be decoded',async()=>{
+    const root=mkdtempSync(join(tmpdir(),'yelan-materials-opaque-')),store=new ImageMaterials(root);
+    try{
+      const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><text>A & B</text></svg>');
+      const file=await store.retain({userId:'u1',data:svg,mime:'image/svg+xml',source:'phone-inspection'});
+      expect(file.data).toEqual(svg);expect(store.list(1).items[0]).toMatchObject({originalAvailable:true,thumbnailDataUrl:null});
+    }finally{store.db.close();rmSync(root,{recursive:true,force:true});}
+  });
+  it('keeps legacy ten-column writers working and labels their thumbnail-only records honestly',()=>{
+    const root=mkdtempSync(join(tmpdir(),'yelan-materials-legacy-')),store=new ImageMaterials(root);
+    try{
+      store.db.prepare('INSERT INTO image_materials VALUES (?,?,?,?,?,?,?,?,?,?)').run('old','u1',null,'旧生成图','model','2026-10-18',Buffer.from('preview'),7,1,1);
+      expect(store.list(1).items[0]).toMatchObject({id:'old',source:'generated',originalAvailable:false});
+      expect(store.get('old')?.data.toString()).toBe('preview');
+    }finally{store.db.close();rmSync(root,{recursive:true,force:true});}
+  });
+  it('preserves small images and all non-image resources byte-for-byte',async()=>{
+    const png=await sharp({create:{width:20,height:20,channels:4,background:'#00ffaa80'}}).png().toBuffer();
+    expect((await materialContent(png,'image/png')).data).toEqual(png);
+    const audio=randomBytes(MATERIAL_IMAGE_LIMIT+10);
+    expect(await materialContent(audio,'audio/ogg')).toEqual({data:audio,mime:'audio/ogg'});
+  });
+  it('retains a large image below 2 MB with its full preview, owner isolation and stable retry identity',async()=>{
+    const root=mkdtempSync(join(tmpdir(),'yelan-materials-full-')),store=new ImageMaterials(root);
+    try{
+      const image=await sharp(randomBytes(1100*1100*3),{raw:{width:1100,height:1100,channels:3}}).png().toBuffer();
+      expect(image.length).toBeGreaterThan(MATERIAL_IMAGE_LIMIT);
+      const file=await store.retain({userId:'u1',mime:'image/png',data:image,source:'user-upload',fileName:'照片.png'});
+      expect(file.data.length).toBeLessThanOrEqual(MATERIAL_IMAGE_LIMIT);expect(file.originalBytes).toBe(image.length);expect(file.mime).toBe('image/webp');
+      expect((await sharp(file.data).metadata()).width).toBe(1100);
+      expect(store.get(file.id,'u2')).toBeUndefined();
+      expect((await store.retain({userId:'u1',mime:'image/png',data:image,source:'user-upload'})).id).toBe(file.id);
+      expect(store.list(1,'u1').items[0]?.originalAvailable).toBe(true);
+      store.link(file.id,'record-1','聊天图片');expect(store.list(1,'u1').items[0]?.links).toEqual([{recordKey:'record-1',title:'聊天图片'}]);
+    }finally{store.db.close();rmSync(root,{recursive:true,force:true});}
+  });
   it('compresses a complex image below 200 KB and removes source metadata', async () => {
     const source = await sharp(randomBytes(1600 * 1600 * 3), { raw: { width: 1600, height: 1600, channels: 3 } }).png().toBuffer();
     const thumbnail = await imageThumbnail(source);

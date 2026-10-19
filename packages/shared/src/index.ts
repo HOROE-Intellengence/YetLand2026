@@ -31,3 +31,5 @@ export * from './pipeline/stage-engine';
 export * from './pipeline/sentence-segmenter';
 export * from './prompts/render';
 export * from './repository';
+export { latestUserInput, readingBlocks, recordLabel, type ReadingBlock } from './utils/record-reader';
+export * from './utils/phone-records';

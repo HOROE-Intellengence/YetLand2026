@@ -25,12 +25,8 @@ export interface VoiceDiagnosticResult {
   outputAudio: { id: string; bytes: number; durationMs: number; sha256: string } | null;
 }
 
-export const HqVoiceProfileIdSchema = z.enum([
-  'mature-female',
-  'mature-male',
-  'young-male',
-  'young-female',
-]);
+// Stable entry IDs; availability is checked against the configured voice list by the API.
+export const HqVoiceProfileIdSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 export type HqVoiceProfileId = z.infer<typeof HqVoiceProfileIdSchema>;
 export const HQ_VOICE_OPTIONS = [
   { value: 'mature-female', label: '成熟女' },
@@ -38,6 +34,10 @@ export const HQ_VOICE_OPTIONS = [
   { value: 'young-male', label: '少年男' },
   { value: 'young-female', label: '少女' },
 ] as const;
+export const HqVoiceOptionsResponseSchema = z.object({
+  options: z.array(z.object({ value: HqVoiceProfileIdSchema, label: z.string().min(1).max(40) })),
+});
+export type HqVoiceOptionsResponse = z.infer<typeof HqVoiceOptionsResponseSchema>;
 export function defaultHqVoiceProfile(voiceName?: string): HqVoiceProfileId {
   return voiceName === 'Charon'
     ? 'mature-male'
@@ -88,11 +88,15 @@ export const FishReferenceIdSchema = z
   .regex(/^[a-zA-Z0-9_-]{1,100}$/);
 export const FishSlotWriteSchema = z
   .object({
+    label: z.string().trim().min(1).max(40).optional(),
     referenceId: FishReferenceIdSchema.nullable(),
     speed: z.number().min(0.5).max(1.5).default(1),
     reason: z.string().trim().min(1).max(500),
   })
   .strict();
+export const FishSlotCreateSchema = FishSlotWriteSchema.extend({
+  label: z.string().trim().min(1).max(40),
+});
 export const FishPreviewSchema = z
   .object({
     referenceId: FishReferenceIdSchema.nullable().default(null),
@@ -102,6 +106,7 @@ export const FishPreviewSchema = z
   .strict();
 export interface FishVoiceSlot {
   category: HqVoiceProfileId;
+  label: string;
   referenceId: string | null;
   speed: number;
   revision: number;

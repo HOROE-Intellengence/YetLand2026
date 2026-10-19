@@ -16,6 +16,11 @@ const ERRORS: Record<string, string> = {
   VOICE_RESPONSE_TIMEOUT: '回复超时，请稍后再试。',
   AUDIO_TOO_LONG: '录音请控制在两分钟以内。',
   AUDIO_EMPTY: '没有录到声音，请再试一次。',
+  VOICE_UPSTREAM_CREDITS_EXHAUSTED: '语音服务额度暂不可用，请联系管理员。',
+  VOICE_UPSTREAM_RATE_LIMITED: '语音服务繁忙，请稍后再试。',
+  VOICE_UPSTREAM_AUTH_FAILED: '语音服务配置异常，请联系管理员。',
+  VOICE_EMPTY_OR_INCOMPLETE_AUDIO: '这次未生成完整声音，请重新说一句。',
+  PLAYBACK_BUFFER_LIMIT: '待播音频过长，请点击重播已保存的回复。',
 };
 
 export function VoiceScene() {
@@ -33,6 +38,8 @@ export function VoiceScene() {
   const [currentReply, setCurrentReply] = useState<VoiceTurnResponse | null>(null);
   const displayTurnId = useRef<string | null>(null);
   const [recoverable, setRecoverable] = useState(false);
+  const [needsPlay, setNeedsPlay] = useState(false);
+  const [playbackStarted, setPlaybackStarted] = useState(false);
   const player = useRef(new PcmPlayer());
   const closed = useRef(false);
   const storageKey = `yelan.voiceSession.${getCurrentUserId() ?? 'guest'}`;
@@ -50,6 +57,8 @@ export function VoiceScene() {
   useEffect(() => {
     alive.current = true;
     const pcmPlayer = player.current;
+    pcmPlayer.onStart = () => { if (alive.current) setPlaybackStarted(true); };
+    pcmPlayer.onStateChange = () => { if (alive.current) setNeedsPlay(pcmPlayer.needsPlay); };
     const controller = new AbortController();
     request.current = controller;
     let saved: string | null = null;
@@ -96,6 +105,7 @@ export function VoiceScene() {
   }
   function stopPlayback() {
     player.current.stop();
+    setPlaybackStarted(false);
   }
   function updateTurn(turn: VoiceTurnResponse) {
     if (!alive.current || displayTurnId.current !== turn.id) return;
@@ -103,7 +113,7 @@ export function VoiceScene() {
   }
   async function watchTurn(initial: VoiceTurnResponse, controller: AbortController, startedAt?: number) {
     const base = `/api/voice/sessions/${initial.sessionId}/turns/${initial.id}`;
-    let offset = 0, heard = false, firstChunk = false, polling = true;
+    let offset = 0, firstChunk = false, polling = true;
     const deadline = Date.now() + 240000;
     const wait = () => new Promise(resolve => setTimeout(resolve, 900));
     const refresh = async () => {
@@ -130,8 +140,7 @@ export function VoiceScene() {
               firstChunk = true;
               console.info('[voice timing]', JSON.stringify({ turnId: initial.id, event: 'first-audio', elapsedMs: startedAt === undefined ? null : Math.round(performance.now() - startedAt), playbackScheduled: playing }));
             }
-            heard ||= playing;
-            if (playing) setNotice('正在为你播放');
+            setNotice(player.current.needsPlay ? '回复已准备好，点击播放。' : '正在为你播放');
           });
           const turn = await api<VoiceTurnResponse>(base, { signal: controller.signal });
           if (controller.signal.aborted) return;
@@ -141,11 +150,12 @@ export function VoiceScene() {
             await player.current.drain(controller.signal);
             if (controller.signal.aborted) return;
             if (turn.status !== 'complete') throw new ApiError(422, turn.errorCode || 'VOICE_RESPONSE_TIMEOUT', '');
-            setNotice(heard ? '听完了，慢慢说。' : '回复已保存。');
+            setNotice(player.current.finished && offset ? '听完了，慢慢说。' : '回复已准备好，点击播放。');
             setError(''); setRecoverable(false); return;
           }
         } catch (e) {
           if (controller.signal.aborted) return;
+          if ((e as { code?: string }).code === 'PLAYBACK_BUFFER_LIMIT') throw e;
           if (e instanceof ApiError && e.status < 500) throw e;
           setNotice('连接中断，正在续取原回复…');
         }
@@ -153,6 +163,24 @@ export function VoiceScene() {
       }
       if (!controller.signal.aborted) { setRecoverable(true); throw { code: 'VOICE_RESPONSE_TIMEOUT' }; }
     } finally { polling = false; }
+  }
+  async function playSavedReply() {
+    if (!currentReply) return;
+    const replay = !player.current.needsPlay;
+    try {
+      if (player.current.needsPlay) {
+        await player.current.unlock();
+        await player.current.drain(request.current?.signal ?? new AbortController().signal);
+        if (alive.current && player.current.finished) setNotice('听完了，慢慢说。');
+      } else {
+        request.current?.abort(); stopPlayback();
+        const controller = new AbortController(); request.current = controller;
+        lock.current = true; setPhase('busy');
+        await player.current.unlock();
+        await watchTurn(currentReply, controller);
+      }
+    } catch (e) { report(e); }
+    finally { if (replay) { lock.current = false; if (alive.current) setPhase('idle'); } }
   }
   async function restore(id: string, controller: AbortController, resumeLatest = false) {
     lock.current = true; setPhase('busy'); setNotice('正在恢复会话…'); setError('');
@@ -284,7 +312,7 @@ export function VoiceScene() {
 
   const replyText = error
     ? `${error}${recoverable ? ' 按语音按钮恢复会话。' : ''}`
-    : characterError ? '角色加载失败，请返回后重试。' : currentReply?.outputText ?? '';
+    : characterError ? '角色加载失败，请返回后重试。' : playbackStarted ? currentReply?.outputText ?? '' : '';
   const micLabel = error.includes('登录') ? '重新登录'
     : recoverable ? '恢复会话' : phase === 'recording' ? '正在录音，松开发送' : '按住说话，松开发送';
 
@@ -307,6 +335,7 @@ export function VoiceScene() {
         </>}
         <p className={`${styles.reply} ${error || characterError ? styles.error : ''}`} role={error || characterError ? 'alert' : undefined} aria-live="polite">{replyText}</p>
         <div className={styles.controls}>
+          {(needsPlay || (currentReply?.outputAudioUrl && phase === 'idle')) && <button className={styles.primary} onClick={() => void playSavedReply()}>{needsPlay ? '播放回复' : '重播回复'}</button>}
           <p className={conversationStarted ? styles.srOnly : styles.status} role="status">{phase === 'recording' ? `录音中 · ${seconds}s · 松开发送` : notice || '按住麦克风说话，松开发送'}</p>
           <button type="button" aria-label={micLabel} aria-pressed={phase === 'recording'}
             className={`${styles.mic} ${phase === 'recording' ? styles.recording : ''}`} disabled={phase === 'busy' || (!characterId && !recoverable && !error.includes('登录'))}

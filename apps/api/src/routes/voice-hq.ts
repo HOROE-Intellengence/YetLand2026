@@ -6,6 +6,7 @@ import { getDeployMode } from '../config/deploy-mode';
 import { hqVoiceService, type HqVoiceService } from '../voice-hq/service';
 import { MAX_UPLOAD_BYTES, MAX_OUTPUT_SECONDS, VoiceError } from '../voice/config';
 import { readAudio, decodeAudio } from '../voice/audio';
+import { voiceOptions } from '../voice-hq/profiles';
 
 export function createHqVoiceRoute(getService: () => HqVoiceService = hqVoiceService): Hono {
   const app = new Hono();
@@ -16,6 +17,7 @@ export function createHqVoiceRoute(getService: () => HqVoiceService = hqVoiceSer
     return c.json({ code: err.code }, err.status as 400 | 404 | 408 | 409 | 413 | 422 | 429 | 500 | 502 | 503);
   });
   app.get('/config', c => c.json({ localTest: getDeployMode() === 'local', replay: false }));
+  app.get('/profiles', c => c.json(voiceOptions(getService().db)));
   app.post('/sessions', bodyLimit({ maxSize: 20000 }), async c => {
     const body = HqSessionCreateSchema.safeParse(await c.req.json().catch(() => null));
     if (!body.success) throw new VoiceError('VALIDATION_ERROR');

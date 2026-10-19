@@ -1327,7 +1327,7 @@ export async function runCustomAppAiChat(app: InstalledCustomApp, record: Record
     ].filter(Boolean) as { role: string; content: string }[];
   const timeoutMs = optionalCustomAppTimeoutMs(record.timeoutMs);
   const result = await withOptionalCustomAppTimeout(timeoutMs, "ai.chat", signal => (
-    simpleLLMCall(config, messages, {
+    simpleLLMCall({...config,yelanTrace:{sourceApp:`custom_app:${app.id}`.slice(0,100),sessionId:cleanText(record.sessionId,200)||undefined,operation:'ai.chat'}}, messages, {
       temperature: typeof record.temperature === "number" ? record.temperature : undefined,
       max_tokens: typeof record.maxTokens === "number" ? record.maxTokens : typeof record.max_tokens === "number" ? record.max_tokens : undefined,
       signal,

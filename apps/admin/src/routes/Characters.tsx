@@ -8,7 +8,7 @@ import {
   type AdminCharactersPatch,
   type AdminCharacterJsonResponse,
   type CharacterProfileSection,
-  type VoiceName, type HqVoiceProfileId, HQ_VOICE_OPTIONS, defaultHqVoiceProfile,
+  type VoiceName, type HqVoiceProfileId, type FishVoiceSettings, defaultHqVoiceProfile,
   VOICE_OPTIONS, DEFAULT_VOICE_NAME,
   PhoneRoleRulesSchema, type PhoneRoleRules,
 } from '@yelan/shared';
@@ -33,6 +33,7 @@ interface Character {
   phoneRules?: PhoneRoleRules;
   origin?: Origin;
   ownerUserId?: string | null;
+  ownerUserName?: string;
   visibility?: 'private' | 'public';
   reviewStatus?: ReviewStatus;
 }
@@ -63,6 +64,7 @@ export function Characters() {
   const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<Character | null>(null);
   const [pendingOnly, setPendingOnly] = useState(false);
+  const [creator, setCreator] = useState('');
   const [jsonView, setJsonView] = useState<AdminCharacterJsonResponse | null>(null);
 
   const load = async () => {
@@ -151,7 +153,9 @@ export function Characters() {
   }
 
   const pendingCount = chars.filter((c) => c.reviewStatus === 'pending').length;
-  const visible = pendingOnly ? chars.filter((c) => c.reviewStatus === 'pending') : chars;
+  const creatorKey = (row: Character) => row.ownerUserId || (row.origin === 'user' ? '__unknown__' : '__platform__');
+  const creators = [...new Map(chars.map(row => [creatorKey(row), row.ownerUserName || (row.origin === 'user' ? '未知用户' : '平台创建')])).entries()];
+  const visible = chars.filter(row => (!pendingOnly || row.reviewStatus === 'pending') && (!creator || creatorKey(row) === creator));
   const tabs = <nav aria-label="角色管理分区" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
     <button className={`btn ${inspectionTab === 'characters' ? 'btn-primary' : ''}`} onClick={() => setInspectionTab('characters')}>角色卡</button>
     <button className={`btn ${inspectionTab === 'worldview' ? 'btn-primary' : ''}`} onClick={() => setInspectionTab('worldview')}>世界观</button>
@@ -182,6 +186,13 @@ export function Characters() {
         </div>
       </div>
 
+      <label className="field" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>创建用户
+        <select aria-label="角色卡创建用户" style={{ width: 'auto', maxWidth: '100%' }} value={creator} onChange={event => setCreator(event.target.value)}>
+          <option value="">全部创建用户</option>
+          {creators.map(([id, name]) => <option key={id} value={id}>{name}{id.startsWith('__') ? '' : `（${id}）`}</option>)}
+        </select>
+        <small className="text-muted">{visible.length} 张角色卡</small>
+      </label>
       {visible.length === 0 ? (
         <div className="state-placeholder"><UserCheck size={32} /><span>{pendingOnly ? '没有待审角色卡' : '暂无角色卡'}</span></div>
       ) : (
@@ -200,6 +211,7 @@ export function Characters() {
                   <td>{c.name}</td>
                   <td>
                     <span className={`badge ${isUser ? 'badge-warn' : 'badge-ok'}`}>{isUser ? '用户' : 'admin'}</span>
+                    {isUser && <div>{c.ownerUserName || '未知用户'}</div>}
                     {isUser && c.ownerUserId && (
                       <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{c.ownerUserId}</div>
                     )}
@@ -300,6 +312,22 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
   const [preludeCardId, setPreludeCardId] = useState(initial?.preludeCardId ?? '');
   const [voiceName, setVoiceName] = useState<VoiceName>(initial?.voiceName ?? DEFAULT_VOICE_NAME);
   const [hqVoiceProfileId, setHqVoiceProfileId] = useState<HqVoiceProfileId>(initial?.hqVoiceProfileId ?? defaultHqVoiceProfile(initial?.voiceName ?? DEFAULT_VOICE_NAME));
+  const [hqVoices, setHqVoices] = useState<FishVoiceSettings['slots']>([]);
+  const [hqVoiceError, setHqVoiceError] = useState('');
+  const [hqVoiceLoading, setHqVoiceLoading] = useState(true);
+  const [hqVoiceReload, setHqVoiceReload] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setHqVoiceLoading(true); setHqVoiceError('');
+    void api.get<FishVoiceSettings>('/api/admin/voice-hq')
+      .then(value => { if (active) setHqVoices(value.slots); })
+      .catch(e => { if (active) setHqVoiceError((e as Error).message); })
+      .finally(() => { if (active) setHqVoiceLoading(false); });
+    const refresh = () => setHqVoiceReload(value => value + 1);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, [hqVoiceReload]);
+  const hqVoiceReady = !hqVoiceLoading && !hqVoiceError && hqVoices.some(voice => voice.category === hqVoiceProfileId);
   const [styleTags, setStyleTags] = useState((initial?.styleTags ?? []).join(', '));
   const [forbiddenPhrases, setForbiddenPhrases] = useState((initial?.forbiddenPhrases ?? []).join('、'));
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -325,7 +353,7 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason) return;
+    if (!reason || !hqVoiceReady) return;
     let phoneRules: PhoneRoleRules;
     try {
       phoneRules = PhoneRoleRulesSchema.parse({ preset: phonePreset, worldBook: JSON.parse(phoneWorldBook), regexes: JSON.parse(phoneRegexes) });
@@ -375,10 +403,13 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
               {VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
             </select>
             <label htmlFor="character-hq-voice">高质量语音音色</label>
-            <select id="character-hq-voice" value={hqVoiceProfileId} onChange={e => setHqVoiceProfileId(e.target.value as HqVoiceProfileId)}>
-              {HQ_VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+            <select id="character-hq-voice" value={hqVoiceProfileId} disabled={hqVoiceLoading || Boolean(hqVoiceError)} onChange={e => setHqVoiceProfileId(e.target.value)}>
+              {!hqVoices.some(v => v.category === hqVoiceProfileId) && <option value={hqVoiceProfileId} disabled>{hqVoiceLoading ? '正在加载音色…' : '原音色不可用，请重新选择'}</option>}
+              {hqVoices.map(v => <option key={v.category} value={v.category}>{v.label}</option>)}
             </select>
-            <p className="muted">四类默认音色在「语音配置与测试」中填写 Fish ID，保存后下一轮生效。</p>
+            {hqVoiceError && <p role="alert">音色加载失败：{hqVoiceError}</p>}
+            <button type="button" className="btn btn-sm" disabled={hqVoiceLoading} onClick={() => setHqVoiceReload(value => value + 1)}>刷新音色列表</button>
+            <p className="muted">可在「语音配置与测试」中新增或修改高质量音色，保存后下一轮生效。</p>
           </div>
           <div className="field">
             <label>烛价</label>
@@ -474,7 +505,7 @@ function CharacterForm({ initial, preludeCards, onSave, onCancel }: {
           </div>
           <div className="modal-actions">
             <button type="button" className="btn" onClick={onCancel}>取消</button>
-            <button type="submit" className="btn btn-primary">{initial ? '保存' : '创建'}</button>
+            <button type="submit" className="btn btn-primary" disabled={!hqVoiceReady}>{initial ? '保存' : '创建'}</button>
           </div>
         </form>
       </div>

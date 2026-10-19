@@ -1,0 +1,34 @@
+Live 语音提示词修复上线记录
+上线时间：2026-10-12 02:13:25 America/New_York（06:13:25 UTC）
+
+变更
+通过线上管理接口 PATCH /api/admin/prelude-cards/voice-global，仅更新 content 为已实测通过的4句口语规则。移除小说式旁白、动作及引号格式要求；角色卡、共同记忆、历史、模型、音色与网络发送/收尾参数继续沿用原有实现。
+同步仓库 packages/prompts/prelude-cards/voice-global.md，作为新环境默认卡。现有环境由持久化后台卡控制，修改默认文件本身不会覆盖现有后台卡。
+此为后台配置热更新，没有构建/替换镜像，也没有重启服务。镜像仍为 yelan-api:pagination-20261010，API healthy，重启次数0。
+
+核验
+管理接口回读与磁盘 state.json 内容一致；voice-global 其他字段保持不变；其他提示卡逐项摘要一致。
+25/25 现有回归测试通过：Live后台、真实SQLite/FFmpeg、历史/提示卡热更新、隔离鉴权、HQ不使用Live卡。
+首次测试命令误匹配 .server 下旧发布副本，导致12个旧副本依赖加载失败；排除 .server 后目标2个测试文件全部通过。未修改依赖或测试配置。
+
+通过线上真实HTTP接口完成同一诊断会话连续3轮：
+1. 文字输入：complete，流式PCM 97,922字节，Ogg 5,381字节，回解PCM 97,922字节，RMS 0.0905。
+2. 此前失败的用户录音：complete，流式PCM 152,160字节，Ogg 9,351字节，回解PCM 152,160字节，RMS 0.0816。
+3. 对照用户录音：complete，流式PCM 226,082字节，Ogg 14,154字节，回解PCM 226,082字节，RMS 0.0749。
+三轮均确认实际落库prompt使用新规则且包含角色卡；模型均gemini-3.8-live；流式音频和保存音频均存在且非静音。
+诊断会话3d0aee2a-3455-488b-a265-74af96708a51，已关闭；诊断标记阻止写入角色长期记忆。复用录音沿用本会话用户授权。
+管理员接口匿名访问返回401。没有新增等待、重试、串联TTS。
+本次未测试真实麦克风采集、浏览器扬声器或人工听感；3轮线上成功结合此前14轮候选成功，不代表所有输入永不失败。
+
+备份与回滚
+容器持久化备份目录：/app/apps/api/.local/ops-backups/live-prompt-2026-10-12T06-13-24-847Z
+宿主路径：/root/yelan-releases/phone-c68ffa1/infra/deploy/_data/ops-backups/live-prompt-2026-10-12T06-13-24-847Z
+备份含原提示卡、修改前state快照、变更核验结果。目录私有，含敏感配置，不上传Git或分享。
+回滚脚本默认只预检，已通过；正式回滚命令（本次未执行）：
+ssh yelan-server "docker exec yelan-release-api node /app/apps/api/.local/ops-backups/live-prompt-2026-10-12T06-13-24-847Z/rollback.mjs rollback"
+脚本仅恢复旧voice-global.content；如果上线后该卡再被编辑，将拒绝覆盖。不要拿完整state快照覆盖上线后产生的业务数据。
+
+证据
+D:\YL\.server\voice-live-resume-20261012\yelan-live-rollout-20261012\results.json
+D:\YL\.server\voice-live-resume-20261012\Live官方协议与修复验证.txt
+本次变更范围仅为批准的Live口语提示词方案；先前播放器、HQ ASR及错误分类方案不包含在本次上线中。

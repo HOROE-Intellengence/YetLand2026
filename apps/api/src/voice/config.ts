@@ -15,7 +15,7 @@ export const MAX_HISTORY_TURNS = 100;
 export const VOICE_MODEL = 'gemini-3.8-live';
 
 export class VoiceError extends Error {
-  constructor(public readonly code: string, public readonly status = 400) {
+  constructor(public readonly code: string, public readonly status = 400, public readonly details?: Record<string, unknown>) {
     super(code);
   }
 }

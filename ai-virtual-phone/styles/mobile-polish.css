@@ -1,0 +1,50 @@
+/* Managed phone: readable controls and a full viewport, including embedded use. */
+@media (max-width: 650px) {
+  html[data-yelan-managed="true"] {
+    --phone-screen-width: 100vw;
+    --phone-screen-height: var(--phone-visible-height, 100dvh);
+    -webkit-text-size-adjust: 100%;
+  }
+  html[data-yelan-managed="true"], html[data-yelan-managed="true"] body {
+    width: 100%; height: var(--phone-screen-height); min-height: 0; overflow: hidden;
+  }
+  html[data-yelan-managed="true"] .app-root {
+    width: 100%; height: var(--phone-screen-height); min-height: 0; margin: 0; padding: 0;
+    overflow: hidden;
+  }
+  html[data-yelan-managed="true"] .phone-shell-wrap {
+    --phone-case-padding: 0px; --phone-case-border-size: 0px; --phone-frame-size: 0px;
+    --phone-screen-radius: 0px; --phone-frame-radius: 0px; --phone-case-radius: 0px;
+    display: block; width: 100%; min-width: 0; gap: 0; margin: 0; zoom: 1;
+  }
+  html[data-yelan-managed="true"] :is(.phone-case, .phone-frame) { width: 100%; min-width: 0; max-width: 100%; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  html[data-yelan-managed="true"] :is(.phone-case, .phone-frame)::before,
+  html[data-yelan-managed="true"] :is(.phone-case, .phone-frame)::after { display: none; }
+  html[data-yelan-managed="true"] .phone-shell { width: 100%; height: var(--phone-screen-height); border-radius: 0; }
+  html[data-yelan-managed="true"][data-mobile-keyboard-open="true"] .phone-shell-wrap { transform: none; transition: none; }
+  html[data-yelan-managed="true"] .page-header-content { grid-template-columns: 44px minmax(0, 1fr) 44px; min-height: 48px; padding-inline: 10px; }
+  html[data-yelan-managed="true"] .page-back-btn { min-width: 44px; min-height: 44px; }
+  html[data-yelan-managed="true"] .page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(17px * var(--app-text-scale, 1)); }
+  html[data-yelan-managed="true"] .page-body { overscroll-behavior-y: contain; scroll-padding-bottom: 28px; }
+  html[data-yelan-managed="true"] .phone-shell :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) { font-size: max(16px, 1em); }
+  html[data-yelan-managed="true"] .phone-shell :is(.ui-btn, .ui-input, .ui-select) { min-height: 44px; }
+  html[data-yelan-managed="true"] :is(.modal-dialog, .modal-expand, .bottom-sheet) { max-width: calc(100% - 24px); max-height: calc(var(--phone-screen-height) - 32px); }
+  html[data-yelan-managed="true"] .modal-body { overflow-y: auto; min-height: 0; overscroll-behavior-y: contain; }
+  html[data-yelan-managed="true"] .modal-footer { flex-wrap: wrap; gap: 10px; }
+  html[data-yelan-managed="true"] .chat-input-bar { padding-inline: 12px; }
+  html[data-yelan-managed="true"] :is(.chat-bubble-role-user, .chat-bubble-role-assistant) { font-size: calc(15px * var(--app-text-scale, 1)); line-height: 1.7; }
+  html[data-yelan-managed="true"] .chat-bubble-role-user { color: var(--c-text-title); }
+  html[data-yelan-managed="true"] .chat-input-textarea { min-height: 44px; font-size: max(16px, calc(16px * var(--app-text-scale, 1))); line-height: 1.6; }
+  html[data-yelan-managed="true"] .chat-input-bar .chat-input-actions { gap: 0; justify-content: space-around; }
+  html[data-yelan-managed="true"] .chat-input-actions .ui-bare-btn { min-width: 44px; min-height: 44px; flex: 0 1 52px; }
+  html[data-yelan-managed="true"] .chat-app { --page-header-content-height: 54px; }
+  html[data-yelan-managed="true"][data-mobile-keyboard-open="true"] .chat-input-bar { padding-bottom: 6px; }
+}
+@media (max-width: 373px) {
+  html[data-yelan-managed="true"] :is(.icon-grid, .dock) { --slot-size: 16.92vw; --slot-gap-x: 5.13vw; --slot-icon-width: 15.9vw; --slot-icon-height: 15.9vw; }
+  html[data-yelan-managed="true"] .icon-glyph-box, html[data-yelan-managed="true"] .dock .dock-glyph-box { width: 14.87vw; height: 14.87vw; }
+  html[data-yelan-managed="true"] .dock { width: min(calc((var(--dock-count) * var(--slot-size)) + ((var(--dock-count) - 1) * var(--slot-gap-x)) + 30px), calc(100% - 8px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-yelan-managed="true"] .phone-shell-wrap { transition: none; }
+}

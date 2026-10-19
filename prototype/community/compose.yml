@@ -1,0 +1,77 @@
+name: yelan-community-prototype
+services:
+  bridge:
+    image: yelan-api:empty-reply-20261013
+    command:
+      [
+        'node',
+        'apps/api/node_modules/tsx/dist/cli.mjs',
+        '--tsconfig',
+        'apps/api/tsconfig.json',
+        'apps/api/src/community-prototype/server.ts',
+      ]
+    environment:
+      DEPLOY_MODE: local
+      NODE_ENV: development
+      YELAN_STATE_DIR: /app/.local/community-prototype/accounts
+      COMMUNITY_NODEBB_URL: http://nodebb:4567
+      COMMUNITY_LISTEN_HOST: 0.0.0.0
+    ports: ['127.0.0.1:3038:3038']
+    volumes:
+      - ../../apps/api/src:/app/apps/api/src:ro
+      - ../../packages/shared/src:/app/packages/shared/src:ro
+      - ./public:/app/prototype/community/public:ro
+      - ../../.local/community-prototype:/app/.local/community-prototype
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3038/api/resources').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: bitnamilegacy/redis:8.0
+    user: '0:0'
+    entrypoint: ['redis-server']
+    command:
+      ['--appendonly', 'yes', '--dir', '/data', '--requirepass', '${COMMUNITY_REDIS_PASSWORD}']
+    volumes: ['community-redis:/data']
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${COMMUNITY_REDIS_PASSWORD}', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  nodebb:
+    image: ghcr.io/nodebb/nodebb@sha256:471cd975804086ad47f15e10c6c6d9c632721f0c444bf7eb1ce93c2540c4f53e
+    depends_on:
+      redis: { condition: service_healthy }
+    ports: ['127.0.0.1:4567:4567']
+    environment:
+      NODEBB_URL: http://localhost:4567
+      NODEBB_PORT: '4567'
+      NODEBB_ADMIN_USERNAME: yelan-local-admin
+      NODEBB_ADMIN_EMAIL: admin@community.example.test
+      NODEBB_ADMIN_PASSWORD: '${COMMUNITY_ADMIN_PASSWORD}'
+      NODEBB_DB: redis
+      NODEBB_DB_HOST: redis
+      NODEBB_DB_PORT: '6379'
+      NODEBB_DB_PASSWORD: '${COMMUNITY_REDIS_PASSWORD}'
+      NODEBB_DB_NAME: '0'
+      YELAN_BRIDGE_SECRET: '${COMMUNITY_BRIDGE_SECRET}'
+    entrypoint: ['bash', '/prototype/boot-nodebb.sh']
+    volumes:
+      - community-config:/opt/config
+      - community-build:/usr/src/app/build
+      - community-uploads:/usr/src/app/public/uploads
+      - ./boot-nodebb.sh:/prototype/boot-nodebb.sh:ro
+      - ./configure-nodebb.cjs:/prototype/configure-nodebb.cjs:ro
+      - ./nodebb-plugin-yelan-local:/usr/src/app/node_modules/nodebb-plugin-yelan-local:ro
+volumes:
+  community-redis:
+  community-config:
+  community-build:
+  community-uploads:

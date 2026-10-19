@@ -25,6 +25,16 @@ export function createSseJsonParser(): SseJsonParser {
         }
     };
 
+    const checkErrors = (values: unknown[]): unknown[] => {
+        for (const item of values) {
+            const value = item as { __yelan_error?: boolean; error?: { message?: string } } | null;
+            if (value?.__yelan_error || value?.error) {
+                throw new Error(value.error?.message || '回复未完整收到，请稍后重试。');
+            }
+        }
+        return values;
+    };
+
     const consumeRecord = (record: string, out: unknown[]): void => {
         if (!record || record === "[DONE]") {
             if (record === "[DONE]") carry = "";
@@ -73,17 +83,13 @@ export function createSseJsonParser(): SseJsonParser {
                 }
             }
             for (const record of records) consumeRecord(record, out);
-            for (const item of out) {
-                const error = item as { __yelan_error?: boolean; error?: { message?: string } } | null;
-                if (error?.__yelan_error) throw new Error(error.error?.message || '回复未完整收到，请稍后重试。');
-            }
-            return out;
+            return checkErrors(out);
         },
         flush(): unknown[] {
             if (!carry) return [];
             const last = tryParse(carry);
             carry = "";
-            return last.ok ? [last.value] : [];
+            return last.ok ? checkErrors([last.value]) : [];
         },
     };
 }

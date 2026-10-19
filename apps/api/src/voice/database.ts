@@ -74,11 +74,23 @@ export class VoiceDatabase {
         requestHash TEXT NOT NULL, mode TEXT NOT NULL, kind TEXT NOT NULL,
         inputText TEXT NOT NULL, createdAt TEXT NOT NULL, errorCode TEXT
       );
+      CREATE TABLE IF NOT EXISTS voice_provider_events (
+        turnId TEXT NOT NULL REFERENCES turns(id), stage TEXT NOT NULL,
+        details TEXT NOT NULL, updatedAt TEXT NOT NULL, PRIMARY KEY(turnId, stage)
+      );
     `);
   }
   recover(): void {
     // This is a single-process backend. Never silently resubmit an uncertain paid request.
     this.db.prepare("UPDATE turns SET status='interrupted', errorCode='PROCESS_RESTARTED', updatedAt=? WHERE status='processing'").run(new Date().toISOString());
+  }
+  providerEvent(turnId: string, stage: string, details: Record<string, unknown>): void {
+    this.db.prepare('INSERT INTO voice_provider_events VALUES (?,?,?,?) ON CONFLICT(turnId,stage) DO UPDATE SET details=excluded.details,updatedAt=excluded.updatedAt')
+      .run(turnId, stage, JSON.stringify(details), new Date().toISOString());
+  }
+  providerEvents(turnId: string): Array<{ stage: string; details: Record<string, unknown>; updatedAt: string }> {
+    return (this.db.prepare('SELECT stage,details,updatedAt FROM voice_provider_events WHERE turnId=? ORDER BY updatedAt').all(turnId) as Array<{ stage: string; details: string; updatedAt: string }>)
+      .map(row => ({ ...row, details: JSON.parse(row.details) }));
   }
   session(id: string): VoiceSession | undefined {
     return this.db.prepare('SELECT * FROM sessions WHERE id=?').get(id) as VoiceSession | undefined;

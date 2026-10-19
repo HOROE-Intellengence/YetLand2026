@@ -25,6 +25,16 @@ function wav() {
 describe('HQ voice persisted pipeline', () => {
   let root: string, db: VoiceDatabase, service: HqVoiceService, deps: HqDependencies;
   const auth = { Authorization: 'Bearer token-one' };
+  it.each(['HQ_ASR_TASK_UNKNOWN', 'HQ_ASR_DOWNLOAD_FAILED', 'HQ_ASR_TASK_FAILED'])('persists %s evidence and disables pointless resume', async code => {
+    vi.stubEnv('DEPLOY_MODE', 'server');
+    vi.mocked(deps.poll).mockRejectedValueOnce(new VoiceError(code, 502, { taskId: 'task-1', taskStatus: 'FAILED' }));
+    const s = service.create('one', 'test');
+    const t = await service.start('one', s.id, randomUUID(), wav());
+    const result = await done(t.id, 'failed');
+    expect(result.canResumeAsr).toBe(false);
+    expect(db.providerEvents(t.id)[0]?.details).toMatchObject({ code, taskId: 'task-1' });
+    expect(deps.submit).toHaveBeenCalledTimes(1); expect(deps.main).not.toHaveBeenCalled();
+  });
   beforeEach(async () => {
     store.__resetForTests();
     store.state().users.one = { id: 'one', token: 'token-one', ageVerified: true, narrativeBoundary: 2,

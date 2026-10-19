@@ -4,6 +4,7 @@ import { API_PUBLIC_MODELS } from '@yelan/shared';
 import { type GatewayDatabase, GatewayError } from './database';
 import type { KeyRow } from './database';
 import type { Upstream } from './service';
+import { hasCompletionOutput } from '../services/completion-output';
 
 // Rewrite only protocol metadata, never assistant text or archived upstream bytes.
 class PublicModelStream {
@@ -57,6 +58,7 @@ export class SseObserver {
   text = '';
   done = false;
   error = false;
+  hasOutput = false;
   usage?: Record<string, unknown>;
   feed(bytes: Uint8Array) {
     this.buffer += this.decoder.decode(bytes, { stream: true });
@@ -79,6 +81,7 @@ export class SseObserver {
       try {
         const value = JSON.parse(data);
         if (value.error) this.error = true;
+        if (hasCompletionOutput(value)) this.hasOutput = true;
         const content = value.choices?.find((x: { index?: number }) => !x.index)?.delta?.content;
         if (typeof content === 'string') this.text += content;
         if (value.usage && typeof value.usage === 'object') this.usage = value.usage;
@@ -228,6 +231,8 @@ export async function forwardCompletion(
       }
       if (!Array.isArray(parsed.choices) || parsed.error)
         throw new GatewayError('UPSTREAM_INVALID_RESPONSE', 502, '上游响应格式错误');
+      if (!hasCompletionOutput(parsed))
+        throw new GatewayError('UPSTREAM_EMPTY_RESPONSE', 502, '上游未返回回复内容，请稍后重试');
       finish(
         'succeeded',
         200,
@@ -279,6 +284,16 @@ export async function forwardCompletion(
             }
             record(value);
             observer.feed(value);
+            if (observer.done && !observer.error && !observer.hasOutput) {
+              finish('failed', 200, 'UPSTREAM_EMPTY_RESPONSE');
+              out.enqueue(new TextEncoder().encode('data: ' + JSON.stringify({ error: {
+                code: 'UPSTREAM_EMPTY_RESPONSE', type: 'upstream_error',
+                message: '上游未返回回复内容，请稍后重试',
+              } }) + '\n\ndata: [DONE]\n\n'));
+              out.close();
+              await reader.cancel();
+              return;
+            }
             const visible = publicStream.feed(value);
             if (visible.byteLength) out.enqueue(visible);
             if (observer.done) {

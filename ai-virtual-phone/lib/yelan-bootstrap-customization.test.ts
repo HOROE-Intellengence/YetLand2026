@@ -6,6 +6,7 @@ const fixtures = vi.hoisted(() => ({
 vi.mock('./yelan-managed-client', () => ({ isYelanManaged: true, yelanRequest: async () => ({ userId: 'user', characters: [{ id: 'role' }] }) }));
 vi.mock('./settings-db', () => ({ hydrateSettingsDb: async () => {} }));
 vi.mock('./kv-db', () => ({ kvSet: vi.fn() }));
+vi.mock('./community-theme', () => ({ applyCommunityTheme: vi.fn() }));
 vi.mock('./character-storage', () => ({ saveCharacters: vi.fn() }));
 vi.mock('./yelan-role-rules', () => ({ buildManagedRoleSettings: () => ({ preset: { id: 'yelan:role:preset' }, worldBook: { id: 'yelan:role:worldbook' }, regex: { id: 'yelan:role:regex' } }) }));
 vi.mock('./phone-inspection-client', () => ({ startPhoneInspection: fixtures.inspection }));

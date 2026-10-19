@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f7f2" />
+    <title>夜阑社区 · 让灵感发生</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/previews.css" />
+    <link rel="stylesheet" href="/mobile.css" />
+    <script src="/mobile.js" defer></script>
+    <script src="/previews.js" defer></script>
+    <script src="/app.js" defer></script>
+    <script src="/management.js" defer></script>
+    <script src="/assets.js" defer></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="#"
+        ><span class="brand-mark">阑</span><span>YETLAND<small>夜阑 · 创作与分享</small></span></a
+      >
+      <div class="side-label">在这里，发现更多可能</div>
+      <nav aria-label="社区导航">
+        <button class="nav-item mobile-more-nav" id="mobile-more-nav" aria-label="更多入口" aria-haspopup="dialog"><span aria-hidden="true">☰</span>更多</button>
+        <button class="nav-item active" data-nav="all"><span>◈</span>发现社区</button>
+        <button class="nav-item" data-nav="character"><span>♧</span>角色卡</button>
+        <button class="nav-item" data-nav="worldbook" aria-label="世界书">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5.5C9 3.5 5.5 3.5 2.5 5v15c3-1.5 6.5-1.5 9.5.5 3-2 6.5-2 9.5-.5V5c-3-1.5-6.5-1.5-9.5.5Z"/><path d="M12 5.5v15"/></svg></span>世界书
+        </button>
+        <button class="nav-item" data-nav="theme" aria-label="小手机资源">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 5h4M11 19h2"/></svg></span>小手机资源
+        </button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" id="library-nav" aria-label="我的资源">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></svg></span>我的资源<span class="count" id="library-count">0</span>
+        </button>
+        <button class="nav-item" id="forum-nav" aria-label="社区讨论">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 14a3 3 0 0 1-3 3H9l-6 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"/><path d="M7 8h10M7 12h7"/></svg></span>社区讨论<span class="arrow">↗</span>
+        </button>
+        <button class="nav-item" id="phone-nav" aria-label="进入小手机">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 7V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-3M1 12h13m-4-4 4 4-4 4M14 19h3"/></svg></span>进入小手机
+        </button>
+        <button class="nav-item" id="publish-nav" aria-label="发布资源">
+          <span>＋</span>发布资源
+        </button>
+        <button class="nav-item" id="submissions-nav" aria-label="我的发布">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 13h3v8H2zM5 14l3-3h5a2 2 0 0 1 0 4h-3M5 19l10 1 6-6a2 2 0 0 0-2-2l-4 3M14 7h7m-3-3 3 3-3 3"/></svg></span>我的发布
+        </button>
+        <button class="nav-item" id="manage-nav" aria-label="社区管理" hidden>
+          <span>⚙</span>社区管理
+        </button>
+      </nav>
+      <div class="side-note">
+        <span class="note-star">✳</span><strong>好东西，一起分享。</strong>
+        <p>一个角色、一套主题，<br />都可以是新故事的开始。</p>
+        <button id="share-button">去论坛分享 <span>↗</span></button>
+      </div>
+      <div class="sidebar-bottom">
+        <span class="status-dot"></span>本地原型 · 示例内容 <small>YETLAND COMMUNITY / 01</small>
+      </div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div class="breadcrumb">夜阑 <span>/</span> 社区</div>
+        <div class="top-actions">
+          <span class="local-badge">LOCAL PREVIEW</span
+          ><button id="account-button" class="account-button">
+            <span class="user-avatar">访</span><span id="account-name">体验账号</span><span>⌄</span>
+          </button>
+        </div>
+      </header>
+      <div class="page-content">
+        <section class="hero">
+          <div class="hero-copy">
+            <span class="eyebrow">A LITTLE INSPIRATION. A NEW STORY.</span>
+            <h1>让灵感，<br />住进你的夜阑。</h1>
+            <p>发现喜欢的角色与小手机资源，<br />一键收藏，开启只属于你的故事。</p>
+            <button id="explore-button">发现好资源 <span>↗</span></button>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="art-label">COLLECT MOMENTS,<br />CREATE WORLDS.</div>
+            <div class="paper paper-back"></div>
+            <div class="paper paper-front">
+              <span class="paper-symbol">✳</span>
+              <div>一页灵感</div>
+              <small>FOR YOUR NEXT STORY</small><i></i><i></i><i></i>
+            </div>
+            <div class="art-seal">夜<br />阑</div>
+            <span class="art-plus">＋</span>
+          </div>
+          <span class="hero-index">COMMUNITY PICKS — VOL. 001</span>
+        </section>
+        <div class="intro-line">
+          <p><span>✦</span> 从一个喜欢的设定开始，让故事慢慢发生。</p>
+          <span id="backend-status" class="backend-status">正在连接社区…</span>
+        </div>
+        <div class="main-grid">
+          <section class="resources-section" id="resources-section">
+            <div class="section-heading">
+              <div>
+                <span class="section-eyebrow">CURATED FOR YOU</span>
+                <h2>发现好资源 <small id="resource-total">04</small></h2>
+              </div>
+              <label class="search"
+                ><span>⌕</span
+                ><input
+                  id="search"
+                  type="search"
+                  placeholder="搜索角色、主题…"
+                  aria-label="搜索资源"
+              /></label>
+            </div>
+            <div class="filter-tabs" role="tablist" aria-label="资源类型">
+              <button class="selected" data-filter="all" role="tab">全部</button
+              ><button data-filter="character" role="tab">角色卡</button
+              ><button data-filter="worldbook" role="tab">世界书</button
+              ><button data-filter="theme" role="tab">小手机</button>
+            </div>
+            <div class="resource-grid" id="resource-grid" aria-live="polite"></div>
+            <section class="discussion-preview">
+              <div class="section-heading">
+                <div>
+                  <span class="section-eyebrow">LET'S TALK</span>
+                  <h2>正在聊什么</h2>
+                </div>
+                <button class="text-button" id="all-discussions">前往论坛 ↗</button>
+              </div>
+              <div id="topic-list"></div>
+            </section>
+          </section>
+          <aside class="right-rail">
+            <section class="rail-card welcome-card">
+              <span class="rail-icon">☀</span>
+              <h3>欢迎来到夜阑社区</h3>
+              <p>把你喜欢的角色带回家，<br />也把灵感分享给更多人。</p>
+              <ol>
+                <li><span>01</span>发现一份喜欢的资源</li>
+                <li><span>02</span>一键加入自己的账户</li>
+                <li><span>03</span>回来聊聊你的新故事</li>
+              </ol>
+              <button id="welcome-login">使用本地体验账号 <span>→</span></button>
+            </section>
+            <section class="rail-card guide-card">
+              <span class="section-eyebrow">A SMALL GUIDE</span>
+              <h3>你的角色，只属于你。</h3>
+              <p>应用角色卡会创建私有副本。你和 TA 的聊天与记忆，不会成为社区资源的一部分。</p>
+              <span class="guide-foot">独立副本 · 账户隔离</span>
+            </section>
+            <div class="rail-foot">用一点好奇心，交换一个新世界。<span>✳</span></div>
+          </aside>
+        </div>
+        <footer>YETLAND COMMUNITY <span>原创演示资源 · 本地隔离环境</span></footer>
+      </div>
+    </main>
+    <dialog id="account-dialog" class="compact-dialog">
+      <button class="close-button" data-close aria-label="关闭">×</button
+      ><span class="section-eyebrow">YOUR OWN CORNER</span>
+      <h2>你的社区账号</h2>
+      <p class="muted">资源社区与论坛使用同一身份，切换、退出和封禁统一生效。</p>
+      <form id="auth-form" class="community-form">
+        <label
+          >邮箱<input name="email" type="email" autocomplete="username" required maxlength="254"
+        /></label>
+        <label
+          >密码<input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            minlength="8"
+            maxlength="200"
+        /></label>
+        <label id="register-name-label" hidden
+          >昵称<input name="name" minlength="2" maxlength="20"
+        /></label>
+        <label id="register-consent-label" class="check-label" hidden
+          ><input name="consent" type="checkbox" />我确认这是本地体验账号，邮箱验证暂未接入。</label
+        >
+        <button class="primary-button" type="submit" id="auth-submit">登录</button>
+        <button class="text-button" type="button" id="auth-toggle">注册本地账号</button>
+      </form>
+      <form id="profile-form" class="community-form" hidden>
+        <label>社区昵称<input name="name" required minlength="2" maxlength="20" /></label
+        ><button class="text-button" type="submit">保存昵称</button>
+      </form>
+      <details class="demo-details">
+        <summary>本地体验账号（含管理角色）</summary>
+        <button class="demo-account" data-account="a">
+          <span class="avatar sage">林</span
+          ><span><strong>林间来信</strong><small>本地体验账号 A</small></span
+          ><span>→</span></button
+        ><button class="demo-account" data-account="b">
+          <span class="avatar sand">海</span
+          ><span><strong>海边散步</strong><small>本地体验账号 B</small></span
+          ><span>→</span></button
+        ><button class="demo-account" data-account="moderator">
+          <span class="avatar sage">版</span
+          ><span><strong>社区版主</strong><small>审核资源与管理帖子</small></span
+          ><span>→</span>
+        </button>
+        <button class="demo-account" data-account="admin">
+          <span class="avatar sand">管</span
+          ><span><strong>社区管理员</strong><small>用户、角色、审核与审计</small></span
+          ><span>→</span>
+        </button>
+      </details>
+      <button class="text-button logout" id="logout-button">退出社区与论坛</button>
+      <p class="dialog-foot">本地账号与线上账户互相独立。</p>
+    </dialog>
+    <dialog id="publisher-dialog" class="workspace-dialog">
+      <button class="close-button" data-close aria-label="关闭发布">×</button>
+      <span class="section-eyebrow">SHARE YOUR WORLD</span>
+      <h2 id="publisher-title">发布一份资源</h2>
+      <p class="muted">
+        保存草稿、提交审核，通过后会出现在资源广场并关联论坛帖子。更新会生成新版本，保留用户已有副本。
+      </p>
+      <form id="publisher-form" class="community-form">
+        <input name="resourceId" type="hidden" /><input name="sourceTid" type="hidden" />
+        <div class="form-grid">
+          <label
+            >资源类型<select name="type">
+              <option value="character">角色卡</option>
+              <option value="worldbook">世界书</option>
+              <option value="theme">小手机主题</option>
+            </select></label
+          ><label
+            >版本号<input name="version" value="1.0.0" required pattern="\d+\.\d+\.\d+"
+          /></label>
+        </div>
+        <div id="package-fields" hidden>
+          <label
+            >安装包 JSON<textarea id="package-json" rows="10" spellcheck="false"></textarea>
+          </label>
+          <label
+            >或导入世界书／主题包<input
+              id="package-file"
+              type="file"
+              accept=".json,application/json"
+          /></label>
+          <p class="muted">
+            世界书用于绑定私有角色；主题支持配色、字体与内嵌 PNG/JPEG/WebP
+            壁纸。完整格式以校验提示为准。
+          </p>
+        </div>
+        <label>资源标题<input name="title" required minlength="2" maxlength="80" /></label>
+        <label>一句话介绍<input name="subtitle" required minlength="2" maxlength="120" /></label>
+        <label
+          >资源说明<textarea
+            name="description"
+            required
+            minlength="8"
+            maxlength="6000"
+            rows="4"
+          ></textarea>
+        </label>
+        <label>标签<input name="tags" placeholder="用逗号分隔，最多 8 个" maxlength="130" /></label>
+        <div id="character-fields">
+          <label>角色名字<input name="characterName" maxlength="40" /></label
+          ><label>角色设定<textarea name="background" maxlength="4000" rows="5"></textarea></label
+          ><label
+            >或导入角色 JSON<input type="file" id="resource-file" accept=".json,application/json"
+          /></label>
+        </div>
+        <label class="check-label"
+          ><input
+            name="consent"
+            type="checkbox"
+            required
+          />我拥有分享权限，同意公开这份资源内容（不包含私人聊天与记忆）。</label
+        >
+        <p id="publisher-source" class="muted"></p>
+        <button class="primary-button" type="submit">保存草稿</button>
+      </form>
+    </dialog>
+    <dialog id="workspace-dialog" class="workspace-dialog">
+      <button class="close-button" data-close aria-label="关闭工作台">×</button
+      ><span class="section-eyebrow">COMMUNITY WORKSPACE</span>
+      <h2 id="workspace-title">我的发布</h2>
+      <div id="workspace-content"></div>
+    </dialog>
+    <dialog id="detail-dialog" class="detail-dialog">
+      <button class="close-button" data-close aria-label="关闭详情">×</button>
+      <div id="detail-content"></div>
+    </dialog>
+    <dialog id="library-dialog" class="library-dialog">
+      <button class="close-button" data-close aria-label="关闭资源库">×</button
+      ><span class="section-eyebrow">MY COLLECTION</span>
+      <h2>我的资源</h2>
+      <p class="muted" id="library-caption">属于你自己的小世界。</p>
+      <div id="library-content"></div>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <dialog id="mobile-menu" class="compact-dialog" aria-label="更多社区功能">
+      <button class="close-button" data-close aria-label="关闭更多入口">×</button>
+      <h2>创作与管理</h2>
+      <div class="mobile-menu-actions">
+        <button type="button" data-mobile-forward="publish-nav">发布资源 <span>＋</span></button>
+        <button type="button" data-mobile-forward="submissions-nav">我的发布 <span>→</span></button>
+        <button type="button" data-mobile-forward="manage-nav" hidden>社区管理 <span>→</span></button>
+      </div>
+    </dialog>
+    <dialog id="phone-dialog" class="phone-dialog">
+      <div class="workspace-toolbar">
+        <strong>夜阑小手机 · 本地资源验证</strong
+        ><button class="text-button" data-close>返回社区</button>
+      </div>
+      <p class="muted">世界书与主题使用真实小手机；本地隔离环境未连接聊天、语音或生图模型。</p>
+      <iframe id="phone-frame" title="夜阑小手机" src="about:blank"></iframe>
+    </dialog>
+  </body>
+</html>

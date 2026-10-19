@@ -1,0 +1,41 @@
+{
+  "type": "theme",
+  "title": "陶土海盐",
+  "subtitle": "陶土红与浅沙底，适合暖色冒险场景。",
+  "description": "【内容】陶土红与浅沙底，适合暖色冒险场景。本包是配色主题，无壁纸；覆盖 schema 支持的 20 个颜色变量，包括背景、面板、标题与正文、输入框、图标强调及聊天气泡。字体枚举为 system，由系统现有字体回退显示，不附字体文件。\n【安装启用】登录社区打开本资源，点“安装并启用主题”，再从社区“进入小手机”查看。主题只作用于当前账号。\n【切换】社区“我的资源”找到已安装主题，点“启用此主题”，关闭小手机后重新进入。不同页面采用变量的范围不同，不承诺所有元素都会改变，未定义的页面样式由应用决定。\n【恢复】在“我的资源”点“恢复应用主题前的外观”，重新进入小手机；会还原主题实际改动且用户未再改写的项。用户后来手动修改的配色与图标应保留。同一主题状态重复进入不会持续覆盖手动修改；再次主动启用是一项新的应用操作。\n【示例】比较顶部背景 #f9eee6、正文 #6c493b、自己气泡 #e9bda7 与对方气泡 #fff9f3，可在小手机“主题”应用中查看对应配色项。\n【边界】不含任意 CSS、远程图片、布局修改、图标包或语音功能。\n【来源】本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+  "tags": [
+    "配色主题",
+    "无壁纸",
+    "系统字体"
+  ],
+  "version": "1.0.0",
+  "consent": true,
+  "theme": {
+    "schema": "yelan-phone-theme",
+    "schemaVersion": 1,
+    "name": "陶土海盐",
+    "fontFamily": "system",
+    "cssOverrides": {
+      "--c-header-bg": "#f9eee6",
+      "--c-page-body-bg": "#eee0d2",
+      "--c-card": "#fff9f3",
+      "--c-card-border": "#d9bba7",
+      "--c-polaroid": "#fff9f3",
+      "--c-polaroid-back": "#eee0d2",
+      "--c-panel": "#fff9f3",
+      "--c-panel-border": "#d9bba7",
+      "--c-text-title": "#493027",
+      "--c-text": "#6c493b",
+      "--c-icon-active": "#b25a41",
+      "--c-icon": "#a18170",
+      "--c-input": "#f4e5d8",
+      "--c-input-border": "#d9bba7",
+      "--c-bubble-self": "#e9bda7",
+      "--c-bubble-other": "#fff9f3",
+      "--c-success": "#326b4c",
+      "--c-danger": "#a8343e",
+      "--c-warning": "#865712",
+      "--ctx-menu-bg": "#fff9f3"
+    }
+  }
+}

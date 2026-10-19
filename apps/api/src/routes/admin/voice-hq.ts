@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { FishSlotWriteSchema, FishPreviewSchema, HqVoiceProfileIdSchema, FishCatalogQuerySchema } from '@yelan/shared';
+import { FishSlotCreateSchema, FishSlotWriteSchema, FishPreviewSchema, HqVoiceProfileIdSchema, FishCatalogQuerySchema } from '@yelan/shared';
 import { requireAdmin } from '../../middleware/auth';
 import { voiceDatabase, type VoiceDatabase } from '../../voice/database';
 import { encodeOpus } from '../../voice/audio';
 import { VoiceError } from '../../voice/config';
-import { settings, saveSlot } from '../../voice-hq/profiles';
+import { settings, saveSlot, addSlot } from '../../voice-hq/profiles';
 import { listFishVoices, synthesize, FISH_TTS_MODEL } from '../../voice-hq/providers';
 import { audit } from './_audit';
 
@@ -24,6 +24,13 @@ export function createAdminHqVoiceRoute(getDb: () => VoiceDatabase = voiceDataba
     return c.json({ code, message }, (e instanceof VoiceError ? e.status : 502) as 400 | 404 | 409 | 429 | 502 | 503);
   });
   app.get('/', c => c.json(settings(getDb())));
+  app.post('/slots', async c => {
+    const input = FishSlotCreateSchema.safeParse(await c.req.json().catch(() => null));
+    if (!input.success) return c.json({ message: '请填写 1–40 字音色名称及有效的 Fish ID' }, 400);
+    const id = addSlot(getDb(), input.data.label, input.data.referenceId, input.data.speed);
+    audit('voice-hq.create', id, input.data.reason, input.data);
+    return c.json(settings(getDb()), 201);
+  });
   app.get('/catalog', async c => {
     const input = FishCatalogQuerySchema.safeParse(c.req.query());
     if (!input.success) return c.json({ message: '搜索条件无效' }, 400);
@@ -32,9 +39,9 @@ export function createAdminHqVoiceRoute(getDb: () => VoiceDatabase = voiceDataba
   app.put('/slots/:category', async c => {
     const category = HqVoiceProfileIdSchema.safeParse(c.req.param('category'));
     const input = FishSlotWriteSchema.safeParse(await c.req.json().catch(() => null));
-    if (!category.success || !input.success) return c.json({ message: '分类绑定无效' }, 400);
-    saveSlot(getDb(), category.data, input.data.referenceId, input.data.speed);
-    audit('voice-hq.configure', category.data, input.data.reason, { referenceId: input.data.referenceId, speed: input.data.speed });
+    if (!category.success || !input.success) return c.json({ message: '音色配置无效' }, 400);
+    saveSlot(getDb(), category.data, input.data.referenceId, input.data.speed, input.data.label);
+    audit('voice-hq.configure', category.data, input.data.reason, input.data);
     return c.json(settings(getDb()));
   });
   app.post('/preview', async c => {

@@ -33,6 +33,15 @@ const final = { serverContent: { modelTurn: { parts: [{ inlineData: {
 generationComplete: true, turnComplete: true, interactionStatus: 'IDLE' } };
 
 describe('Live final-turn protocol', () => {
+  it.each([
+    ['Your prepayment credits are depleted.', 'VOICE_UPSTREAM_CREDITS_EXHAUSTED'],
+    ['Resource exhausted: rate limit', 'VOICE_UPSTREAM_RATE_LIMITED'],
+    ['API key not valid', 'VOICE_UPSTREAM_AUTH_FAILED'],
+  ])('preserves actionable close cause: %s', async (reason, code) => {
+    await upstreamTest(socket => socket.close(1011, reason), async result => {
+      await expect(result).rejects.toMatchObject({ code, details: { closeCode: 1011, message: reason } });
+    });
+  });
   it('waits through an intermediate turnComplete with no audio', async () => {
     await upstreamTest(socket => {
       socket.send(JSON.stringify({ serverContent: { turnComplete: true, interactionStatus: 'IN_PROGRESS' } }));

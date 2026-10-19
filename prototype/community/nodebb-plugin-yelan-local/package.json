@@ -1,0 +1,10 @@
+{
+  "name": "nodebb-plugin-yelan-local",
+  "version": "0.2.0",
+  "description": "Yelan local community identity, resource and moderation integration",
+  "main": "library.js",
+  "license": "MIT",
+  "nbbpm": {
+    "compatibility": "^4.0.0"
+  }
+}

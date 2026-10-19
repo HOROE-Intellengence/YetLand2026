@@ -14,6 +14,7 @@ interface Session {
 interface AudioAsset { id: string; durationMs: number }
 interface Turn {
   id: string; createdAt: string; status: string; errorCode: string | null;
+  providerEvents?: Array<{ stage: string; updatedAt: string; details: Record<string, unknown> }>;
   inputText: string; outputText: string; inputTranscriptComplete: boolean; outputTranscriptComplete: boolean;
   inputAudio: AudioAsset | null; outputAudio: AudioAsset | null;
 }
@@ -147,6 +148,7 @@ export function VoiceRecords() {
             <h3>第 {index + 1} 轮 · {statuses[turn.status] ?? turn.status}</h3>
             <p className="muted">{formatDateTime(turn.createdAt)}</p>
             {turn.errorCode && <p role="status">失败原因：{turn.errorCode}</p>}
+            {!!turn.providerEvents?.length && <details><summary>服务诊断记录</summary>{turn.providerEvents.map(event => <pre key={event.stage} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{event.updatedAt} · {event.stage}{'\n'}{JSON.stringify(event.details, null, 2)}</pre>)}</details>}
             <RecordReader value={turn.inputText || '暂无转写文本'} label="用户" />
             {!turn.inputTranscriptComplete && turn.inputText && <p className="muted">转写未完成</p>}
             <AudioPreview asset={turn.inputAudio} label="用户录音" />

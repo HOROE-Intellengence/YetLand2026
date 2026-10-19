@@ -78,6 +78,7 @@ import {
 import { scrollElementWithinContainer } from "@/lib/dom-scroll";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
 import { ChatScreenEffectOverlay, type ActiveScreenEffect } from "./chat-screen-effect";
+import { ChatReplyGuide } from "./chat-reply-guide";
 import {
     formatChatDiceResultMessage,
     isDiceOnlyMessage,
@@ -600,6 +601,7 @@ function normalizeCustomPanelHeight(value: unknown): string | undefined {
 }
 
 const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
+    replyTriggerRef: React.RefObject<HTMLButtonElement | null>;
     characterName: string;
     characterId: string;
     stickerCharacterIds?: string[];
@@ -631,6 +633,7 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
     onTriggerAIResponse: () => void;
 	onSendSticker: (name: string, url?: string) => void;
 }>(function ChatTextInputBar({
+    replyTriggerRef,
     characterName,
     characterId,
     stickerCharacterIds,
@@ -858,7 +861,9 @@ const ChatTextInputBar = memo(forwardRef<ChatTextInputHandle, {
                 </button>
                 {!isGenerating && (
                     <button
+                        ref={replyTriggerRef}
                         className="ui-bare-btn text-[var(--c-text)]"
+                        aria-label="触发 AI 主动回复"
                         title={!inputLocked && inputText.trim() ? "发送输入框内容并触发回复" : "触发 AI 主动回复"}
                         onClick={() => {
                             const trimmed = inputText.trim();
@@ -1201,6 +1206,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [bgLoading, setBgLoading] = useState(!!session.backgroundImage);
 
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const replyTriggerRef = useRef<HTMLButtonElement>(null);
 
     // 全屏特效：命中触发词的新消息播放表情雨/礼花（微信同款）
     const [activeScreenEffect, setActiveScreenEffect] = useState<ActiveScreenEffect | null>(null);
@@ -6228,6 +6234,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             ) : (
             <ChatTextInputBar
                 ref={chatTextInputRef}
+                replyTriggerRef={replyTriggerRef}
                 characterName={character?.name || "对方"}
                 characterId={session.contactId}
 	                stickerCharacterIds={session.isGroup ? session.participantIds : undefined}
@@ -6260,6 +6267,16 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 onSendSticker={(name, url) => { setShowStickerPanel(false); sendRichMessage("sticker", { label: name, stickerUrl: url }); }}
             />
             ))}
+
+            <ChatReplyGuide
+                sessionId={session.id}
+                targetRef={replyTriggerRef}
+                containerRef={wrapperRef}
+                enabled={!isGenerating && !offlineMode && !isMultiSelectMode && !showSettings
+                    && !showVoiceCall && !showVideoCall && !richModal && !activeCustomChatPlus
+                    && messages.some(message => uiRole(message) === "assistant"
+                        && Boolean(message.content.trim() || message.mediaType))}
+            />
 
             {showConfirmMultiDelete && (
                 <ConfirmDialog

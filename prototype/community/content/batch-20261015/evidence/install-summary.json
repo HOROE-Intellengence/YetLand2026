@@ -1,0 +1,216 @@
+{
+  "checkedAt": "2026-10-15T06:03:06.755Z",
+  "items": [
+    {
+      "key": "c-observatory",
+      "resourceId": "res-76a069aa-6dc6-4865-a288-8229bc7e8d1b",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-repair",
+      "resourceId": "res-4363834a-0cf2-4958-8e84-73a890793da5",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-tide",
+      "resourceId": "res-da71bdb3-c7c0-4074-b256-1ed3d655d669",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-orbit",
+      "resourceId": "res-e2fc579e-f616-4d0d-a5e7-7ff0db0651ac",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-theatre",
+      "resourceId": "res-4ff5fe73-d76a-457a-820b-06b1dc896aa9",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-dunes",
+      "resourceId": "res-98307dbb-7564-4e2b-96b3-c4b9fe0d2f67",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-museum",
+      "resourceId": "res-96a4ebe4-7e43-456e-a7ba-3396c7d73112",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-noodle",
+      "resourceId": "res-87935a29-ef7d-445b-a5c5-8021cf72f19b",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-audio",
+      "resourceId": "res-820eb3f1-8baa-4545-baa2-5ade7ab6e1fe",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-puzzle",
+      "resourceId": "res-39fc1372-cce4-4e0a-b358-0225ff787aa6",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-walk",
+      "resourceId": "res-708d0244-a109-47ab-b255-bfa4a3668e87",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "c-library",
+      "resourceId": "res-6307a45f-e5dd-424c-ae3e-013bc04d5834",
+      "version": "1.0.0",
+      "installed": true,
+      "fieldReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "w-star-ridge",
+      "resourceId": "res-c5f75c8c-aa51-4924-a5e9-84cebccb7fec",
+      "version": "1.0.0",
+      "installed": true,
+      "bound": true,
+      "entryCount": 10,
+      "entriesReadback": true,
+      "preservedOriginalRules": true
+    },
+    {
+      "key": "w-loop-workshop",
+      "resourceId": "res-3b0d84a5-61ab-4544-a97f-432e0046dcc6",
+      "version": "1.0.0",
+      "installed": true,
+      "bound": true,
+      "entryCount": 10,
+      "entriesReadback": true,
+      "preservedOriginalRules": true
+    },
+    {
+      "key": "w-white-sail",
+      "resourceId": "res-1b2dca9d-c366-4f94-b827-855fdae0160b",
+      "version": "1.0.0",
+      "installed": true,
+      "bound": true,
+      "entryCount": 10,
+      "entriesReadback": true,
+      "preservedOriginalRules": true
+    },
+    {
+      "key": "w-grain-orbit",
+      "resourceId": "res-4549df89-3486-4329-8972-955371cc7622",
+      "version": "1.0.0",
+      "installed": true,
+      "bound": true,
+      "entryCount": 10,
+      "entriesReadback": true,
+      "preservedOriginalRules": true
+    },
+    {
+      "key": "w-four-seasons",
+      "resourceId": "res-ba874c56-247c-4166-abce-652f96b88508",
+      "version": "1.0.0",
+      "installed": true,
+      "bound": true,
+      "entryCount": 10,
+      "entriesReadback": true,
+      "preservedOriginalRules": true
+    },
+    {
+      "key": "w-amber-route",
+      "resourceId": "res-940344fd-8c43-4812-90cc-e979c3019e22",
+      "version": "1.0.0",
+      "installed": true,
+      "bound": true,
+      "entryCount": 10,
+      "entriesReadback": true,
+      "preservedOriginalRules": true
+    },
+    {
+      "key": "t-porcelain",
+      "resourceId": "res-6b313656-bed7-437d-b222-925d5d0e5599",
+      "version": "1.0.0",
+      "installed": true,
+      "activeStateReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "t-apricot",
+      "resourceId": "res-94698d2f-2eff-4dab-8fb7-f743a82f98b2",
+      "version": "1.0.0",
+      "installed": true,
+      "activeStateReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "t-indigo",
+      "resourceId": "res-39b2220e-06c1-4001-bc7c-c4f497785002",
+      "version": "1.0.0",
+      "installed": true,
+      "activeStateReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "t-plum",
+      "resourceId": "res-e40d275f-7ba3-47e3-af52-5abb45b878e4",
+      "version": "1.0.0",
+      "installed": true,
+      "activeStateReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "t-graphite",
+      "resourceId": "res-4449b1d8-04bd-4fd6-ae79-101ca375c6a1",
+      "version": "1.0.0",
+      "installed": true,
+      "activeStateReadback": true,
+      "phoneBootstrap": true
+    },
+    {
+      "key": "t-terracotta",
+      "resourceId": "res-996436f5-d253-4c9e-b9e3-18d1f488f53d",
+      "version": "1.0.0",
+      "installed": true,
+      "activeStateReadback": true,
+      "phoneBootstrap": true
+    }
+  ],
+  "checks": [
+    "same-version character/worldbook/theme installs reuse private identity",
+    "worldbook bind/unbind retains user additions, modified package entry, preset and regex",
+    "cross-account library hidden; asset writes 404; foreign phone role 403",
+    "pre-existing private characters and package snapshots unchanged",
+    "account B library and active theme unchanged"
+  ]
+}

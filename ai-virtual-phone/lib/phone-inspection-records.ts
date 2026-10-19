@@ -1,4 +1,5 @@
 import type { PhoneInspectionRecord } from '../../packages/shared/src/contracts/phone';
+import { createInspectionPreview } from './phone-inspection-preview';
 
 type Row = Record<string, unknown>;
 const labels: Record<string, string> = {
@@ -36,7 +37,8 @@ export function inspectionRecord(source: string, kind: PhoneInspectionRecord['ki
   });
   return { source, id, kind, title: String(row.title || row.name || row.subtitle || '未命名内容').slice(0, 300),
     characterIds: [...new Set(characters)], sections: bounded,
-    localUpdatedAt: String(row.updatedAt || row.timestamp || row.createdAt || '').slice(0, 100), deleted: false, truncated };
+    localUpdatedAt: String(row.updatedAt || row.timestamp || row.createdAt || '').slice(0, 100), deleted: false, truncated,
+    ...(kind==='diagnostic'?{}:{preview:createInspectionPreview(kind,row)}) };
 }
 const kvSources: Record<string, { kind: PhoneInspectionRecord['kind']; field?: string; title: string }> = {
   'yelan-phone-diagnostics-v1': { kind: 'diagnostic', title: '运行诊断' },
@@ -54,17 +56,27 @@ const kvSources: Record<string, { kind: PhoneInspectionRecord['kind']; field?: s
   ai_phone_black_market_scene_sessions_v1: { kind: 'story', title: '剧情场景' },
   ai_phone_shopping_state_v1: { kind: 'note', title: '购物内容' },
   ai_phone_xiaohongshu_state_v1: { kind: 'note', title: '小红书内容' },
+  ai_phone_theme_profile_v1: {kind:'note',title:'小手机主题'},
+  ai_phone_sticker_packs_v1: {kind:'note',title:'表情包'},
+  ai_phone_bg_items_v1: {kind:'note',title:'角色素材'},
 };
 export function kvInspectionRecords(key: string, value: string): PhoneInspectionRecord[] {
   const source = kvSources[key];
   if (!source) return [];
   let data: unknown;
   try { data = JSON.parse(value); } catch { return []; }
+  const original=data as Row;
   if (source.field && data && typeof data === 'object') data = (data as Row)[source.field];
   const rows = Array.isArray(data) ? data : data && typeof data === 'object' ? [{ ...(data as Row), id: key, title: source.title }] : [];
   return rows.filter((row): row is Row => Boolean(row) && typeof row === 'object')
     .filter(row => !(key === 'ai_phone_characters_v1' && row.canEdit === false))
     .map(row => {
+      if(key==='ai_phone_game_state_v1'){
+        const installed=Array.isArray(original.installedGames)?original.installedGames as Row[]:[];
+        const game=installed.find(item=>item.localId===row.localGameId);
+        const template=game?.templateSnapshot as Row|undefined;
+        return inspectionRecord(key,'game',{...row,title:template?.title||row.title||'游戏存档',gameHtml:template?.gameHtml,template});
+      }
       if (source.kind !== 'cocreate') return inspectionRecord(key, source.kind, row);
       const chapters = Array.isArray(row.chapters) ? row.chapters as Row[] : [];
       const messages = Array.isArray(row.messages) ? row.messages as Row[] : [];

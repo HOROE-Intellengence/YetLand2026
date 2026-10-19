@@ -161,6 +161,7 @@ export const AdminCharactersListResponseSchema = z.object({
     // 老 admin 卡可能无这些字段 → optional，前端按缺省=admin/none 处理。
     origin: z.enum(['admin', 'user']).optional(),
     ownerUserId: z.string().nullable().optional(),
+    ownerUserName: z.string().optional(),
     visibility: z.enum(['private', 'public']).optional(),
     reviewStatus: z.enum(['none', 'private', 'pending', 'approved', 'rejected']).optional(),
   })),

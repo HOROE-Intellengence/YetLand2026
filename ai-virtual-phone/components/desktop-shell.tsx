@@ -1586,6 +1586,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
   }, []);
 
   useEffect(() => {
+    if (isYelanManaged) return;
     const unregister = registerCustomAppBackgroundToolExecutor(payload => (
       new Promise<unknown>((resolve, reject) => {
         const id = `bg_tool_${Date.now()}_${++backgroundRunSeqRef.current}_${payload.app.id}`;
@@ -1631,6 +1632,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
   }, []);
 
   useEffect(() => {
+    if (isYelanManaged) return;
     const handleCustomAppBackgroundChatEvent = (event: Event) => {
       try {
         const message = (event as CustomEvent<{ message?: ChatMessage }>).detail?.message;
@@ -1684,6 +1686,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
 
   // 现实桥数据事件：广播给声明订阅了 bridge.data 的自定义 APP（含后台拉起）
   useEffect(() => {
+    if (isYelanManaged) return;
     const handleBridgeDataEvent = (event: Event) => {
       try {
         const detail = (event as CustomEvent<Record<string, unknown>>).detail;
@@ -1737,6 +1740,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
   }, [activeApp, customApps]);
 
   useEffect(() => {
+    if (isYelanManaged) return;
     let canceled = false;
     const runTasks = () => {
       if (canceled) return;
@@ -2318,7 +2322,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
       return;
     }
     activateCustomApp(app.id, launchContext);
-    checkCustomAppUpdateInBackground(app, launchContext);
+    if (!isYelanManaged) checkCustomAppUpdateInBackground(app, launchContext);
   }
 
   function openApp(iconId: DesktopIconId): void {

@@ -3,6 +3,7 @@
 // TODO: 从 prototype/app.jsx 增量移植；状态搬到 stores/sessionStore.ts
 
 import { useEffect } from 'react';
+import { CommunityHandoff } from './components/CommunityHandoff';
 import { useSessionStore } from './stores/sessionStore';
 import { usePreferencesStore } from './stores/preferencesStore';
 import { useViewport } from './hooks/useViewport';
@@ -52,6 +53,7 @@ export default function App() {
 
   return (
     <div className="app-root">
+      <CommunityHandoff />
       <ParticleField />
 
       {scene === 'home' && <LandingScene />}

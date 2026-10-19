@@ -14,3 +14,5 @@ export * from './voice';
 export * from './voice-hq';
 export * from './api-gateway';
 export * from './phone';
+export * from './phone-chat-logs';
+export * from './phone-inspection-preview';

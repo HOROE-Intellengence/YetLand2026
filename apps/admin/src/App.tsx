@@ -135,7 +135,8 @@ export function App() {
     window.location.hash = h;
   }, []);
 
-  const def = ROUTES[hash];
+  const routeHash = hash.split('?')[0]!;
+  const def = ROUTES[routeHash];
 
   const panel = (() => {
     if (def?.component) {
@@ -147,7 +148,7 @@ export function App() {
   })();
 
   return (
-    <Shell currentHash={hash} onNavigate={handleNavigate}>
+    <Shell currentHash={routeHash} onNavigate={handleNavigate}>
       <RouteErrorBoundary route={hash} onNavigate={(next) => { window.location.hash = next; }}>
         {panel}
       </RouteErrorBoundary>

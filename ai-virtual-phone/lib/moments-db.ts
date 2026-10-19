@@ -21,6 +21,7 @@ class MomentsDatabase extends Dexie {
 }
 
 export const momentsDb = new MomentsDatabase();
+export async function readMomentsInspectionSnapshot(){return momentsDb.transaction('r',momentsDb.posts,momentsDb.comments,async()=>({posts:await momentsDb.posts.toArray(),comments:await momentsDb.comments.toArray()}));}
 
 /** Load all posts & comments for the in-memory caches. No legacy migration. */
 export async function initMomentsDb(): Promise<{ posts: MomentPost[]; comments: MomentComment[] }> {

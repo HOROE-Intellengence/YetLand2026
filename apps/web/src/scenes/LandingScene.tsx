@@ -194,9 +194,12 @@ export function LandingScene() {
           ))}
         </div>
 
-        <button className={styles.navStart} onClick={goIntro} type="button">
-          开始
-        </button>
+        <div className={styles.navActions}>
+          <button className={styles.navStart} onClick={goIntro} type="button">
+            开始
+          </button>
+          <a className={styles.navStart} href="https://community.yetland.cn/">社区</a>
+        </div>
 
         <button
           aria-label={menuOpen ? '关闭导航' : '打开导航'}
@@ -233,6 +236,7 @@ export function LandingScene() {
               <button className={styles.mobileStart} onClick={goIntro} type="button">
                 开始
               </button>
+              <a className={styles.mobileStart} href="https://community.yetland.cn/">社区</a>
             </div>
           </motion.div>
         )}

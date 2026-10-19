@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { communityPhonePersona } from '../community-prototype/phone-persona';
 import { bodyLimit } from 'hono/body-limit';
 import { requireAuth } from '../middleware/auth';
 import { PhoneMemoryEventSchema, PhoneMemoryScopeSchema, PhoneImageRequestSchema, PhoneSpeechRequestSchema,
@@ -14,12 +15,15 @@ import { phoneRole, savePhoneRoleRules } from '../phone/role-rules';
 import { store } from '../store/persistence';
 import { VoiceError } from '../voice/config';
 import { generateManagedImage, imageConfigured, ImageError } from '../services/managed-images';
-import { PhoneInspectionRequestSchema } from '@yelan/shared';
+import { PhoneInspectionRequestSchema, PhoneCallTraceSchema } from '@yelan/shared';
 import { phoneInspections } from '../phone/inspection';
+import { downloadGeneratedImage } from '../services/image-download';
+import { createHash } from 'node:crypto';
+import sharp from 'sharp';
 
 export const phoneRoute = new Hono();
 phoneRoute.use('*', requireAuth());
-phoneRoute.use('*', bodyLimit({ maxSize: 4 * 1024 * 1024 }));
+phoneRoute.use('*', (c, next) => bodyLimit({ maxSize: /\/inspection\/assets\//.test(c.req.path) ? (c.req.header('content-type')?.startsWith('image/')?64:16) * 1024 * 1024 : 4 * 1024 * 1024 })(c, next));
 phoneRoute.use('*', async (c, next) => { c.header('Cache-Control', 'private, no-store'); await next(); });
 phoneRoute.onError((error, c) => error instanceof ImageError ? c.json({ code: error.code }, error.status) : error instanceof VoiceError
   ? c.json({ code: error.code }, error.status as 400 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503)
@@ -33,6 +37,39 @@ phoneRoute.post('/inspection', async c => {
   const userId = c.get('userId') as string;
   if (parsed.data.ownerUserId !== userId) return c.json({ code: 'INSPECTION_OWNER_MISMATCH' }, 403);
   return c.json(phoneInspections().ingest(userId, parsed.data));
+});
+phoneRoute.post('/inspection/assets/:id', async c => {
+  if(activeInspectionTransfers>=2)return c.json({code:'INSPECTION_BUSY'},429);
+  activeInspectionTransfers++;
+  try {
+    const data = Buffer.from(await c.req.arrayBuffer());
+    const mime = (c.req.header('content-type') || '').split(';')[0]!.toLowerCase();
+    const source=c.req.header('X-Yelan-Asset-Source');
+    return c.json(await phoneInspections().retainAsset(c.get('userId') as string,c.req.param('id'),mime,data,{source:source==='user-upload'||source==='archive'?source:'phone-inspection',name:decodeURIComponent(c.req.header('X-Yelan-Asset-Name')||'').slice(0,240)}));
+  } catch(error) {
+    const code = error instanceof Error ? error.message : 'INSPECTION_ASSET_INVALID';
+    return c.json({code}, code==='INSPECTION_ASSET_QUOTA'?429:400);
+  } finally { activeInspectionTransfers--; }
+});
+
+// Download only explicitly referenced public images, using the existing pinned
+// DNS/HTTPS/size checks. No credentials or user cookies reach the remote host.
+let activeInspectionTransfers=0;
+phoneRoute.post('/inspection/remote-image', async c => {
+  if(activeInspectionTransfers>=2)return c.json({code:'INSPECTION_BUSY'},429);
+  activeInspectionTransfers++;
+  try {
+    const body=await c.req.json();
+    if(typeof body.url!=='string'||body.url.length>4000)return c.json({code:'INVALID_IMAGE_URL'},400);
+    const image=await downloadGeneratedImage(body.url,AbortSignal.any([c.req.raw.signal,AbortSignal.timeout(30000)]));
+    const meta=await sharp(image,{limitInputPixels:40_000_000}).metadata();
+    const mime=({png:'image/png',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',avif:'image/avif',svg:'image/svg+xml'} as Record<string,string>)[meta.format||''];
+    if(!mime)return c.json({code:'INSPECTION_ASSET_TYPE'},400);
+    return c.json(await phoneInspections().retainAsset(c.get('userId') as string,createHash('sha256').update(image).digest('hex'),mime,image));
+  }catch(error){
+    const code=error instanceof Error?error.message:'';
+    return c.json({code:'INSPECTION_REMOTE_IMAGE_UNAVAILABLE'},code==='INSPECTION_ASSET_QUOTA'?429:code==='IMAGE_URL_REJECTED'?400:502);
+  }finally{activeInspectionTransfers--;}
 });
 
 phoneRoute.post('/memory/events', async c => {
@@ -51,7 +88,7 @@ phoneRoute.get('/bootstrap', c => {
   const userId = c.get('userId') as string;
   return c.json({ userId, managed: true, imageGeneration: imageConfigured(), billing: { implemented: false }, characters:
     charactersService.listVisibleTo(userId).filter(character => character.isActive).map(character => ({
-      id: character.id, name: character.name, persona: character.description || '',
+      id: character.id, name: character.name, persona: communityPhonePersona(charactersService.getRow(character.id)!),
       updatedAt: character.updatedAt, avatar: null,
       ...phoneRole(userId, character.id),
     })),
@@ -129,7 +166,9 @@ phoneRoute.post('/characters/:id/chat/completions', async c => {
   const { phoneChatStream } = await import('../phone/chat-stream');
   const logs = phoneChatLogs(), requestId = randomUUID(), started = Date.now();
   const messages = [{ role: 'system', content: authoritative }, ...body.data.messages];
-  logs.start({ id: requestId, userId, characterId, branchId, model: config.model, messages });
+  let trace;
+  try {const raw=c.req.header('x-yelan-call-trace');if(raw&&raw.length<=2000){const parsed=PhoneCallTraceSchema.safeParse(JSON.parse(decodeURIComponent(raw)));if(parsed.success)trace=parsed.data;}}catch{/*Trace metadata never blocks a conversation.*/}
+  logs.start({ id: requestId, userId, characterId, branchId, model: config.model, messages,trace });
   return phoneChatStream({ stream: Boolean(body.data.stream), signal: c.req.raw.signal,
     finish: (status, http, code, response, truncated) => logs.finish(requestId, status, Date.now() - started, http, code, response, truncated),
     perform: signal => fetch(`${config.baseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')}/chat/completions`, {

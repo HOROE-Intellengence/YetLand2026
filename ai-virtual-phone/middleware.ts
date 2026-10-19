@@ -103,7 +103,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/:path*',
-    "/((?!_next/static|_next/image|.*\\.(?:avif|bin|css|gif|glb|gltf|hdr|ico|jpeg|jpg|js|json|map|mjs|mp3|ogg|otf|png|svg|ttf|txt|wasm|wav|webmanifest|webp|woff|woff2)$).*)",
+    // This route enforces bearer authentication and bounded streaming itself.
+    // Exclude it from Next's 10 MiB middleware body clone to preserve uploads.
+    '/api/((?!host/phone/inspection/assets/).*)',
+    "/((?!api/host/phone/inspection/assets/|_next/static|_next/image|.*\\.(?:avif|bin|css|gif|glb|gltf|hdr|ico|jpeg|jpg|js|json|map|mjs|mp3|ogg|otf|png|svg|ttf|txt|wasm|wav|webmanifest|webp|woff|woff2)$).*)",
   ],
 };

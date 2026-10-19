@@ -63,7 +63,8 @@ export class HqVoiceService {
     return { ...publicTurn(turn), stage: turn.status === 'interrupted' && meta.stage !== 'asr_skipped' ? 'interrupted' : meta.stage,
       profileId: profile.id, mainCompleted: Boolean(meta.mainCompleted), localAsrSkipped: Boolean(meta.localAsrSkipped),
       canRetryTts: profile.provider === 'fish' && retryable && Boolean(meta.mainCompleted) && !turn.outputAssetId,
-      canResumeAsr: retryable && Boolean(meta.asrTaskId) && !turn.inputTranscriptComplete && turn.errorCode !== 'HQ_ASR_TASK_FAILED',
+      canResumeAsr: retryable && Boolean(meta.asrTaskId) && !turn.inputTranscriptComplete &&
+        ['HQ_ASR_TIMEOUT', 'HQ_ASR_CONNECTION_FAILED', 'HQ_CANCELLED', 'PROCESS_RESTARTED', 'HQ_STAGE_FAILED'].includes(turn.errorCode ?? ''),
       ifActive: isSessionIfActive(store.state().sessions[turn.sessionId]),
       temperature: Number.isInteger(temperature) && temperature! >= 1 && temperature! <= 5 ? temperature! : null,
       timings };
@@ -122,6 +123,7 @@ export class HqVoiceService {
   private fail(id: string, error: unknown) {
     const code = error instanceof VoiceError ? error.code : (error as Error).name === 'AbortError' ? 'HQ_CANCELLED' : 'HQ_STAGE_FAILED';
     const status = code === 'HQ_CANCELLED' ? 'interrupted' : 'failed';
+    this.db.providerEvent(id, 'hq_error', { code, stage: this.meta(id).stage, ...(error instanceof VoiceError ? error.details : {}) });
     // 保留 main/tts/asr 阶段快照，公开状态由 turns.status 覆盖。
     this.db.db.prepare('UPDATE turns SET status=?,errorCode=?,updatedAt=? WHERE id=?').run(status, code, new Date().toISOString(), id);
   }
@@ -142,13 +144,16 @@ export class HqVoiceService {
         this.stage(id, 'asr_submitting');
         // 请求结果不确定时不得自动重新提交。
         let taskId: string;
-        try { taskId = await this.dependencies.submit(signed.url, signal); }
-        catch { throw new VoiceError('HQ_ASR_SUBMISSION_UNKNOWN', 502); }
+        try { taskId = await this.dependencies.submit(signed.url, signal, undefined,
+          details => this.db.providerEvent(id, 'asr_submit', details)); }
+        catch (error) { throw new VoiceError('HQ_ASR_SUBMISSION_UNKNOWN', 502,
+          { provider: 'aliyun-asr', ...(error instanceof VoiceError ? { providerCode: error.code, ...error.details } : {}) }); }
         this.db.db.prepare("UPDATE hq_turns SET asrTaskId=?,stage='asr_pending' WHERE turnId=?").run(taskId, id);
         meta = this.meta(id);
       }
       this.stage(id, 'asr_pending');
-      const text = await this.dependencies.poll(meta.asrTaskId!, signal);
+      const text = await this.dependencies.poll(meta.asrTaskId!, signal, undefined, undefined,
+        details => this.db.providerEvent(id, 'asr', details));
       this.db.db.prepare('UPDATE turns SET inputText=?,inputTranscriptComplete=1 WHERE id=?').run(text, id);
       this.timing(id, 'asrMs', performance.now() - start); turn = this.db.turn(id)!;
     }

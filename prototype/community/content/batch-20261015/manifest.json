@@ -1,0 +1,351 @@
+{
+  "batch": "batch-20261015",
+  "version": 1,
+  "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+  "items": [
+    {
+      "key": "c-observatory",
+      "file": "resources/c-observatory.json",
+      "type": "character",
+      "title": "山顶观测员 · 许照",
+      "version": "1.0.0",
+      "purpose": "把一个模糊发现，变成可以核对的观察。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "w-star-ridge"
+      ]
+    },
+    {
+      "key": "c-repair",
+      "file": "resources/c-repair.json",
+      "type": "character",
+      "title": "修理铺师傅 · 罗榆",
+      "version": "1.0.0",
+      "purpose": "先听异响，再一起决定修不修。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "w-loop-workshop"
+      ]
+    },
+    {
+      "key": "c-tide",
+      "file": "resources/c-tide.json",
+      "type": "character",
+      "title": "潮汐测绘搭档 · 季澄",
+      "version": "1.0.0",
+      "purpose": "两份记录不一致，正好从这里开始。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "w-white-sail"
+      ]
+    },
+    {
+      "key": "c-orbit",
+      "file": "resources/c-orbit.json",
+      "type": "character",
+      "title": "轨道温室值班长 · 闻岚",
+      "version": "1.0.0",
+      "purpose": "资源有限，也要把选择说清楚。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "w-grain-orbit"
+      ]
+    },
+    {
+      "key": "c-theatre",
+      "file": "resources/c-theatre.json",
+      "type": "character",
+      "title": "戏台副导 · 唐弦",
+      "version": "1.0.0",
+      "purpose": "好戏从一次愿意重来的排练开始。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "w-four-seasons"
+      ]
+    },
+    {
+      "key": "c-dunes",
+      "file": "resources/c-dunes.json",
+      "type": "character",
+      "title": "沙海驿站掌柜 · 乌棠",
+      "version": "1.0.0",
+      "purpose": "一张路线凭条，也能聊出不同的旅程。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "w-amber-route"
+      ]
+    },
+    {
+      "key": "c-museum",
+      "file": "resources/c-museum.json",
+      "type": "character",
+      "title": "社区策展人 · 顾晴",
+      "version": "1.0.0",
+      "purpose": "先听物主怎么说，再给展品写说明。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "c-noodle",
+      "file": "resources/c-noodle.json",
+      "type": "character",
+      "title": "清晨面摊合伙人 · 何粟",
+      "version": "1.0.0",
+      "purpose": "忙的时候先把一件小事做好。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "c-audio",
+      "file": "resources/c-audio.json",
+      "type": "character",
+      "title": "声音整理师 · 叶听",
+      "version": "1.0.0",
+      "purpose": "听不见的部分，也可以诚实地留白。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "c-puzzle",
+      "file": "resources/c-puzzle.json",
+      "type": "character",
+      "title": "谜题设计搭档 · 方棱",
+      "version": "1.0.0",
+      "purpose": "把卡住的位置，变成下一条公平线索。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "c-walk",
+      "file": "resources/c-walk.json",
+      "type": "character",
+      "title": "城市漫步笔友 · 余步",
+      "version": "1.0.0",
+      "purpose": "走不出门时，也能一起发现街角。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "c-library",
+      "file": "resources/c-library.json",
+      "type": "character",
+      "title": "工具借阅员 · 殷禾",
+      "version": "1.0.0",
+      "purpose": "想做的事不必一次备齐所有工具。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "w-star-ridge",
+      "file": "resources/w-star-ridge.json",
+      "type": "worldbook",
+      "title": "星台山观测札记",
+      "version": "1.0.0",
+      "purpose": "山顶观测员许照；也适用于用户自有的天文社成员或访客角色",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "c-observatory"
+      ]
+    },
+    {
+      "key": "w-loop-workshop",
+      "file": "resources/w-loop-workshop.json",
+      "type": "worldbook",
+      "title": "回环街修理合作社",
+      "version": "1.0.0",
+      "purpose": "修理铺师傅罗榆；也适用于用户自有的邻居、物主或学徒角色",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "c-repair"
+      ]
+    },
+    {
+      "key": "w-white-sail",
+      "file": "resources/w-white-sail.json",
+      "type": "worldbook",
+      "title": "白帆潮湾测绘册",
+      "version": "1.0.0",
+      "purpose": "潮汐测绘搭档季澄；也适用于用户自有的绘图者或海湾居民角色",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "c-tide"
+      ]
+    },
+    {
+      "key": "w-grain-orbit",
+      "file": "resources/w-grain-orbit.json",
+      "type": "worldbook",
+      "title": "穗环轨道温室",
+      "version": "1.0.0",
+      "purpose": "轨道温室值班长闻岚；也适用于用户自有的轨道站植物管理员角色",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "c-orbit"
+      ]
+    },
+    {
+      "key": "w-four-seasons",
+      "file": "resources/w-four-seasons.json",
+      "type": "worldbook",
+      "title": "四时流动剧团",
+      "version": "1.0.0",
+      "purpose": "戏台副导唐弦；也适用于用户自有的编剧、道具师或临时演员角色",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "c-theatre"
+      ]
+    },
+    {
+      "key": "w-amber-route",
+      "file": "resources/w-amber-route.json",
+      "type": "worldbook",
+      "title": "琥珀沙海商道",
+      "version": "1.0.0",
+      "purpose": "沙海驿站掌柜乌棠；也适用于用户自有的旅人、货单员或商队伙伴角色",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": [
+        "c-dunes"
+      ]
+    },
+    {
+      "key": "t-porcelain",
+      "file": "resources/t-porcelain.json",
+      "type": "theme",
+      "title": "晴瓷蓝",
+      "version": "1.0.0",
+      "purpose": "清亮瓷白与雾蓝，适合日间读字。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "t-apricot",
+      "file": "resources/t-apricot.json",
+      "type": "theme",
+      "title": "杏茶暖光",
+      "version": "1.0.0",
+      "purpose": "杏色底与茶褐字，适合柔和的生活场景。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "t-indigo",
+      "file": "resources/t-indigo.json",
+      "type": "theme",
+      "title": "靛夜航线",
+      "version": "1.0.0",
+      "purpose": "低亮靛蓝与浅灰字，适合偏暗环境。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "t-plum",
+      "file": "resources/t-plum.json",
+      "type": "theme",
+      "title": "梅雾纸页",
+      "version": "1.0.0",
+      "purpose": "灰梅色与淡紫纸面，适合轻叙事。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "t-graphite",
+      "file": "resources/t-graphite.json",
+      "type": "theme",
+      "title": "石墨工作台",
+      "version": "1.0.0",
+      "purpose": "中性灰白与石墨文字，适合整理信息。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "t-terracotta",
+      "file": "resources/t-terracotta.json",
+      "type": "theme",
+      "title": "陶土海盐",
+      "version": "1.0.0",
+      "purpose": "陶土红与浅沙底，适合暖色冒险场景。",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "guide-character",
+      "file": "posts/guide-character.md",
+      "type": "tutorial",
+      "title": "教程｜把社区角色安装到自己的小手机",
+      "version": "1.0.0",
+      "purpose": "本地实际操作说明",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "guide-worldbook",
+      "file": "posts/guide-worldbook.md",
+      "type": "tutorial",
+      "title": "教程｜独立世界书的绑定、触发与解除",
+      "version": "1.0.0",
+      "purpose": "本地实际操作说明",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "guide-theme",
+      "file": "posts/guide-theme.md",
+      "type": "tutorial",
+      "title": "教程｜切换配色主题并恢复原外观",
+      "version": "1.0.0",
+      "purpose": "本地实际操作说明",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "guide-version",
+      "file": "posts/guide-version.md",
+      "type": "tutorial",
+      "title": "教程｜发布新版本与保留自己的安装副本",
+      "version": "1.0.0",
+      "purpose": "本地实际操作说明",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "discuss-relationship",
+      "file": "posts/discuss-relationship.md",
+      "type": "discussion",
+      "title": "讨论｜不靠默认恋爱，哪种合作关系更想继续？",
+      "version": "1.0.0",
+      "purpose": "管理员发起的开放问题",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "discuss-trigger",
+      "file": "posts/discuss-trigger.md",
+      "type": "discussion",
+      "title": "讨论｜世界书触发到哪里才算刚刚好？",
+      "version": "1.0.0",
+      "purpose": "管理员发起的开放问题",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "discuss-theme",
+      "file": "posts/discuss-theme.md",
+      "type": "discussion",
+      "title": "讨论｜你最先想调的是背景、文字还是聊天气泡？",
+      "version": "1.0.0",
+      "purpose": "管理员发起的开放问题",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    },
+    {
+      "key": "discuss-opening",
+      "file": "posts/discuss-opening.md",
+      "type": "discussion",
+      "title": "讨论｜一个小任务怎样才不会变成第二份工作？",
+      "version": "1.0.0",
+      "purpose": "管理员发起的开放问题",
+      "source": "本批原创，社区管理员整理发布；无外站采集、人物原型或第三方素材。",
+      "related": []
+    }
+  ]
+}

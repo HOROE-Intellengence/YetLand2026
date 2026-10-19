@@ -1,6 +1,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { previewCaptureScript, retainPreviewScene } from '@/lib/phone-preview-capture';
+import { isYelanManaged } from '@/lib/yelan-managed-client';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
@@ -522,9 +524,9 @@ ${body}
 </script>`;
 
   if (/<body[\s>]/i.test(base)) {
-    return base.replace(/<body([^>]*)>/i, `<body$1>${IFRAME_ERROR_CAPTURE_SCRIPT}${bridge}`);
+    return base.replace(/<body([^>]*)>/i, `<body$1>${IFRAME_ERROR_CAPTURE_SCRIPT}${bridge}${isYelanManaged?previewCaptureScript(frameId):''}`);
   }
-  return `${IFRAME_ERROR_CAPTURE_SCRIPT}${bridge}${base}`;
+  return `${IFRAME_ERROR_CAPTURE_SCRIPT}${bridge}${isYelanManaged?previewCaptureScript(frameId):''}${base}`;
 }
 
 function GameIframe({
@@ -533,10 +535,12 @@ function GameIframe({
   allowExternalControl,
   onBridgeRequest,
   registerEventSender,
+  inspectionId,
 }: {
   html: string;
   title: string;
   allowExternalControl: boolean;
+  inspectionId?:string;
   onBridgeRequest: (action: string, payload: unknown) => Promise<unknown> | unknown;
   registerEventSender?: (sender: ((event: string, payload: unknown) => void) | null) => void;
 }) {
@@ -602,6 +606,7 @@ function GameIframe({
       const data = event.data;
       if (!data || typeof data !== "object") return;
       const record = data as Record<string, unknown>;
+      if(record.type==='yelan.inspection.scene'&&record.frameId===frameId&&inspectionId){void retainPreviewScene(inspectionId,record.html,record.media,record.at);return;}
       if (record.source !== "ai-phone-game-frame" || record.id !== frameId) return;
       if (record.type !== "request") return;
       const requestId = String(record.requestId || "");
@@ -631,7 +636,7 @@ function GameIframe({
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [frameId, onBridgeRequest]);
+  }, [frameId, onBridgeRequest, inspectionId]);
 
   return (
     <iframe
@@ -3554,6 +3559,7 @@ export function GameHubApp({ onClose, autoOpenLocalId }: { onClose: () => void; 
               <GameIframe
                 key={`${runtimeGame.localId}-picker-${advancedAllowed ? "advanced" : "safe"}`}
                 title={`${runtimeGame.templateSnapshot.title} 角色选择`}
+                inspectionId={runtimeGame.localId}
                 html={runtimeGame.templateSnapshot.pickerHtml}
                 allowExternalControl={runtimeAllowExternal}
                 onBridgeRequest={handleBridgeRequest}
@@ -3564,6 +3570,7 @@ export function GameHubApp({ onClose, autoOpenLocalId }: { onClose: () => void; 
               <GameIframe
                 key={`${runtimeGame.localId}-game-${advancedAllowed ? "advanced" : "safe"}`}
                 title={`${runtimeGame.templateSnapshot.title} 游戏`}
+                inspectionId={runtimeGame.localId}
                 html={runtimeGame.templateSnapshot.gameHtml}
                 allowExternalControl={runtimeAllowExternal}
                 onBridgeRequest={handleBridgeRequest}

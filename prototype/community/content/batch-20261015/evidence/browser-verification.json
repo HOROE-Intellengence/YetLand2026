@@ -1,0 +1,232 @@
+{
+  "checkedAt": "2026-10-15T06:01:24.742Z",
+  "entry": "community → 进入小手机 (identity handshake)",
+  "character": {
+    "key": "c-observatory",
+    "name": "许照",
+    "fullPersonaVisible": true,
+    "screenshot": "character-phone.png"
+  },
+  "worldbook": {
+    "key": "w-star-ridge",
+    "target": "许照",
+    "entries": 10,
+    "editorVisible": true,
+    "screenshot": "worldbook-phone.png"
+  },
+  "themes": {
+    "t-porcelain": {
+      "name": "晴瓷蓝",
+      "matchedVariables": 20,
+      "cssReadback": {
+        "--c-bubble-other": "#f9fcff",
+        "--c-bubble-self": "#b4d6ef",
+        "--c-card": "#f9fcff",
+        "--c-card-border": "#c2d5e5",
+        "--c-danger": "#a8343e",
+        "--c-header-bg": "#edf5fb",
+        "--c-icon": "#768fa5",
+        "--c-icon-active": "#356f9e",
+        "--c-input": "#edf4fa",
+        "--c-input-border": "#c2d5e5",
+        "--c-page-body-bg": "#e4eef7",
+        "--c-panel": "#f9fcff",
+        "--c-panel-border": "#c2d5e5",
+        "--c-polaroid": "#f9fcff",
+        "--c-polaroid-back": "#e4eef7",
+        "--c-success": "#326b4c",
+        "--c-text": "#36536d",
+        "--c-text-title": "#17324d",
+        "--c-warning": "#865712",
+        "--ctx-menu-bg": "#f9fcff"
+      },
+      "palettePageVisible": true,
+      "wallpaper": false,
+      "screenshot": "t-porcelain-phone.png"
+    },
+    "t-apricot": {
+      "name": "杏茶暖光",
+      "matchedVariables": 20,
+      "cssReadback": {
+        "--c-bubble-other": "#fff9f0",
+        "--c-bubble-self": "#edd0ad",
+        "--c-card": "#fff9f0",
+        "--c-card-border": "#ddc4a8",
+        "--c-danger": "#a8343e",
+        "--c-header-bg": "#fff2e2",
+        "--c-icon": "#a1846b",
+        "--c-icon-active": "#a45d32",
+        "--c-input": "#f6eadc",
+        "--c-input-border": "#ddc4a8",
+        "--c-page-body-bg": "#f5e6d4",
+        "--c-panel": "#fff9f0",
+        "--c-panel-border": "#ddc4a8",
+        "--c-polaroid": "#fff9f0",
+        "--c-polaroid-back": "#f5e6d4",
+        "--c-success": "#326b4c",
+        "--c-text": "#694b37",
+        "--c-text-title": "#4b3026",
+        "--c-warning": "#865712",
+        "--ctx-menu-bg": "#fff9f0"
+      },
+      "palettePageVisible": true,
+      "wallpaper": false,
+      "screenshot": "t-apricot-phone.png"
+    },
+    "t-indigo": {
+      "name": "靛夜航线",
+      "matchedVariables": 20,
+      "cssReadback": {
+        "--c-bubble-other": "#24364e",
+        "--c-bubble-self": "#34557a",
+        "--c-card": "#1f2d43",
+        "--c-card-border": "#394c68",
+        "--c-danger": "#ffa6a6",
+        "--c-header-bg": "#172235",
+        "--c-icon": "#9babca",
+        "--c-icon-active": "#93c9ff",
+        "--c-input": "#26364f",
+        "--c-input-border": "#394c68",
+        "--c-page-body-bg": "#111a2a",
+        "--c-panel": "#1f2d43",
+        "--c-panel-border": "#394c68",
+        "--c-polaroid": "#1f2d43",
+        "--c-polaroid-back": "#111a2a",
+        "--c-success": "#8ed5b0",
+        "--c-text": "#c6d5eb",
+        "--c-text-title": "#edf3ff",
+        "--c-warning": "#f4d28b",
+        "--ctx-menu-bg": "#1f2d43"
+      },
+      "palettePageVisible": true,
+      "wallpaper": false,
+      "screenshot": "t-indigo-phone.png"
+    },
+    "t-plum": {
+      "name": "梅雾纸页",
+      "matchedVariables": 20,
+      "cssReadback": {
+        "--c-bubble-other": "#fff8fd",
+        "--c-bubble-self": "#e2c9df",
+        "--c-card": "#fff8fd",
+        "--c-card-border": "#d8bfd4",
+        "--c-danger": "#a8343e",
+        "--c-header-bg": "#f5edf3",
+        "--c-icon": "#a184a2",
+        "--c-icon-active": "#975687",
+        "--c-input": "#f2e8f1",
+        "--c-input-border": "#d8bfd4",
+        "--c-page-body-bg": "#eae1eb",
+        "--c-panel": "#fff8fd",
+        "--c-panel-border": "#d8bfd4",
+        "--c-polaroid": "#fff8fd",
+        "--c-polaroid-back": "#eae1eb",
+        "--c-success": "#326b4c",
+        "--c-text": "#65496a",
+        "--c-text-title": "#432d46",
+        "--c-warning": "#865712",
+        "--ctx-menu-bg": "#fff8fd"
+      },
+      "palettePageVisible": true,
+      "wallpaper": false,
+      "screenshot": "t-plum-phone.png"
+    },
+    "t-graphite": {
+      "name": "石墨工作台",
+      "matchedVariables": 20,
+      "cssReadback": {
+        "--c-bubble-other": "#fbfcfd",
+        "--c-bubble-self": "#cedbe4",
+        "--c-card": "#fbfcfd",
+        "--c-card-border": "#bfc5cc",
+        "--c-danger": "#a8343e",
+        "--c-header-bg": "#f0f1f2",
+        "--c-icon": "#7b8793",
+        "--c-icon-active": "#43627b",
+        "--c-input": "#eef0f3",
+        "--c-input-border": "#bfc5cc",
+        "--c-page-body-bg": "#e5e7e9",
+        "--c-panel": "#fbfcfd",
+        "--c-panel-border": "#bfc5cc",
+        "--c-polaroid": "#fbfcfd",
+        "--c-polaroid-back": "#e5e7e9",
+        "--c-success": "#326b4c",
+        "--c-text": "#46515e",
+        "--c-text-title": "#222b34",
+        "--c-warning": "#865712",
+        "--ctx-menu-bg": "#fbfcfd"
+      },
+      "palettePageVisible": true,
+      "wallpaper": false,
+      "screenshot": "t-graphite-phone.png"
+    },
+    "t-terracotta": {
+      "name": "陶土海盐",
+      "matchedVariables": 20,
+      "cssReadback": {
+        "--c-bubble-other": "#fff9f3",
+        "--c-bubble-self": "#e9bda7",
+        "--c-card": "#fff9f3",
+        "--c-card-border": "#d9bba7",
+        "--c-danger": "#a8343e",
+        "--c-header-bg": "#f9eee6",
+        "--c-icon": "#a18170",
+        "--c-icon-active": "#b25a41",
+        "--c-input": "#f4e5d8",
+        "--c-input-border": "#d9bba7",
+        "--c-page-body-bg": "#eee0d2",
+        "--c-panel": "#fff9f3",
+        "--c-panel-border": "#d9bba7",
+        "--c-polaroid": "#fff9f3",
+        "--c-polaroid-back": "#eee0d2",
+        "--c-success": "#326b4c",
+        "--c-text": "#6c493b",
+        "--c-text-title": "#493027",
+        "--c-warning": "#865712",
+        "--ctx-menu-bg": "#fff9f3"
+      },
+      "palettePageVisible": true,
+      "wallpaper": false,
+      "screenshot": "t-terracotta-phone.png"
+    }
+  },
+  "manualColor": {
+    "editedByUI": true,
+    "changedHeader": "rgba(237, 245, 251, 0.5)",
+    "reentryPreserved": true,
+    "restorePreservedManual": true,
+    "restoreOtherColors": {
+      "header": "rgba(237, 245, 251, 0.5)",
+      "page": "#F1F2F6",
+      "self": "#95EC69",
+      "text": "#797E85"
+    },
+    "cleanupOtherColors": {
+      "--c-card": "rgba(255, 255, 255, 0.7)",
+      "--c-card-border": "#E0E0E0",
+      "--c-input": "#F2F3F5",
+      "--c-input-border": "rgba(224, 226, 229, 0)",
+      "--c-page-body-bg": "#F1F2F6",
+      "--c-panel": "#FFFFFF",
+      "--c-panel-border": "#D9DADB"
+    },
+    "cleanupRestoredColors": {
+      "--c-card": "rgba(255, 255, 255, 0.7)",
+      "--c-card-border": "#E0E0E0",
+      "--c-header-bg": "#FFFFFF",
+      "--c-input": "#F2F3F5",
+      "--c-input-border": "rgba(224, 226, 229, 0)",
+      "--c-page-body-bg": "#F1F2F6",
+      "--c-panel": "#FFFFFF",
+      "--c-panel-border": "#D9DADB"
+    }
+  },
+  "modelCalls": 0,
+  "finalOriginalThemeRestored": {
+    "name": "苔绿手记",
+    "colors": {
+      "header": "#f7f5ef",
+      "page": "#edf1e8"
+    }
+  }
+}

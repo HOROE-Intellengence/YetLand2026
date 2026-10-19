@@ -1,0 +1,22 @@
+{
+  "id": "nodebb-plugin-yelan-local",
+  "name": "夜阑社区整合",
+  "description": "Unified local accounts, resource lifecycle and moderation",
+  "library": "./library.js",
+  "hooks": [
+    { "hook": "static:app.load", "method": "init" },
+    { "hook": "filter:middleware.renderHeader", "method": "renderHeader" },
+    { "hook": "filter:parse.post", "method": "adaptPrototypeLinks" },
+    { "hook": "static:sockets.validateSession", "method": "validateSocket" },
+    { "hook": "static:user.loggedOut", "method": "loggedOut" },
+    { "hook": "filter:user.logout", "method": "logoutDestination" },
+    { "hook": "action:topic.delete", "method": "topicDeleted" },
+    { "hook": "action:topic.restore", "method": "topicRestored" },
+    { "hook": "action:post.edit", "method": "postEdited" },
+    { "hook": "action:user.banned", "method": "accountBanned" },
+    { "hook": "action:user.unbanned", "method": "accountUnbanned" },
+    { "hook": "action:user.delete", "method": "accountDeleted" },
+    { "hook": "filter:user.updateProfile", "method": "profileGuard" }
+  ],
+  "scripts": ["navigation.js"]
+}

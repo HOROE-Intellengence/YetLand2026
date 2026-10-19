@@ -107,6 +107,12 @@
   text-shadow: 0 0 14px rgba(200, 168, 120, 0.28);
 }
 
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .navStart,
 .mobileStart {
   position: relative;
@@ -119,6 +125,8 @@
   color: var(--gold-light) !important;
   font-size: 13px !important;
   font-weight: 500;
+  text-decoration: none;
+  text-align: center;
   letter-spacing: 0.22em;
   box-shadow: 0 0 24px rgba(200, 168, 120, 0.13);
   transition:
@@ -1140,7 +1148,7 @@
     display: none;
   }
 
-  .navStart {
+  .navActions {
     display: none;
   }
 

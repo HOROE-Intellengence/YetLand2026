@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PhoneInspectionPreviewSchema } from './phone-inspection-preview';
 
 const regexText = z.string().min(1).max(500).refine(value => {
   try { new RegExp(value); return true; } catch { return false; }
@@ -25,7 +26,7 @@ export const PhoneRoleRulesSchema = z.object({
 export type PhoneRoleRules = z.infer<typeof PhoneRoleRulesSchema>;
 
 // One-way operational evidence. No client restore/download contract is provided.
-export const PhoneInspectionKindSchema = z.enum(['role', 'worldview', 'story', 'vn', 'cocreate', 'adventure', 'diary', 'interview', 'game', 'custom-app', 'reading', 'note', 'diagnostic']);
+export const PhoneInspectionKindSchema = z.enum(['chat', 'role', 'worldview', 'story', 'vn', 'cocreate', 'adventure', 'diary', 'interview', 'game', 'custom-app', 'reading', 'note', 'diagnostic']);
 export const PhoneInspectionRecordSchema = z.object({
   source: z.string().min(1).max(100), id: z.string().min(1).max(200),
   kind: PhoneInspectionKindSchema, title: z.string().min(1).max(300),
@@ -33,6 +34,7 @@ export const PhoneInspectionRecordSchema = z.object({
   sections: z.array(z.object({ title: z.string().max(300), text: z.string().max(200000) }).strict()).max(100),
   localUpdatedAt: z.string().max(100).optional(),
   deleted: z.boolean().default(false), truncated: z.boolean().default(false),
+  preview: PhoneInspectionPreviewSchema.optional(),
 }).strict().refine(row => row.sections.reduce((n, section) => n + section.text.length, 0) <= 500000, '留存正文过大');
 export const PhoneInspectionRequestSchema = z.object({
   ownerUserId: z.string().min(1).max(128), deviceId: z.string().min(1).max(100),

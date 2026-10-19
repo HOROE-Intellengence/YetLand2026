@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { HQ_VOICE_OPTIONS, type HqVoiceProfileId, type FishVoiceSettings, type FishCatalog } from '@yelan/shared';
+import { type HqVoiceProfileId, type FishVoiceSettings, type FishCatalog } from '@yelan/shared';
 import { api, getBase, getAuthHeaders } from '../api/client';
 import './VoiceSettings.css';
 
@@ -10,6 +10,8 @@ export function VoiceSettings() {
   const [query, setQuery] = useState(''), [mine, setMine] = useState(false), [page, setPage] = useState(1);
   const [catalog, setCatalog] = useState<FishCatalog | null>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [newLabel, setNewLabel] = useState(''), [newReferenceId, setNewReferenceId] = useState('');
   const [busy, setBusy] = useState(false), [searching, setSearching] = useState(false), [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [text, setText] = useState('今天过得怎么样？不用着急，先坐下来喝口水，我会在这里陪着你。');
@@ -17,7 +19,11 @@ export function VoiceSettings() {
   const [testId, setTestId] = useState('');
   const audioUrl = useRef(''), controller = useRef<AbortController | null>(null);
   const alive = useRef(true), previewLock = useRef(false);
-  function apply(value: FishVoiceSettings) { setData(value); setChoices(Object.fromEntries(value.slots.map(s => [s.category, s.referenceId ?? '']))); }
+  function apply(value: FishVoiceSettings) {
+    setData(value);
+    setChoices(Object.fromEntries(value.slots.map(s => [s.category, s.referenceId ?? ''])));
+    setLabels(Object.fromEntries(value.slots.map(s => [s.category, s.label])));
+  }
   useEffect(() => {
     alive.current = true;
     void api.get<FishVoiceSettings>(base).then(apply).catch(e => setError((e as Error).message));
@@ -33,8 +39,19 @@ export function VoiceSettings() {
   }
   async function bind(category: HqVoiceProfileId) {
     setBusy(true); setError(''); setNotice('');
-    try { setData(await api.put<FishVoiceSettings>(`${base}/slots/${category}`, { referenceId: choices[category]?.trim() || null, speed: data?.slots.find(s => s.category === category)?.speed ?? 1, reason })); setNotice('默认音色已更新。'); }
+    try { setData(await api.put<FishVoiceSettings>(`${base}/slots/${category}`, { label: labels[category]?.trim(), referenceId: choices[category]?.trim() || null, speed: data?.slots.find(s => s.category === category)?.speed ?? 1, reason })); setNotice('音色已更新。'); }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  async function add() {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const value = await api.post<FishVoiceSettings>(`${base}/slots`, { label: newLabel.trim(), referenceId: newReferenceId.trim() || null, reason });
+      setData(value);
+      // Keep any unsaved edits to existing entries when adding another voice.
+      setChoices(previous => ({ ...Object.fromEntries(value.slots.map(s => [s.category, s.referenceId ?? ''])), ...previous }));
+      setLabels(previous => ({ ...Object.fromEntries(value.slots.map(s => [s.category, s.label])), ...previous }));
+      setNewLabel(''); setNewReferenceId(''); setNotice('音色已新增，后台和用户创建角色时均可选择。');
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   async function preview(referenceId: string | null, speed = 1) {
     if (previewLock.current) return;
@@ -53,17 +70,24 @@ export function VoiceSettings() {
   return <div className="voice-settings">
     <h2>语音配置与测试</h2>
     <p>Fish Audio · <strong>s2.1-pro-free</strong> · {data?.configured ? '后端密钥已配置' : '等待后端密钥配置'}</p>
-    <p className="muted">填写四类默认音色的 Fish reference_id，保存后下一轮生效。留空使用 Fish 默认声音。</p>
+    <p className="muted">可按需新增音色，填写名称和 Fish reference_id。保存后下一轮生效，ID 留空使用 Fish 默认声音。</p>
     {error && <p role="alert" style={{ color: 'var(--danger, #d85a5a)' }}>{error}</p>}
     {notice && <p role="status">{notice}</p>}
     <label style={{ display: 'block', marginBottom: 16 }}>修改原因 <input aria-label="音色修改原因" value={reason} maxLength={500} onChange={e => setReason(e.target.value)} /></label>
-    <h3>四类默认音色</h3>
+    <h3>高质量音色列表</h3>
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 12 }}>
-      {HQ_VOICE_OPTIONS.map(option => <div key={option.value} className="card" style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 8 }}>
-        <label>{option.label}<input aria-label={`${option.label}默认音色 ID`} placeholder="手动填写 Fish reference_id" value={choices[option.value] ?? ''} maxLength={100} onChange={e => setChoices({ ...choices, [option.value]: e.target.value })} style={{ display: 'block', width: '100%', margin: '10px 0' }} /></label>
-        <button className="btn btn-sm" disabled={busy || !reason.trim()} onClick={() => void bind(option.value)}>保存{option.label}</button>
+      {data?.slots.map(slot => <div key={slot.category} className="card" style={{ padding: 16, border: '1px solid var(--border)', borderRadius: 8 }}>
+        <label>音色名称<input aria-label={`${slot.label}音色名称`} value={labels[slot.category] ?? ''} maxLength={40} disabled={busy} onChange={e => setLabels({ ...labels, [slot.category]: e.target.value })} style={{ display: 'block', width: '100%', margin: '10px 0' }} /></label>
+        <label>Fish ID<input aria-label={`${slot.label}音色 ID`} placeholder="手动填写 Fish reference_id" value={choices[slot.category] ?? ''} maxLength={100} disabled={busy} onChange={e => setChoices({ ...choices, [slot.category]: e.target.value })} style={{ display: 'block', width: '100%', margin: '10px 0' }} /></label>
+        <button className="btn btn-sm" disabled={busy || !reason.trim() || !labels[slot.category]?.trim()} onClick={() => void bind(slot.category)}>保存{slot.label}</button>
       </div>)}
     </div>
+    <h3>新增音色</h3>
+    <form onSubmit={e => { e.preventDefault(); void add(); }} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <input aria-label="新增音色名称" placeholder="音色名称，如：温柔姐姐" value={newLabel} maxLength={40} required disabled={busy || !data} onChange={e => setNewLabel(e.target.value)} />
+      <input aria-label="新增音色 Fish ID" placeholder="Fish reference_id（可留空）" value={newReferenceId} maxLength={100} disabled={busy || !data} onChange={e => setNewReferenceId(e.target.value)} />
+      <button className="btn" disabled={busy || !data || !reason.trim() || !newLabel.trim()}>新增音色</button>
+    </form>
     <h3>语音测试</h3>
     <label>测试音色 ID<input aria-label="测试音色 ID" placeholder="留空测试 Fish 默认声音" value={testId} maxLength={100} onChange={e => setTestId(e.target.value)} /></label>
     <textarea aria-label="音色试听文本" value={text} maxLength={300} onChange={e => setText(e.target.value)} style={{ width: '100%', minHeight: 65 }} />
@@ -81,7 +105,7 @@ export function VoiceSettings() {
       {catalog.items.map(v => <div key={v.referenceId} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: 200 }}><strong>{v.name}</strong><div className="muted">{v.languages.join(' / ')} · {v.referenceId}</div></div>
         <button className="btn btn-sm" disabled={previewing || !text.trim()} onClick={() => void preview(v.referenceId)}>试听</button>
-        <button className="btn btn-sm" onClick={() => { setTestId(v.referenceId); setNotice('已填入测试 ID；不会修改四类默认项。'); }}>填入测试 ID</button>
+        <button className="btn btn-sm" onClick={() => { setTestId(v.referenceId); setNotice('已填入测试 ID；不会修改音色列表。'); }}>填入测试 ID</button>
       </div>)}
       <p><button className="btn btn-sm" disabled={searching || page <= 1} onClick={() => void search(page - 1)}>上一页</button> <button className="btn btn-sm" disabled={searching || !(catalog.hasMore ?? catalog.items.length === 20)} onClick={() => void search(page + 1)}>下一页</button></p>
     </>}

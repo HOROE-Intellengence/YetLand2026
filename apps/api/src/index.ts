@@ -212,6 +212,20 @@ if (profile.enableAdminConsole) {
 }
 
 // ── 启动 ─────────────────────────────────────────────────────────────────
+// Share the existing account/character store in this process; never mount it into a second writer.
+if (process.env.COMMUNITY_ACCOUNT_MODE === 'shared') {
+  const { issueCommunityHandoff } = await import('./community-prototype/application');
+  const { HTTPException } = await import('hono/http-exception');
+  app.post('/api/community-session', async (c) => {
+    const token = c.req.header('authorization')?.replace(/^Bearer /, '') || '';
+    const body = await c.req.json().catch(() => ({}));
+    try { return c.json(issueCommunityHandoff(token, body.challenge || '')); }
+    catch (error) {
+      if (error instanceof HTTPException) return c.json({ code: 'COMMUNITY_AUTH', message: error.message }, error.status);
+      throw error;
+    }
+  });
+}
 const server = serve({ fetch: app.fetch, port: profile.port, hostname: profile.host });
 
 // 配置超时 - SSE 流式响应需要更长的超时时间，避免长对话被截断

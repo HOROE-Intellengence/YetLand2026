@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { voiceWebSocketAgent } from './local-proxy';
 import { MAX_OUTPUT_SECONDS, relayConfig, VOICE_MODEL, VoiceError } from './config';
 import type { VoiceName } from '@yelan/shared';
+import { liveErrorCode, redactProviderText } from './provider-errors';
 
 export interface LiveContent {
   role: 'user' | 'model';
@@ -47,7 +48,7 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
     const complete = () => {
       if (settled) return;
       if (!audioBytes || audioBytes % 2) {
-        finish(new VoiceError('VOICE_EMPTY_OR_INCOMPLETE_AUDIO', 502));
+        finish(new VoiceError('VOICE_EMPTY_OR_INCOMPLETE_AUDIO', 502, { provider: 'google-live', audioBytes, outputChars: progress.outputText.length, terminal: 'turnComplete' }));
         return;
       }
       // Current Live transcription events omit `finished`. A drained final turn
@@ -90,7 +91,8 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
       if (settled) return;
       try {
         const message = JSON.parse(raw.toString());
-        if (message.error) throw new VoiceError('VOICE_UPSTREAM_REJECTED', 502);
+        if (message.error) throw new VoiceError(liveErrorCode(Number(message.error.code), String(message.error.message ?? ''), 'VOICE_UPSTREAM_REJECTED'), 502,
+          { provider: 'google-live', providerCode: message.error.code, message: redactProviderText(message.error.message) });
         if (message.setupComplete && !ready) {
           ready = true; clearTimeout(setupDeadline);
           if (request.text !== undefined) {
@@ -137,10 +139,12 @@ export function generateVoice(request: LiveRequest): Promise<LiveProgress> {
         finish(error instanceof VoiceError ? error : new VoiceError('VOICE_PROTOCOL_ERROR', 502));
       }
     });
-    socket.on('error', () => finish(new VoiceError('VOICE_UPSTREAM_CONNECTION_FAILED', 502)));
+    socket.on('error', (error: Error & { code?: string }) => finish(new VoiceError('VOICE_UPSTREAM_CONNECTION_FAILED', 502,
+      { provider: 'google-live', networkCode: error.code, message: redactProviderText(error.message), setupComplete: ready, audioBytes })));
     socket.on('unexpected-response', (_req, response) => {
-      response.resume(); finish(new VoiceError('VOICE_RELAY_REJECTED', 502));
+      response.resume(); finish(new VoiceError(liveErrorCode(response.statusCode ?? 0, '', 'VOICE_RELAY_REJECTED'), 502, { provider: 'voice-relay', httpStatus: response.statusCode }));
     });
-    socket.on('close', () => endGrace ? complete() : finish(new VoiceError('VOICE_UPSTREAM_DISCONNECTED', 502)));
+    socket.on('close', (code, reason) => endGrace ? complete() : finish(new VoiceError(liveErrorCode(code, reason.toString()), 502,
+      { provider: 'google-live', closeCode: code, message: redactProviderText(reason.toString()), setupComplete: ready, audioBytes, outputChars: progress.outputText.length })));
   });
 }

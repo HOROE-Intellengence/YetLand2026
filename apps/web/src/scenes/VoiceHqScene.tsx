@@ -10,6 +10,12 @@ import hqStyles from './VoiceHqScene.module.css';
 import { PcmPlayer } from '../voice/pcm-player';
 
 const ERRORS: Record<string, string> = {
+  HQ_ASR_TASK_UNKNOWN: '识别任务已无法查询，请重新录音。',
+  HQ_ASR_DOWNLOAD_FAILED: '识别服务未能读取录音，请稍后重新录音。',
+  HQ_ASR_TIMEOUT: '识别仍未完成，可继续查询原任务。',
+  HQ_ASR_CONNECTION_FAILED: '识别查询连接中断，可继续查询原任务。',
+  HQ_ASR_TASK_FAILED: '录音识别失败，请重新录音。',
+  PLAYBACK_BUFFER_LIMIT: '待播音频过长，请重新打开已保存的回复。',
   HQ_FISH_HTTP_401: '语音服务鉴权失败，请联系管理员检查 Fish 配置。',
   HQ_FISH_HTTP_402: '语音服务额度不足，请联系管理员。',
   HQ_FISH_HTTP_429: '语音服务繁忙，稍后可以重试合成。',
@@ -19,8 +25,6 @@ const ERRORS: Record<string, string> = {
   HQ_CONTEXT_LIMIT: '这段对话已经很长了，请开始新会话。',
   HQ_TOKEN_LIMIT: '当前对话额度不足，请稍后再试。',
   HQ_ASR_SUBMISSION_UNKNOWN: '识别提交结果不确定，已停止，未重复提交。',
-  HQ_ASR_TIMEOUT: '识别还没完成，可以继续查询原任务。',
-  HQ_ASR_TASK_FAILED: '识别失败，请重新录音。',
   LOCAL_ASR_SKIPPED: '本地已跳过 ASR，请用下方测试文字验收回复与语音。',
   HQ_STAGE_FAILED: '处理未完成，已保留本轮状态。',
   HQ_TTS_FAILED: '语音合成失败，可以重试合成。',
@@ -74,6 +78,7 @@ export function VoiceHqScene() {
   useEffect(() => {
     alive.current = true;
     const pcmPlayer = player.current;
+    pcmPlayer.onStateChange = () => { if (alive.current) setPlayPending(pcmPlayer.needsPlay); };
     const controller = new AbortController();
     request.current = controller;
     let saved: string | null = null;
@@ -141,7 +146,7 @@ export function VoiceHqScene() {
     if (controller.signal.aborted) return;
     const characters = Array.from(turn.outputText);
     let revealedCount = 0;
-    if (!player.current.append(bytes, progress => {
+    player.current.append(bytes, progress => {
       if (!alive.current || controller.signal.aborted || displayTurnId.current !== turn.id) return;
       const count = Math.min(characters.length, Math.floor(progress * characters.length) + 1);
       if (count === revealedCount) return;
@@ -149,12 +154,17 @@ export function VoiceHqScene() {
       setRevealedReply(characters.slice(0, count).join(''));
       // Restore only text already revealed by playback, never the full server reply.
       try { sessionStorage.setItem(`${storageKey}.revealed.${turn.id}`, String(count)); } catch { /* noop */ }
-    })) { setPlayPending(true); setNotice('回复已准备好，点击播放。'); return; }
-    played.current.add(turn.id);
-    try { sessionStorage.setItem(heardKey, '1'); } catch { /* noop */ }
-    setPlayPending(false); setNotice('正在为你播放');
+    });
+    await finishPlayback(turn, controller);
+  }
+  async function finishPlayback(turn: HqTurnResponse, controller: AbortController) {
+    setPlayPending(player.current.needsPlay); setNotice(player.current.needsPlay ? '回复已准备好，点击播放。' : '正在为你播放');
     await player.current.drain(controller.signal);
-    if (!controller.signal.aborted) setNotice('听完了，慢慢说。');
+    if (!controller.signal.aborted && player.current.finished) {
+      played.current.add(turn.id);
+      try { sessionStorage.setItem(`${storageKey}.heard.${turn.id}`, '1'); } catch { /* noop */ }
+      setPlayPending(false); setNotice('听完了，慢慢说。');
+    }
   }
   async function watchTurn(initial: HqTurnResponse, controller: AbortController) {
     const base = `/api/voice-hq/sessions/${initial.sessionId}/turns/${initial.id}`;
@@ -373,7 +383,7 @@ export function VoiceHqScene() {
             if (!currentReply || lock.current) return;
             lock.current = true; setPhase('busy');
             const controller = new AbortController(); request.current = controller;
-            void player.current.unlock().then(() => playReply(currentReply, controller)).catch(report)
+            void player.current.unlock().then(() => player.current.acceptedBytes ? finishPlayback(currentReply, controller) : playReply(currentReply, controller)).catch(report)
               .finally(() => { lock.current = false; if (alive.current) setPhase('idle'); });
           }}>播放回复</button>}
           {config?.localTest && <div className={styles.localTest}>
